@@ -154,6 +154,24 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .ed-foot .ed-btn { flex: 1; }
 .ed-help { font-size: 11.5px; color: #777; margin-bottom: 10px; line-height: 1.6; }
 .ed-help b { color: #2C3E6B; }
+/* 设置面板精简版 */
+.set-label {
+  font-size: 12.5px; font-weight: 700; color: #2C3E6B;
+  display: flex; align-items: baseline; gap: 8px; margin: 0 0 7px 2px;
+}
+.set-label .hint { font-weight: 400; font-size: 10px; color: #a5adbc; }
+.set-label .repo {
+  margin-left: auto; font-size: 10.5px; font-weight: 600; color: #7b8aa5;
+  background: rgba(44,62,107,0.07); padding: 2px 8px; border-radius: 999px;
+  cursor: pointer; user-select: none;
+}
+.set-label .repo b { color: #2C3E6B; margin-left: 3px; }
+.set-label .repo:hover { background: rgba(44,62,107,0.14); }
+.set-btns { display: flex; gap: 6px; margin: 8px 0 0; }
+.set-btns .ed-btn { flex: none; padding: 7px 13px; font-size: 12px; border-radius: 9px; }
+.set-btns .ed-btn + .ed-btn { margin-left: 2px; }
+.set-btns .ed-btn:last-child { margin-left: auto; }
+.set-sep { height: 1px; background: rgba(0,0,0,0.07); margin: 15px 0 13px; }
 .toast { position: fixed; left: 50%; bottom: 38px; transform: translateX(-50%); z-index: 5000; background: rgba(28,34,50,0.95); color: #fff; font-size: 12.5px; padding: 9px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 80vw; }
 .toast.show { opacity: 1; }
 input[type="file"] { display: none; }
@@ -593,34 +611,24 @@ switchRoute(ROUTE_META[0].id);
   <div class="modal-card settings-modal">
     <div class="modal-head"><span class="ttl">设置</span><button class="x" id="settingsClose">✕</button></div>
     <div class="modal-body">
-      <div class="ed-help" style="margin-top:4px;">
-        地名搜索使用<b>高德地图 Web 服务</b>（浏览器可直接调用）。免费申请：<b>console.amap.com</b> → 应用管理 → 创建应用 → 添加 Key，类型选「Web服务」。<br>
-        Key 仅保存在本机浏览器中；地图坐标会自动由 GCJ-02 转为 WGS-84。
-      </div>
-      <input class="ed-name" id="amapKeyInput" placeholder="粘贴高德 Web 服务 Key" style="margin-bottom:8px;">
-      <div class="ed-foot" style="margin-top:8px;">
-        <button class="ed-btn ghost" id="amapTest">测试搜索</button>
-        <button class="ed-btn" id="amapSave">保存设置</button>
+      <div class="set-label">高德地图 Web 服务 Key <span class="hint">地名搜索 · console.amap.com 申请</span></div>
+      <input class="ed-name" id="amapKeyInput" placeholder="粘贴高德 Web 服务 Key">
+      <div class="set-btns">
+        <button class="ed-btn gray" id="amapTest">测试</button>
+        <button class="ed-btn" id="amapSave">保存</button>
       </div>
 
-      <div class="cloud-sep" style="height:1px;background:rgba(0,0,0,0.08);margin:14px 0 10px;"></div>
-      <div class="ed-help" style="margin-top:0;">
-        <b>☁ GitHub 同步</b>（可选）——把全部自定义路线备份到 GitHub 仓库，换电脑/浏览器后可拉取恢复。<br>
-        「上传到 GitHub」= 把路线库写入仓库 <b>routes/route-library.json</b>；「从 GitHub 拉取」= 下载该文件并合并到本地。<br>
-        Token 需 <b>repo</b> 权限（github.com → Settings → Developer settings → Personal access tokens → 勾 repo），仅保存在本机浏览器，不上传。
+      <div class="set-sep"></div>
+      <div class="set-label">GitHub Token <span class="hint">路线云备份 · 需 repo 权限</span>
+        <span class="repo" id="ghRepoLabel" title="点击修改仓库">Sunyh-gi/route-planner <b>✎</b></span>
       </div>
-      <input class="ed-name" id="ghRepo" placeholder="仓库 owner/repo，如 Sunyh-gi/route-planner" style="font-size:11.5px;">
-      <input class="ed-name" id="ghBranch" placeholder="分支（默认 main）" style="font-size:11.5px;">
-      <input class="ed-name" id="ghToken" placeholder="GitHub Token（私有仓库必填）" style="font-size:11.5px;background:#fdf6ec;">
-      <div class="ed-row" style="margin-bottom:0;justify-content:space-between;">
-        <div style="display:flex;gap:6px;">
-          <button class="ed-btn gray" id="ghTest" style="flex:none;padding:6px 10px;font-size:11.5px;">测试连接</button>
-          <button class="ed-btn gray" id="ghPull" style="flex:none;padding:6px 10px;font-size:11.5px;">↓ 从 GitHub 拉取</button>
-          <button class="ed-btn gray" id="ghPush" style="flex:none;padding:6px 10px;font-size:11.5px;">↑ 上传到 GitHub</button>
-        </div>
-        <button class="ed-btn" id="ghSave" style="flex:none;padding:6px 14px;font-size:11.5px;">保存配置</button>
+      <input class="ed-name" id="ghToken" placeholder="粘贴 GitHub Token">
+      <div class="set-btns">
+        <button class="ed-btn gray" id="ghTest">测试</button>
+        <button class="ed-btn gray" id="ghPull">↓ 拉取</button>
+        <button class="ed-btn gray" id="ghPush">↑ 上传</button>
+        <button class="ed-btn" id="ghSave">保存</button>
       </div>
-      <div class="ed-help" id="ghStatus" style="margin:8px 0 0;font-size:11px;color:#888;"></div>
     </div>
   </div>
 </div>
@@ -1358,14 +1366,14 @@ function doSearch() {
 $("edSearchBtn").addEventListener("click", doSearch);
 $("edSearch").addEventListener("keydown", function (ev) { if (ev.key === "Enter") doSearch(); });
 
-/* ---------- 设置（高德 Key） ---------- */
+/* ---------- 设置（高德 Key + GitHub Token） ---------- */
+var GH_DEFAULT_REPO = "Sunyh-gi/route-planner", GH_DEFAULT_BRANCH = "main";
 function openSettings() {
   $("amapKeyInput").value = store.amapKey || "";
   var g = store.gh || {};
-  $("ghRepo").value = g.repo || "";
-  $("ghBranch").value = g.branch || "";
   $("ghToken").value = g.token || "";
-  $("ghStatus").textContent = "";
+  var r = $("ghRepoLabel");
+  if (r) r.innerHTML = esc(g.repo || GH_DEFAULT_REPO) + " <b>✎</b>";
   $("settingsMask").classList.add("open");
   setTimeout(function () { $("amapKeyInput").focus(); }, 60);
 }
@@ -1398,7 +1406,7 @@ var GH_PATH = "routes/route-library.json";
 var ghPushing = false, ghTimer = null, ghLastVer = 0;
 function ghConf() {
   var g = store.gh || {};
-  return { repo: (g.repo || "").trim(), branch: (g.branch || "").trim() || "main", token: (g.token || "").trim() };
+  return { repo: ((g.repo || "").trim() || GH_DEFAULT_REPO), branch: ((g.branch || "").trim() || GH_DEFAULT_BRANCH), token: (g.token || "").trim() };
 }
 function ghEnabled() { var g = ghConf(); return !!(g.repo && g.branch && g.repo.indexOf("/") > 0); }
 function ghNeedToken() { var g = ghConf(); return !!g.token; }
@@ -1502,18 +1510,37 @@ function ghInit() {
     return ghPush().then(function () { ghLastVer = store._ver || 0; return { merged: true, direction: "local", n: store.routes.length }; });
   }).catch(function () { return { merged: false, error: true }; });
 }
-function ghStatusMsg(s) { $("ghStatus").textContent = s || ""; }
+function ghStatusMsg(s) { toast(s, 4200); }
+// 保存 GitHub Token（仓库名/分支沿用默认或曾修改过的值）
 function ghSaveConfig() {
   var cur = store.gh || {};
-  cur.repo = $("ghRepo").value.trim();
-  cur.branch = ($("ghBranch").value.trim() || "main");
+  cur.repo = (cur.repo || "").trim() || GH_DEFAULT_REPO;
+  cur.branch = (cur.branch || "").trim() || GH_DEFAULT_BRANCH;
   cur.token = $("ghToken").value.trim();
   store.gh = cur;
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-  toast(ghEnabled() ? "GitHub 配置已保存" : "已清除 GitHub 配置");
+  toast(cur.token ? "GitHub Token 已保存" : "已清除 Token（仍可查看内置路线）");
   if (ghEnabled()) ghInit();
 }
 $("ghSave").addEventListener("click", ghSaveConfig);
+// 点击仓库名可修改（支持 owner/repo 或 owner/repo@分支）
+$("ghRepoLabel").addEventListener("click", function () {
+  var cur = store.gh || {};
+  var old = (cur.repo || GH_DEFAULT_REPO) + (cur.branch && cur.branch !== "main" ? "@" + cur.branch : "");
+  var v = prompt("同步仓库（owner/repo），分支非 main 用 owner/repo@分支：", old);
+  if (!v) return;
+  v = v.trim();
+  var br = GH_DEFAULT_BRANCH, rp = v;
+  var at = v.lastIndexOf("@");
+  if (at > 0 && v.indexOf("/") < at) { rp = v.slice(0, at); br = v.slice(at + 1); }
+  if (rp.indexOf("/") <= 0) { toast("格式应为 owner/repo"); return; }
+  store.gh = store.gh || {};
+  store.gh.repo = rp;
+  store.gh.branch = br || GH_DEFAULT_BRANCH;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
+  $("ghRepoLabel").innerHTML = esc(rp) + " <b>✎</b>";
+  toast("同步仓库已改为 " + rp + (br && br !== "main" ? "@" + br : ""));
+});
 $("ghTest").addEventListener("click", function () {
   if (!ghEnabled()) { toast("请先填写 仓库 owner/repo 并保存"); return; }
   ghStatusMsg("正在测试…");
