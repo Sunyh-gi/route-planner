@@ -28,15 +28,26 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   await page.goto(URL, { waitUntil: "load", timeout: 60000 });
   await new Promise(r => setTimeout(r, 2500));
 
-  // ---- 1. 初始状态 ----
+  // ---- 1. 启动：主页画廊 + 目录注册（内置数据不预载，点卡片才按需加载）----
+  const homeShown = await page.evaluate(() => getComputedStyle(document.getElementById("homeMask")).display !== "none");
   const btns = await page.$$eval(".route-switch .rs-btn", els => els.map(e => e.getAttribute("data-route")));
-  ok(btns.includes("cx") && btns.includes("yl"), "初始按钮包含 cx/yl -> " + btns.join(","));
-  const active = await page.$eval(".route-switch .rs-btn.active", e => e.getAttribute("data-route")).catch(() => null);
-  ok(active === "cx", "默认激活路线 cx, actual=" + active);
-  const wpItems = await page.$$eval("#wpList .wp-item", els => els.length).catch(() => -1);
-  ok(wpItems > 0, "侧栏已渲染地点列表, n=" + wpItems);
-  const mapCx = await page.evaluate(() => !!window.map && !!window.CX && !!window.YL);
-  ok(mapCx, "window.map/CX/YL 可用");
+  ok(homeShown && btns.includes("cx") && btns.includes("yl"), "首屏主页画廊 + 侧栏目录含 cx/yl -> " + btns.join(","));
+  const initMeta = await page.evaluate(() => ({
+    meta: ROUTE_META.map(m => m.id).join(","),
+    packs: Object.keys(ROUTE_PACKS).length,
+    rendered: !!(currentGroup && currentGroup.getLayers().length)
+  }));
+  ok(initMeta.meta === "cx,yl" && initMeta.packs === 0 && !initMeta.rendered, "目录已注册、数据未预载 -> " + JSON.stringify(initMeta));
+  const mapOk = await page.evaluate(() => !!window.map && !!window.ROUTE_CATALOG && !!window.ROUTE_PLACES);
+  ok(mapOk, "window.map / ROUTE_CATALOG / ROUTE_PLACES 可用");
+
+  // ---- 2. 点击主页川西卡片 -> 懒加载 routes/cx.js 并渲染 ----
+  await page.evaluate(() => document.querySelector('.home-card[data-route="cx"]').click());
+  await new Promise(r => setTimeout(r, 1600));
+  const cxWp = await page.$$eval("#wpList .wp-item", els => els.length).catch(() => -1);
+  ok(cxWp === 11, "点川西卡片后加载并渲染 11 点, n=" + cxWp);
+  const cxActive = await page.evaluate(() => ROUTE_PACKS.cx ? ROUTE_PACKS.cx.stops.length : -1);
+  ok(cxActive === 11, "ROUTE_PACKS.cx 已加载 11 点");
 
   // ---- 2. 新建路线：打开编辑器 ----
   await page.evaluate(() => openNewEditor());
@@ -110,9 +121,108 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   const afterCopy = await page.evaluate(() => (JSON.parse(localStorage.getItem("route-platform:v1") || "{}").routes || []).length);
   ok(afterCopy === 1, "副本已入 store, n=" + afterCopy);
 
-  // ---- 截图 ----
-  await page.evaluate(() => switchRoute("cx"));
-  await new Promise(r => setTimeout(r, 1200));
+  // ---- 9. 清理副本，准备功能迭代场景（改名/拖拽/预设） ----
+  const cid2 = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("route-platform:v1") || "{}");
+    return (s.routes || [])[0] ? s.routes[0].id : null;
+  });
+  if (cid2) {
+    await page.evaluate(c => deleteRouteAsk(c), cid2);
+    await page.evaluate(c => deleteRouteAsk(c), cid2);
+    await new Promise(r => setTimeout(r, 200));
+  }
+  const cleared = await page.evaluate(() => (JSON.parse(localStorage.getItem("route-platform:v1") || "{}").routes || []).length);
+  ok(cleared === 0, "清理副本后 store 为空");
+
+  // ---- 10. 新建 3 点路线（day 分布 1/2/2）----
+  await page.evaluate(() => openNewEditor());
+  await page.evaluate(() => { setDayNum(1); addStop("起点A", 30.0, 102.0); setDayNum(2); addStop("中继B", 30.1, 102.1); addStop("终点C", 30.2, 102.2); });
+  await new Promise(r => setTimeout(r, 300));
+  const names0 = await page.evaluate(() => edCtx.work.stops.map(s => s.name + "#" + s.day));
+  ok(names0.length === 3 && names0[0] === "起点A#1", "新建 3 点, 初始顺序 -> " + JSON.stringify(names0));
+
+  // ---- 11. 行内改名（✎ → 输入 → Enter） ----
+  await page.evaluate(() => document.querySelector('#edStops .ed-stop[data-i="1"] button[data-op="rename"]').click());
+  await new Promise(r => setTimeout(r, 150));
+  const editing = await page.$eval("#edStops", e => !!e.querySelector('.ed-stop.editing input.nm-input')).catch(() => false);
+  ok(editing, "点 ✎ 后行内出现输入框");
+  await page.evaluate(() => {
+    const inp = document.querySelector("#edStops .nm-input");
+    inp.value = "中继站B";
+    inp.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  await new Promise(r => setTimeout(r, 300));
+  const renamed = await page.evaluate(() => edCtx.work.stops.map(s => s.name));
+  ok(renamed[1] === "中继站B", "Enter 提交后地点改名 -> " + JSON.stringify(renamed));
+
+  // ---- 12. 同天拖拽：把第3点(终点C)拖到第2点上方 ----
+  const dndOk = await page.evaluate(() => {
+    function fireDrag(srcEl, dstEl, yRatio) {
+      const dt = new DataTransfer();
+      const base = { bubbles: true, cancelable: true, dataTransfer: dt };
+      srcEl.dispatchEvent(new DragEvent("dragstart", base));
+      const rect = dstEl.getBoundingClientRect();
+      const over = Object.assign({}, base, { clientX: rect.left + 5, clientY: rect.top + rect.height * yRatio });
+      dstEl.dispatchEvent(new DragEvent("dragover", over));
+      dstEl.dispatchEvent(new DragEvent("drop", over));
+      srcEl.dispatchEvent(new DragEvent("dragend", base));
+    }
+    const src = document.querySelector('#edStops .ed-stop[data-i="2"]');
+    const dst = document.querySelector('#edStops .ed-stop[data-i="1"]');
+    fireDrag(src, dst, 0.1);
+    return edCtx.work.stops.map(s => s.name).join(">");
+  });
+  ok(dndOk === "起点A>终点C>中继站B", "同天拖拽后顺序互换 -> " + dndOk);
+
+  // ---- 13. 跨天拖拽：终点C 拖到「第1天」标题 = 归入第1天末尾 ----
+  const crossOk = await page.evaluate(() => {
+    const dt = new DataTransfer();
+    const src = document.querySelector('#edStops .ed-stop[data-i="1"]');
+    const dst = document.querySelector('.ed-day[data-day="1"]');
+    src.dispatchEvent(new DragEvent("dragstart", { bubbles: true, cancelable: true, dataTransfer: dt }));
+    const rect = dst.getBoundingClientRect();
+    const over = { bubbles: true, cancelable: true, dataTransfer: dt, clientX: rect.left + 5, clientY: rect.top + 2 };
+    dst.dispatchEvent(new DragEvent("dragover", over));
+    dst.dispatchEvent(new DragEvent("drop", over));
+    src.dispatchEvent(new DragEvent("dragend", { bubbles: true, cancelable: true, dataTransfer: dt }));
+    return edCtx.work.stops.map(s => s.name + "#" + s.day).join(">");
+  });
+  ok(crossOk === "起点A#1>终点C#1>中继站B#2", "拖到第1天标题后归入第1天末尾 -> " + crossOk);
+
+  // ---- 14. 预设：选卡片色(第4色) + 标签，保存并校验各展示位 ----
+  await page.evaluate(() => {
+    document.querySelector('#presetSwatches .swatch[data-c="3"]').click();
+    const t = document.getElementById("presetTag");
+    t.value = "🚗 测试线";
+    t.dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("edName").value = "预设测试线";
+    document.getElementById("edSave").click();
+  });
+  await new Promise(r => setTimeout(r, 900));
+  const pre = await page.evaluate(() => {
+    const s = JSON.parse(localStorage.getItem("route-platform:v1"));
+    const r = s.routes[0];
+    return { nm: r.name, preset: r.preset };
+  });
+  ok(pre.nm === "预设测试线" && pre.preset && pre.preset.c === 3 && pre.preset.tag === "🚗 测试线", "预设已随路线保存 -> " + JSON.stringify(pre));
+  const btnTxt = await page.evaluate(() => {
+    const b = [...document.querySelectorAll(".route-switch .rs-btn")].find(x => x.querySelector(".nm") && x.querySelector(".nm").textContent.indexOf("预设测试线") >= 0);
+    return b ? { nm: b.querySelector(".nm").textContent, dot: !!b.querySelector(".pdot") } : null;
+  });
+  ok(!!btnTxt && btnTxt.dot && btnTxt.nm.indexOf("🚗") >= 0, "侧栏显示标签+色点 -> " + JSON.stringify(btnTxt));
+  await page.evaluate(() => showHome());
+  await new Promise(r => setTimeout(r, 300));
+  const cardTxt = await page.evaluate(() => {
+    const c = [...document.querySelectorAll(".home-card")].find(x => (x.querySelector(".nm").textContent || "").indexOf("预设测试线") >= 0);
+    return c ? { nm: c.querySelector(".nm").textContent, band: c.querySelector(".band").style.background } : null;
+  });
+  ok(!!cardTxt && cardTxt.nm.indexOf("🚗") >= 0 && /rgb|#/.test(cardTxt.band), "主页卡片显示标签+预设主色 -> " + JSON.stringify(cardTxt));
+
+  // ---- 15. 渲染新配色路线并截图 ----
+  await page.evaluate(() => hideHome());
+  const savedId = await page.evaluate(() => JSON.parse(localStorage.getItem("route-platform:v1")).routes[0].id);
+  await page.evaluate(i => switchRoute(i), savedId);
+  await new Promise(r => setTimeout(r, 1800));
   await page.screenshot({ path: path.join(__dirname, "_shot_platform.png") });
 
   // ---- 汇总 ----
