@@ -5,6 +5,7 @@
 ## 架构：壳与数据分离
 
 ```
+index.html            ← 站点入口：根路径自动跳转到平台页（GitHub Pages / 本地双击均可用）
 线路规划平台.html   ← 平台壳（渲染器 + 编辑器 + 画廊，无路线数据）
 routes/
   catalog.js        ← 路线目录：ROUTE_CATALOG（id/名称/数据文件/天数/点数/主色）+ ROUTE_PLACES（内置地名库，搜索用）
@@ -41,7 +42,7 @@ routes/
 把整个目录保持原样即可打开/部署（HTML + `routes/` 同目录）：
 
 - 本地：双击 `线路规划平台.html`（`file://` 下通过相对路径加载 `routes/*.js`，无需起服务）
-- **线上直链：https://sunyh-gi.github.io/route-planner/（本仓库公开，GitHub Pages 自动托管 main 分支）**
+- **线上直链：https://sunyh-gi.github.io/route-planner/（本仓库公开，GitHub Pages 自动托管 main 分支；根路径经 index.html 跳转到平台页）**
 - 线上（自托管）：把 `线路规划平台.html` 与 `routes/` 一起发布（EdgeOne Pages / WorkBuddy「发布为应用」/ 任意静态托管）
 - ⚠ 不要把 HTML 单独拷走，否则内置路线目录与数据缺失，主页只剩自定义路线
 
