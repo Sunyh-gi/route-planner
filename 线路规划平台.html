@@ -672,10 +672,15 @@ function loadStore() {
   } catch (e) { return { routes: [], amapKey: "" }; }
 }
 function saveStore() {
-  store._ver = Date.now(); // 本地修改时间戳，供云同步比较版本
+  store._ver = Date.now(); // 本地修改时间戳，供 GitHub 同步比较版本
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
   catch (e) { toast("本地保存失败：" + e.message); }
   if (typeof scheduleGhPush === "function") scheduleGhPush(); // GitHub 同步启用时自动上传
+}
+// 仅本地落盘（不触发云推送）：供 OSRM 路径缓存等后台回填使用，避免反复重置云同步防抖
+function saveLocalOnly() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  catch (e) {}
 }
 
 var toastTimer = null;
@@ -889,7 +894,7 @@ function ensureRoutePolys(route, segLayers, markers) {
             break;
           }
         }
-        if (store.routes.indexOf(job.route) >= 0) saveStore();
+        if (store.routes.indexOf(job.route) >= 0) saveLocalOnly(); // 仅落盘，不触发云推送
       },
       onFail: function () { /* 保持虚线直线 */ }
     });
@@ -1403,8 +1408,11 @@ function ghApi(url, method, body) {
   var headers = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
   if (g.token) headers["Authorization"] = "Bearer " + g.token;
   if (body) headers["Content-Type"] = "application/json";
-  var opt = { method: method, headers: headers };
+  // cache: no-store 避免读到旧版；15s 超时防止弱网下按钮一直“处理中”
+  var opt = { method: method, headers: headers, cache: "no-store" };
   if (body) opt.body = JSON.stringify(body);
+  var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+  if (ctrl) { opt.signal = ctrl.signal; setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 15000); }
   return fetch(url, opt).then(function (r) {
     return r.json().then(function (j) { return { status: r.status, json: j }; });
   });
@@ -1421,7 +1429,13 @@ function ghLibUrl() {
 function ghPull() {
   return ghApi(ghContentsUrl(), "GET").then(function (res) {
     if (res.status === 200 && res.json && res.json.content) {
-      try { return JSON.parse(atob(res.json.content.replace(/\s/g, ""))); }
+      try {
+        // atob 得到的是 Latin-1 二进制串，需显式转回 UTF-8 再 JSON.parse（否则中文变乱码）
+        var bin = atob(res.json.content.replace(/\s/g, ""));
+        var bytes = new Uint8Array(bin.length);
+        for (var bi = 0; bi < bin.length; bi++) bytes[bi] = bin.charCodeAt(bi);
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
       catch (e) { throw new Error("远端文件格式错误"); }
     }
     if (res.status === 404) return null;
