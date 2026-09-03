@@ -268,7 +268,7 @@ input[type="file"] { display: none; }
   <div class="home-inner">
     <div class="home-head">
       <h1>🧭 我的路线库</h1>
-      <span class="sub">点击进入某条路线 · 所有路线保存在本机浏览器，可用 ⚙ 上传 GitHub 备份</span>
+      <span class="sub">每条路线 = 仓库里的一个数据文件 · 点卡片进入地图；新建/修改保存后自动写入 GitHub</span>
     </div>
     <div class="home-tools">
       <button id="homeNew">＋ 新建路线</button>
@@ -278,8 +278,8 @@ input[type="file"] { display: none; }
     </div>
     <div class="home-grid" id="homeGrid"></div>
     <div class="home-foot">
-      川西 / 伊犁路线随站点目录一起提供，人人可见；你新建的自定义路线默认仅存本机。<br>
-      需要换设备使用时，用 ⚙ GitHub 同步把路线库备份到你的仓库，即可多端恢复。
+      每条路线在 GitHub 仓库中都有自己的数据文件：川西 / 伊犁随站点提供，你新建/修改的路线保存后写入各自文件并推回仓库，任何设备打开即见。<br>
+      保存 / 删除需要先在 ⚙ 设置 配置 GitHub Token；未配置时仅可浏览与编辑预览。
     </div>
   </div>
 </div>
@@ -442,19 +442,57 @@ var currentGroup = null;
 var currentLookup = null;
 var wpList = document.getElementById("wpList");
 
-// ========== 路线注册表 ==========
-// 内置路线（川西/伊犁）只登记元信息，数据文件 routes/*.js 在首次打开时才按需加载（见 loadRouteData）
+// ========== 路线注册表（v5：单一目录模型，仓库文件为真源） ==========
+// 所有路线一律是「目录(catalog) + 数据文件(routes/<id>.js)」：站点自带与用户存入 GitHub 的没有区别，
+// 不再区分内置/自定义/远端。ROUTE_META 只是展示列表（名称来自目录），渲染前才加载数据文件。
 var ROUTE_META = [];
-(ROUTE_CATALOG || []).forEach(function (c) {
-  ROUTE_META.push({ id: c.id, name: c.name, render: null }); // render 为空=数据尚未加载
-});
-var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.ROUTE_PACKS 由 routes/*.js 写入）
+function rebuildMeta() {
+  var arr = (ROUTE_CATALOG || []).map(function (c) {
+    return { id: c.id, name: c.name, render: ROUTE_PACKS[c.id] ? function () { return renderGeneric(ROUTE_PACKS[c.id]); } : null };
+  });
+  if (typeof pvList !== "undefined" && pvList.length) arr = arr.concat(pvList); // 编辑器预览占位（不入目录/缓存）
+  ROUTE_META = arr;
+  return ROUTE_META;
+}
+function pvEntries() { return (typeof pvList !== "undefined") ? pvList.slice() : []; }
+function metaOf(id) { for (var i = 0; i < ROUTE_META.length; i++) if (ROUTE_META[i].id === id) return ROUTE_META[i]; return null; }
+function addMeta(id, name, render) {
+  var m = metaOf(id);
+  if (m) { if (name !== undefined) m.name = name; if (render) m.render = render; return m; }
+  m = { id: id, name: name || id, render: render || null };
+  ROUTE_META.push(m);
+  return m;
+}
+function removeMeta(id) { var i = metaIndexOf(id); if (i >= 0) ROUTE_META.splice(i, 1); }
+// 目录操作（运行时真源列表，操作 ROUTE_CATALOG 同一数组）
+function catIndexOf(id) { for (var i = 0; i < ROUTE_CATALOG.length; i++) if (ROUTE_CATALOG[i].id === id) return i; return -1; }
+function catGet(id) { var i = catIndexOf(id); return i >= 0 ? ROUTE_CATALOG[i] : null; }
+function catRemove(id) { var i = catIndexOf(id); if (i >= 0) ROUTE_CATALOG.splice(i, 1); }
+function catUpsert(c) {
+  var i = catIndexOf(c.id);
+  if (i >= 0) {
+    var old = ROUTE_CATALOG[i];
+    ROUTE_CATALOG[i] = { id: c.id, name: c.name || old.name, file: c.file || old.file || "", days: c.days || old.days || 1, n: c.n || old.n || 0, color: c.color || old.color || "" };
+    return ROUTE_CATALOG[i];
+  }
+  ROUTE_CATALOG.push({ id: c.id, name: c.name, file: c.file || "routes/" + c.id + ".js", days: c.days || 1, n: c.n || 0, color: c.color || "" });
+  return ROUTE_CATALOG[ROUTE_CATALOG.length - 1];
+}
+function routeDays(r) { var mx = 1; (r.stops || []).forEach(function (s) { if ((s.day || 1) > mx) mx = s.day; }); return mx; }
+function routeColorOf(id, r) {
+  var p = r && r.preset;
+  if (p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length) return DAY_PALETTE[p.c];
+  var c0 = catGet(id);
+  return (c0 && c0.color) ? c0.color : DAY_PALETTE[0];
+}
+function routeFileOf(id) { var c0 = catGet(id); return (c0 && c0.file) ? c0.file : "routes/" + id + ".js"; }
 
-// 按需加载某条内置路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
+var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.ROUTE_PACKS 由 routes/*.js / GitHub 刷新写入）
+
+// 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
 function loadRouteData(id) {
   if (ROUTE_PACKS[id]) return Promise.resolve(ROUTE_PACKS[id]);
-  var it = null;
-  (ROUTE_CATALOG || []).forEach(function (c) { if (c.id === id) it = c; });
+  var it = catGet(id);
   if (!it || !it.file) return Promise.reject(new Error("未知路线: " + id));
   return new Promise(function (resolve, reject) {
     var s = document.createElement("script");
@@ -464,8 +502,10 @@ function loadRouteData(id) {
     document.head.appendChild(s);
   });
 }
+// 确保某条路线数据可用（已加载直接用；否则按目录加载）
+function ensureRouteData(id) { return loadRouteData(id); }
 // 为已加载的路线包生成渲染器（统一通用模型；segs 内含 OSRM 缓存路径）
-function builtinRenderer(id) {
+function rendererFor(id) {
   var pack = ROUTE_PACKS[id];
   if (!pack) return null;
   return function () { return renderGeneric(pack); };
@@ -473,6 +513,7 @@ function builtinRenderer(id) {
 
 // 动态生成顶部路线切换按钮（初始兜底；rebuildRouteList 会接管更完整的列表）
 var routeSwitch = document.getElementById("routeSwitch");
+rebuildMeta(); // 依目录生成展示列表（名称来自 catalog）
 ROUTE_META.forEach(function(m) {
   var b = document.createElement("button");
   b.className = "rs-btn";
@@ -557,14 +598,14 @@ wpList.addEventListener("click", function(ev) {
       </div>
 
       <div class="set-sep"></div>
-      <div class="set-label">GitHub Token <span class="hint">路线云备份 · 需 repo 权限</span>
+      <div class="set-label">GitHub Token <span class="hint">路线真源仓库 · 保存/删除需 Token</span>
         <span class="repo" id="ghRepoLabel" title="点击修改仓库">Sunyh-gi/route-planner <b>✎</b></span>
       </div>
       <input class="ed-name" id="ghToken" placeholder="粘贴 GitHub Token">
       <div class="set-btns">
         <button class="ed-btn gray" id="ghTest">测试</button>
-        <button class="ed-btn gray" id="ghPull">↓ 拉取</button>
-        <button class="ed-btn gray" id="ghPush">↑ 上传</button>
+        <button class="ed-btn gray" id="ghRefresh">🔄 刷新目录</button>
+        <button class="ed-btn gray" id="ghMigrate">⇪ 迁移旧路线</button>
         <button class="ed-btn" id="ghSave">保存</button>
       </div>
     </div>
@@ -579,38 +620,68 @@ wpList.addEventListener("click", function(ev) {
  * 路线平台管理：路线增删改、地名/GPS 搜索加站、按天设定、
  * OSRM 自动路径、localStorage 持久化、导出/导入备份
  * ============================================================ */
-var STORE_KEY = "route-platform:v1";
+var STORE_KEY = "route-platform:v1";     // 设置（gh/amapKey）+ v5 前的旧路线（仅作迁移来源）
+var CACHE_KEY = "route-platform:v1:cache"; // 最近一次目录+路线数据快照（只读缓存，离线/弱网兜底）
 var store = loadStore();
 var activeRouteId = null;
-var currentCustomRoute = null; // 当前展示中的自定义路线对象
-var customMetaFlags = {};      // meta id -> true（自定义/预览）
+var currentCustomRoute = null; // 当前展示中的路线对象
+var pvList = [];               // 编辑器预览占位 meta（__pv，不入目录/缓存/仓库）
 
 function $(id) { return document.getElementById(id); }
 
+// 设置读取（兼容旧结构；旧版 routes 仅在迁移前暂存，v5 不再作为真源）
 function loadStore() {
   try {
     var raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return { routes: [], amapKey: "" };
+    if (!raw) return { routes: [], amapKey: "", gh: {} };
     var o = JSON.parse(raw);
-    if (!o || !Array.isArray(o.routes)) o = { routes: [], amapKey: o && o.amapKey ? o.amapKey : "" };
-    o.routes.forEach(function (r) {
-      if (!r.segs) r.segs = {};
-      if (!r.stops) r.stops = [];
-    });
+    if (!o || typeof o !== "object") o = { routes: [], amapKey: "" };
+    if (!Array.isArray(o.routes)) o.routes = [];
+    o.amapKey = o.amapKey || "";
+    o.gh = o.gh || {};
     return o;
-  } catch (e) { return { routes: [], amapKey: "" }; }
+  } catch (e) { return { routes: [], amapKey: "", gh: {} }; }
 }
+// 仅保存设置；路线真源在 GitHub 仓库（localStorage 不再承担路线存储）
 function saveStore() {
-  store._ver = Date.now(); // 本地修改时间戳，供 GitHub 同步比较版本
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  try { localStorage.setItem(STORE_KEY, JSON.stringify({ routes: store.routes || [], amapKey: store.amapKey || "", gh: store.gh || {} })); }
   catch (e) { toast("本地保存失败：" + e.message); }
-  if (typeof scheduleGhPush === "function") scheduleGhPush(); // GitHub 同步启用时自动上传
 }
-// 仅本地落盘（不触发云推送）：供 OSRM 路径缓存等后台回填使用，避免反复重置云同步防抖
-function saveLocalOnly() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
-  catch (e) {}
+// 路线数据只读缓存：每次成功入库/刷新后快照，供 file:// 离线兜底（不参与分类、不是真源）
+function persistCache() {
+  try {
+    var cats = [], packs = {};
+    (ROUTE_CATALOG || []).forEach(function (c) {
+      cats.push({ id: c.id, name: c.name, file: c.file || "", days: c.days || 1, n: c.n || 0, color: c.color || "" });
+    });
+    Object.keys(ROUTE_PACKS || {}).forEach(function (k) {
+      var p = ROUTE_PACKS[k];
+      if (p && p.stops && p.stops.length) packs[k] = { id: p.id, name: p.name, stops: p.stops, segs: p.segs || {}, preset: presetValid(p.preset) ? { c: p.preset.c, tag: String(p.preset.tag || "").slice(0, 8) } : undefined };
+    });
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ cat: cats, packs: packs }));
+  } catch (e) {}
 }
+// 启动时把缓存并入运行时（仅当对应条目/数据尚未从站点或仓库加载时）
+function applyCache() {
+  try {
+    var raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return;
+    var o = JSON.parse(raw);
+    if (o && Array.isArray(o.cat)) o.cat.forEach(function (c) {
+      if (c && c.id && catIndexOf(c.id) < 0 && c.file) catUpsert({ id: c.id, name: c.name, file: c.file, days: c.days || 1, n: c.n || 0, color: c.color || "" });
+    });
+    if (o && o.packs) Object.keys(o.packs).forEach(function (k) {
+      if (!ROUTE_PACKS[k]) { var p = o.packs[k]; if (p && p.stops && p.stops.length) { try { normalizeRoute(p); } catch (e2) {} ROUTE_PACKS[k] = p; } }
+    });
+    rebuildMeta();
+  } catch (e) {}
+}
+// v5 前遗留的本地路线（迁移按钮消费；迁移成功即清空）
+function legacyRoutes() {
+  return (store.routes || []).filter(function (r) { return r && Array.isArray(r.stops) && r.stops.length; });
+}
+// OSRM 等后台回填仅更新缓存，不触发云写入
+function saveLocalOnly() { persistCache(); }
 
 var toastTimer = null;
 function toast(msg, ms) {
@@ -795,7 +866,11 @@ function ensureRoutePolys(route, segLayers, markers) {
             break;
           }
         }
-        if (store.routes.indexOf(job.route) >= 0) saveLocalOnly(); // 仅落盘，不触发云推送
+        // v5：真实路线（非预览）的 OSRM 路径已写入 route.segs → 更新缓存并防抖推回仓库文件；预览内容在保存时一并写入
+        if (job.route && job.route.id && String(job.route.id).indexOf("__pv") < 0) {
+          persistCache();
+          if (catIndexOf(job.route.id) >= 0) scheduleDirtyPush(job.route.id);
+        }
       },
       onFail: function () { /* 保持虚线直线 */ }
     });
@@ -831,15 +906,15 @@ function switchRoute(id, opts) {
   }
   if (!meta) return;
   if (!meta.render) {
-    // 内置路线数据未加载：按需加载对应 routes/*.js 后再渲染（主页点卡片 / 侧栏点内置按钮 / 复制内置均走这里）
+    // 路线数据未加载：按需加载对应数据文件后再渲染（主页点卡片 / 侧栏点路线 / 复制均走这里）
     loadRouteData(id).then(function () {
-      var r = builtinRenderer(id);
+      var r = rendererFor(id);
       if (!r) { throw new Error("数据异常: " + id); }
       meta.render = r;
       applyRoute(r(), opts.nofit);
       activeRouteId = id;
       setActiveBtn(id);
-      rebuildRouteList(); // 加载后让侧栏内置按钮获得 📋 复制入口
+      rebuildRouteList();
     }).catch(function (e) {
       if (typeof toast === "function") toast("路线数据加载失败：" + (e && e.message ? e.message : id));
     });
@@ -850,22 +925,17 @@ function switchRoute(id, opts) {
   setActiveBtn(id);
 }
 
-/* ---------- 自定义路线注册 ---------- */
+/* ---------- 注册表小工具（v5 统一：入库即进目录+数据包，来源无关） ---------- */
 function metaIndexOf(id) { for (var i = 0; i < ROUTE_META.length; i++) if (ROUTE_META[i].id === id) return i; return -1; }
+// 兼容旧调用名：把一条路线加入运行时（目录 + 数据包 + 展示列表）
 function registerCustom(r) {
-  if (metaIndexOf(r.id) < 0) {
-    ROUTE_META.push({ id: r.id, name: r.name, render: function () { return renderGeneric(r); } });
-  }
-  customMetaFlags[r.id] = true;
+  if (!catGet(r.id)) catUpsert({ id: r.id, name: r.name, file: routeFileOf(r.id), days: routeDays(r), n: (r.stops || []).length, color: routeColorOf(r.id, r) });
+  ROUTE_PACKS[r.id] = r;
+  addMeta(r.id, r.name, rendererFor(r.id));
 }
-function unregisterCustom(id) {
-  var i = metaIndexOf(id);
-  if (i >= 0) ROUTE_META.splice(i, 1);
-  delete customMetaFlags[id];
-}
-function isBuiltinId(id) { return id === "cx" || id === "yl"; }
+function unregisterCustom(id) { removeMeta(id); }
 
-/* ---------- 路线切换列表 UI ---------- */
+/* ---------- 路线切换列表 UI（v5：每条路线同权，统一 ✏️ 编辑 / 📋 复制 / 🗑️ 删除） ---------- */
 function rebuildRouteList() {
   var box = document.getElementById("routeSwitch");
   box.innerHTML = "";
@@ -877,110 +947,128 @@ function rebuildRouteList() {
   var b2 = document.createElement("button");
   b2.textContent = "⚙ 设置";
   b2.addEventListener("click", function () { openSettings(); });
-  tools.appendChild(b1); tools.appendChild(b2);
+  var b3 = document.createElement("button");
+  b3.textContent = "🔄 刷新";
+  b3.title = "从 GitHub 仓库拉取最新路线目录（需已配置 Token）";
+  b3.addEventListener("click", function () { doRefresh(); });
+  tools.appendChild(b1); tools.appendChild(b2); tools.appendChild(b3);
   box.appendChild(tools);
   ROUTE_META.forEach(function (m) {
-    var isC = !!customMetaFlags[m.id];
+    if (String(m.id).indexOf("__pv") >= 0) return; // 预览占位不列出
     var btn = document.createElement("button");
     btn.className = "rs-btn";
     btn.setAttribute("data-route", m.id);
     if (m.id === activeRouteId) btn.classList.add("active");
     var nm = document.createElement("span");
     nm.className = "nm";
-    nm.textContent = m.name;
     btn.appendChild(nm);
-    if (isBuiltinId(m.id)) {
-      var dup = document.createElement("span");
-      dup.className = "op";
-      dup.setAttribute("data-act", "dup");
-      dup.title = "复制为可编辑路线";
-      dup.textContent = "📋";
-      btn.appendChild(dup);
-    } else {
-      var p = routePresetOf(m.id);
-      if (p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length) {
-        var pdot = document.createElement("span");
-        pdot.className = "pdot";
-        pdot.style.background = DAY_PALETTE[p.c];
-        pdot.title = "预设主色";
-        btn.insertBefore(pdot, nm);
-      }
-      if (p && p.tag) nm.textContent = p.tag + " " + m.name;
-      var ed = document.createElement("span");
-      ed.className = "op";
-      ed.setAttribute("data-act", "edit");
-      ed.title = "编辑";
-      ed.textContent = "✏️";
-      var del = document.createElement("span");
-      del.className = "op del";
-      del.setAttribute("data-act", "del");
-      del.title = "删除";
-      del.textContent = "🗑️";
-      btn.appendChild(ed);
-      btn.appendChild(del);
+    var p = routePresetOf(m.id);
+    if (p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length) {
+      var pdot = document.createElement("span");
+      pdot.className = "pdot";
+      pdot.style.background = DAY_PALETTE[p.c];
+      pdot.title = "预设主色";
+      btn.insertBefore(pdot, nm);
     }
+    nm.textContent = (p && p.tag ? p.tag + " " : "") + m.name;
+    var ed = document.createElement("span");
+    ed.className = "op";
+    ed.setAttribute("data-act", "edit");
+    ed.title = "编辑";
+    ed.textContent = "✏️";
+    var dup = document.createElement("span");
+    dup.className = "op";
+    dup.setAttribute("data-act", "dup");
+    dup.title = "复制为新路线";
+    dup.textContent = "📋";
+    var del = document.createElement("span");
+    del.className = "op del";
+    del.setAttribute("data-act", "del");
+    del.title = "删除";
+    del.textContent = "🗑️";
+    btn.appendChild(ed);
+    btn.appendChild(dup);
+    btn.appendChild(del);
     box.appendChild(btn);
   });
   var credit = document.createElement("div");
   credit.className = "rs-credit";
-  credit.textContent = "数据保存在本机浏览器 · 可导出备份";
+  credit.textContent = "路线保存在 GitHub 仓库 · 保存即写入各自数据文件";
   box.appendChild(credit);
 }
 document.getElementById("routeSwitch").addEventListener("click", function (ev) {
   var t = ev.target;
-  var op = t.closest(".op");
-  var btn = t.closest(".rs-btn");
+  var op = t.closest ? t.closest(".op") : null;
+  var btn = t.closest ? t.closest(".rs-btn") : null;
   if (!btn) return;
+  var id = btn.getAttribute("data-route");
   if (op) {
-    var id = btn.getAttribute("data-route");
     var act = op.getAttribute("data-act");
     if (act === "edit") openEditFor(id);
     else if (act === "dup") copyRoute(id);
     else if (act === "del") deleteRouteAsk(id);
     return;
   }
-  if (!t.classList.contains("rs-btn")) return;
-  switchRoute(btn.getAttribute("data-route"));
+  if (t.classList && !t.classList.contains("rs-btn")) return;
+  switchRoute(id);
 });
 
-/* ---------- 删除（两次点击确认） ---------- */
+/* ---------- 删除（v5：删除 = 仓库删除路线文件 + 目录更新；需 Token） ---------- */
 var pendingDel = null;
 function deleteRouteAsk(id) {
   if (pendingDel === id) {
     pendingDel = null;
-    var i = -1;
-    for (var k = 0; k < store.routes.length; k++) if (store.routes[k].id === id) { i = k; break; }
-    if (i >= 0) store.routes.splice(i, 1);
-    saveStore();
-    unregisterCustom(id);
-    if (activeRouteId === id) switchRoute(ROUTE_META[0].id);
-    rebuildRouteList();
-    toast("路线已删除");
+    doDeleteRoute(id).catch(function (e) { toast("删除失败：" + (e && e.message ? e.message : "未知错误")); });
   } else {
     pendingDel = id;
-    toast("再次点击 🗑️ 确认删除该路线");
+    var nm = catGet(id) ? catGet(id).name : id;
+    toast("再次点击 🗑️ 确认删除「" + nm + "」（将从 GitHub 仓库移除该路线文件）");
     setTimeout(function () { if (pendingDel === id) pendingDel = null; }, 2600);
   }
 }
+function doDeleteRoute(id) {
+  if (!ghEnabled()) return Promise.reject(new Error("未配置 GitHub 仓库，无法删除（路线真源在仓库）"));
+  if (!ghNeedToken()) return Promise.reject(new Error("删除路线需要 GitHub Token"));
+  var nm = catGet(id) ? catGet(id).name : id;
+  return ghDelete(routeFileOf(id), "route: delete " + nm).then(function () {
+    delete ROUTE_PACKS[id];
+    catRemove(id);
+    if (activeRouteId === id) {
+      var rest = ROUTE_META.filter(function (m) { return m.id !== id && String(m.id).indexOf("__pv") < 0; });
+      activeRouteId = null;
+      if (rest.length) switchRoute(rest[0].id, { nofit: false });
+    }
+    return pushCatalog("route: delete " + nm).then(function () {
+      rebuildMeta(); rebuildRouteList(); persistCache();
+      toast("路线「" + nm + "」已删除（仓库已同步）");
+    });
+  });
+}
 
-/* ---------- 复制内置路线为可编辑路线 ---------- */
+/* ---------- 复制：预填一个新编辑器（副本保存时才写入仓库） ---------- */
 function copyRoute(id) {
   var doCopy = function () {
-    var data = builtinCopyData(id);
-    if (!data) { toast("该路线数据尚未加载，无法复制"); return; }
-    var nm = "";
-    (ROUTE_CATALOG || []).forEach(function (c) { if (c.id === id) nm = c.name; });
-    if (!nm) { for (var k = 0; k < store.routes.length; k++) if (store.routes[k].id === id) { nm = store.routes[k].name; break; } }
-    var r = { id: newId(), name: (nm || "路线") + " 副本", stops: data.stops, segs: data.segs };
-    registerCustom(r);
-    store.routes.push(r);
-    saveStore();
-    rebuildRouteList();
-    openEditFor(r.id);
-    toast("已复制为可编辑路线，可调整日程后保存");
+    var r = ROUTE_PACKS[id];
+    if (!r || !r.stops) { toast("该路线数据尚未加载，无法复制"); return; }
+    var nm = (r.name || "路线") + " 副本";
+    openNewEditor();
+    edCtx.work.id = newId();
+    edCtx.work.name = nm;
+    edCtx.work.stops = r.stops.map(function (s) {
+      return { name: s.name, lat: Number(s.lat), lng: Number(s.lng), day: Math.max(1, parseInt(s.day, 10) || 1), tag: s.tag || "" };
+    });
+    edCtx.work.segs = {};
+    for (var k in r.segs) if (r.segs.hasOwnProperty(k)) edCtx.work.segs[k] = r.segs[k];
+    $("edName").value = nm;
+    presetFromRoute(r);
+    $("edTitle").textContent = "复制为副本";
+    buildPresets();
+    renderEdList();
+    refreshPreview(false);
+    toast("已复制，可在编辑器调整后点「保存路线」写入仓库");
   };
-  if (isBuiltinId(id) && !ROUTE_PACKS[id]) {
-    loadRouteData(id).then(doCopy).catch(function (e) { toast("复制失败：" + (e && e.message ? e.message : "数据加载异常")); });
+  if (!ROUTE_PACKS[id]) {
+    ensureRouteData(id).then(doCopy).catch(function (e) { toast("复制失败：" + (e && e.message ? e.message : "数据加载异常")); });
     return;
   }
   doCopy();
@@ -1026,25 +1114,31 @@ function presetFromRoute(t) {
   edCtx.preTag = p ? String(p.tag || "").slice(0, 8) : "";
 }
 function routePresetOf(id) {
-  for (var i = 0; i < store.routes.length; i++) if (store.routes[i].id === id) return presetValid(store.routes[i].preset) ? store.routes[i].preset : null;
-  return null;
+  var pk = ROUTE_PACKS[id];
+  if (pk) return presetValid(pk.preset) ? pk.preset : null;
+  var c0 = catGet(id);
+  return (c0 && presetValid(c0.preset)) ? c0.preset : null;
 }
 
-function pvRouteId() { return edCtx.work.id + "__pv"; }
+function pvRouteId() { return (edCtx.work ? edCtx.work.id : "pv") + "__pv"; }
+function pvPush() {
+  if (!edCtx.pvId) return;
+  for (var i = 0; i < pvList.length; i++) if (pvList[i].id === edCtx.pvId) { pvList.splice(i, 1); break; }
+  pvList.push({ id: edCtx.pvId, name: "__pv__", render: function () { return renderGeneric(edCtx.work); } });
+}
 function refreshPreview(nofit) {
-  if (!edCtx.work.stops.length) { if (edCtx.pvId) { unregisterCustom(edCtx.pvId); edCtx.pvId = null; if (activeRouteId === edCtx.backToId || activeRouteId === null) switchRoute(edCtx.backToId || ROUTE_META[0].id, { nofit: true }); } return; }
-  if (!edCtx.pvId) {
-    edCtx.pvId = pvRouteId();
-    ROUTE_META.push({ id: edCtx.pvId, name: "__pv__", render: function () { return renderGeneric(edCtx.work); } });
-    customMetaFlags[edCtx.pvId] = true;
+  if (!edCtx.work || !edCtx.work.stops.length) {
+    if (edCtx.pvId) { removeMeta(edCtx.pvId); edCtx.pvId = null; if (activeRouteId === edCtx.backToId || activeRouteId === null) switchRoute(edCtx.backToId || (ROUTE_META[0] ? ROUTE_META[0].id : null), { nofit: true }); }
+    return;
   }
+  if (!edCtx.pvId) { edCtx.pvId = pvRouteId(); pvPush(); }
   var shouldFit = !edCtx.pvFitted;
   if (nofit === true) shouldFit = false;
   switchRoute(edCtx.pvId, { nofit: !shouldFit });
   if (shouldFit) edCtx.pvFitted = true;
 }
 function removePreview() {
-  if (edCtx.pvId) { unregisterCustom(edCtx.pvId); edCtx.pvId = null; }
+  if (edCtx.pvId) { removeMeta(edCtx.pvId); edCtx.pvId = null; }
 }
 function closeEditor() {
   $("editorMask").classList.remove("open");
@@ -1273,35 +1367,35 @@ function openNewEditor() {
   setTimeout(function () { $("edName").focus(); }, 60);
 }
 function openEditFor(id) {
-  var t = null;
-  for (var i = 0; i < store.routes.length; i++) if (store.routes[i].id === id) { t = store.routes[i]; break; }
-  if (!t) return;
   removePreview();
-  edCtx.mode = "edit";
-  edCtx.origId = id;
-  edCtx.backToId = activeRouteId;
-  edCtx.work = {
-    id: id, name: t.name,
-    stops: t.stops.map(function (s) { return { name: s.name, lat: s.lat, lng: s.lng, day: s.day, tag: s.tag }; }),
-    segs: {}
-  };
-  // 缓存路径保留到工作副本，避免编辑时重复请求
-  for (var key in t.segs) if (t.segs.hasOwnProperty(key)) edCtx.work.segs[key] = t.segs[key];
-  edCtx.pvId = null;
-  edCtx.pvFitted = false;
-  presetFromRoute(t);
-  $("edTitle").textContent = "编辑路线";
-  $("edName").value = t.name;
-  buildPresets();
-  var maxDay = 1;
-  t.stops.forEach(function (s) { if (s.day > maxDay) maxDay = s.day; });
-  setDayNum(maxDay);
-  renderEdList();
-  $("edResults").classList.remove("show");
-  $("edSearch").value = "";
-  $("editorMask").classList.add("open");
-  setTimeout(function () { $("edName").focus(); }, 60);
-  refreshPreview(false);
+  ensureRouteData(id).then(function (t) {
+    if (!t || !t.stops || !t.stops.length) { toast("路线数据不可用，无法编辑"); return; }
+    edCtx.mode = "edit";
+    edCtx.origId = id;
+    edCtx.backToId = activeRouteId;
+    edCtx.work = {
+      id: id, name: t.name,
+      stops: t.stops.map(function (s) { return { name: s.name, lat: s.lat, lng: s.lng, day: s.day, tag: s.tag }; }),
+      segs: {}
+    };
+    // 缓存路径保留到工作副本，避免编辑时重复请求
+    for (var key in t.segs) if (t.segs.hasOwnProperty(key)) edCtx.work.segs[key] = t.segs[key];
+    edCtx.pvId = null;
+    edCtx.pvFitted = false;
+    presetFromRoute(t);
+    $("edTitle").textContent = "编辑路线";
+    $("edName").value = t.name;
+    buildPresets();
+    var maxDay = 1;
+    t.stops.forEach(function (s) { if (s.day > maxDay) maxDay = s.day; });
+    setDayNum(maxDay);
+    renderEdList();
+    $("edResults").classList.remove("show");
+    $("edSearch").value = "";
+    $("editorMask").classList.add("open");
+    setTimeout(function () { $("edName").focus(); }, 60);
+    refreshPreview(false);
+  }).catch(function (e) { toast("无法编辑：" + (e && e.message ? e.message : id)); });
 }
 $("edClose").addEventListener("click", closeEditor);
 $("editorMask").addEventListener("click", function (ev) { if (ev.target === this) closeEditor(); });
@@ -1309,37 +1403,27 @@ $("edSave").addEventListener("click", function () {
   var name = $("edName").value.trim();
   if (!name) { toast("请先填写路线名称"); $("edName").focus(); return; }
   if (!edCtx.work.stops.length) { toast("至少添加一个地点"); return; }
+  if (!ghEnabled()) { toast("保存前请先在 ⚙ 设置 配置 GitHub 仓库"); openSettings(); return; }
+  if (!ghNeedToken()) { toast("保存路线到 GitHub 需要 Token，请在 ⚙ 设置 粘贴后重试"); openSettings(); return; }
   edCtx.work.name = name;
   normalizeRoute(edCtx.work);
   pruneSegs(edCtx.work); // 清掉与当前相邻顺序不匹配的旧路径缓存
-  var committed = null;
-  if (edCtx.mode === "edit" && edCtx.origId) {
-    for (var i = 0; i < store.routes.length; i++) {
-      if (store.routes[i].id === edCtx.origId) {
-        var t = store.routes[i];
-        t.name = edCtx.work.name;
-        t.stops = edCtx.work.stops;
-        t.segs = edCtx.work.segs || {};
-        t.preset = currentPreset();
-        committed = t;
-        break;
-      }
-    }
-  }
-  if (!committed) {
-    committed = { id: edCtx.work.id, name: edCtx.work.name, stops: edCtx.work.stops, segs: edCtx.work.segs || {}, preset: currentPreset() };
-    registerCustom(committed);
-    store.routes.push(committed);
-  }
-  saveStore();
-  var wasActive = (activeRouteId === edCtx.pvId) || (activeRouteId === committed.id);
-  removePreview();
-  if (activeRouteId === null || String(activeRouteId).indexOf("__pv") >= 0) activeRouteId = null;
-  $("editorMask").classList.remove("open");
-  rebuildRouteList();
-  switchRoute(committed.id, { nofit: wasActive });
-  edCtx.work = null;
-  toast("路线「" + name + "」已保存");
+  var saving = { id: edCtx.work.id, name: name, stops: edCtx.work.stops, segs: edCtx.work.segs || {}, preset: currentPreset() };
+  var wasActive = (activeRouteId === edCtx.pvId) || (activeRouteId === edCtx.work.id);
+  var btn = $("edSave"), oldTxt = btn.textContent;
+  btn.disabled = true; btn.textContent = "保存中…";
+  saveRouteToRepo(saving).then(function () {
+    btn.disabled = false; btn.textContent = oldTxt;
+    removePreview();
+    $("editorMask").classList.remove("open");
+    edCtx.work = null;
+    rebuildRouteList();
+    switchRoute(saving.id, { nofit: wasActive });
+    toast("路线「" + name + "」已保存到 GitHub 仓库");
+  }).catch(function (e) {
+    btn.disabled = false; btn.textContent = oldTxt;
+    toast("保存失败：" + (e && e.message ? e.message : "未知错误"));
+  });
 });
 
 /* ---------- 搜索：坐标 / 本地点位 / 高德 ---------- */
@@ -1494,9 +1578,8 @@ $("amapTest").addEventListener("click", function () {
     .catch(function () { toast("网络错误，无法测试"); });
 });
 
-/* ---------- 设置（GitHub 同步） ---------- */
-var GH_PATH = "routes/route-library.json";
-var ghPushing = false, ghTimer = null, ghLastVer = 0;
+/* ---------- GitHub 真源（v5）：每条路线 = routes/<id>.js + catalog.js 目录索引 ---------- */
+var ghBusy = 0, ghDirtyTimer = null;
 function ghConf() {
   var g = store.gh || {};
   return { repo: ((g.repo || "").trim() || GH_DEFAULT_REPO), branch: ((g.branch || "").trim() || GH_DEFAULT_BRANCH), token: (g.token || "").trim() };
@@ -1509,118 +1592,208 @@ function ghApi(url, method, body) {
   var headers = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
   if (g.token) headers["Authorization"] = "Bearer " + g.token;
   if (body) headers["Content-Type"] = "application/json";
-  // cache: no-store 避免读到旧版；15s 超时防止弱网下按钮一直“处理中”
   var opt = { method: method, headers: headers, cache: "no-store" };
   if (body) opt.body = JSON.stringify(body);
   var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-  if (ctrl) { opt.signal = ctrl.signal; setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 15000); }
+  if (ctrl) { opt.signal = ctrl.signal; setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 20000); }
   return fetch(url, opt).then(function (r) {
     return r.json().then(function (j) { return { status: r.status, json: j }; });
   });
 }
-function ghContentsUrl() {
-  var o = ghParts();
-  return "https://api.github.com/repos/" + o.owner + "/" + o.repo + "/contents/" + GH_PATH + "?ref=" + encodeURIComponent(ghConf().branch);
-}
-function ghLibUrl() {
-  var o = ghParts();
-  return "https://api.github.com/repos/" + o.owner + "/" + o.repo + "/contents/" + GH_PATH;
-}
-// 拉取远端路线库文件（不存在返回 null；其它错误抛出）
-function ghPull() {
-  return ghApi(ghContentsUrl(), "GET").then(function (res) {
-    if (res.status === 200 && res.json && res.json.content) {
-      try {
-        // atob 得到的是 Latin-1 二进制串，需显式转回 UTF-8 再 JSON.parse（否则中文变乱码）
-        var bin = atob(res.json.content.replace(/\s/g, ""));
-        var bytes = new Uint8Array(bin.length);
-        for (var bi = 0; bi < bin.length; bi++) bytes[bi] = bin.charCodeAt(bi);
-        return JSON.parse(new TextDecoder().decode(bytes));
-      }
-      catch (e) { throw new Error("远端文件格式错误"); }
-    }
-    if (res.status === 404) return null;
-    throw new Error("拉取失败 HTTP " + res.status + (res.json && res.json.message ? " " + res.json.message : ""));
-  });
-}
-// 上传路线库到 GitHub（写文件；已存在则带 sha 覆盖）
-function ghPush() {
-  if (!ghNeedToken()) return Promise.reject(new Error("上传到 GitHub 需要 Token（私有仓库必填）"));
-  var payload = { message: "route-library update", branch: ghConf().branch };
-  var data = { app: "route-platform", version: 1, updatedAt: new Date().toISOString(), ver: store._ver || Date.now(), routes: store.routes };
-  var bytes = new TextEncoder().encode(JSON.stringify(data));
+function ghUrl(p) { var o = ghParts(); return "https://api.github.com/repos/" + o.owner + "/" + o.repo + "/contents/" + p; }
+function b64Text(str) {
+  var bytes = new TextEncoder().encode(str);
   var bin = "";
   for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-  payload.content = btoa(bin);
-  return ghApi(ghLibUrl(), "GET").then(function (res) {
-    if (res.status === 200 && res.json && res.json.sha) payload.sha = res.json.sha;
-    return ghApi(ghLibUrl(), "PUT", payload).then(function (r2) {
+  return btoa(bin);
+}
+function decodeContent(content) {
+  var bin = atob(content.replace(/\s/g, ""));
+  var bytes = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(bytes); // UTF-8，中文不乱码
+}
+// 读取仓库文件：存在返回 {sha,text}，不存在返回 null
+function ghRead(p) {
+  return ghApi(ghUrl(p) + "?ref=" + encodeURIComponent(ghConf().branch), "GET").then(function (res) {
+    if (res.status === 200 && res.json && res.json.content) return { sha: res.json.sha, text: decodeContent(res.json.content) };
+    if (res.status === 404) return null;
+    throw new Error("读取失败 HTTP " + res.status + (res.json && res.json.message ? " " + res.json.message : ""));
+  });
+}
+// 写文件（存在则带 sha 覆盖）
+function ghWrite(p, content, msg) {
+  var payload = { message: msg || "route update", branch: ghConf().branch, content: b64Text(content) };
+  return ghRead(p).then(function (doc) {
+    if (doc && doc.sha) payload.sha = doc.sha;
+    return ghApi(ghUrl(p), "PUT", payload).then(function (r2) {
       if (r2.status === 200 || r2.status === 201) return r2.json;
-      throw new Error("上传失败 HTTP " + r2.status + (r2.json && r2.json.message ? " " + r2.json.message : "") + "（Token 需 repo 权限）");
+      throw new Error("写入失败 HTTP " + r2.status + (r2.json && r2.json.message ? " " + r2.json.message : "") + "（Token 需 repo 权限）");
     });
   });
 }
-// 本地任意保存后防抖上传（仅配置了 Token 的本机自动上传）
-function scheduleGhPush() {
-  if (!ghEnabled() || !ghNeedToken()) return;
-  if (ghTimer) clearTimeout(ghTimer);
-  ghTimer = setTimeout(function () {
-    if (ghPushing) return;
-    ghPushing = true;
-    ghPush().then(function () { ghPushing = false; ghLastVer = store._ver || 0; })
-      .catch(function () { ghPushing = false; });
-  }, 900);
+// 删文件
+function ghDelete(p, msg) {
+  return ghRead(p).then(function (doc) {
+    if (!doc) return null;
+    return ghApi(ghUrl(p), "DELETE", { message: msg || "route delete", branch: ghConf().branch, sha: doc.sha }).then(function (r2) {
+      if (r2.status === 200 || r2.status === 204) return true;
+      throw new Error("删除失败 HTTP " + r2.status + (r2.json && r2.json.message ? " " + r2.json.message : ""));
+    });
+  });
 }
-// 启动时自动拉取合并（远端新则采用；本地新且带 Token 则回传）
+
+/* ---------- 序列化（与 routes/*.js 文件同格式） ---------- */
+function routeObjForFile(r) {
+  return {
+    id: r.id, name: String(r.name || "未命名路线"),
+    stops: (r.stops || []).map(function (s) { return { name: s.name, lat: Number(s.lat), lng: Number(s.lng), day: Math.max(1, parseInt(s.day, 10) || 1), tag: s.tag || "" }; }),
+    segs: r.segs || {},
+    preset: presetValid(r.preset) ? { c: r.preset.c, tag: String(r.preset.tag || "").slice(0, 8) } : undefined
+  };
+}
+function routeFileText(r) {
+  return '(function(){window.ROUTE_PACKS=window.ROUTE_PACKS||{};window.ROUTE_PACKS["' + r.id + '"]=' + JSON.stringify(routeObjForFile(r)) + ';})();\n';
+}
+function catalogFileText() {
+  var cats = (ROUTE_CATALOG || []).map(function (c) {
+    return { id: c.id, name: c.name, file: c.file || "routes/" + c.id + ".js", days: c.days || 1, n: c.n || 0, color: c.color || "" };
+  });
+  return 'window.ROUTE_CATALOG=' + JSON.stringify(cats) + ';\nwindow.ROUTE_PLACES=' + JSON.stringify(window.ROUTE_PLACES || []) + ';\n';
+}
+// 保存路线 = 更新运行时 + 推路线文件 + 推目录
+function saveRouteToRepo(r) {
+  if (!ghEnabled()) return Promise.reject(new Error("未配置 GitHub 仓库（⚙ 设置）"));
+  if (!ghNeedToken()) return Promise.reject(new Error("保存路线到 GitHub 需要 Token"));
+  var id = r.id;
+  ROUTE_PACKS[id] = r;
+  catUpsert({ id: id, name: r.name, file: routeFileOf(id), days: routeDays(r), n: (r.stops || []).length, color: routeColorOf(id, r) });
+  return ghWrite("routes/" + id + ".js", routeFileText(r), "route: save " + r.name)
+    .then(function () { return pushCatalog("route: catalog"); })
+    .then(function () { rebuildMeta(); rebuildRouteList(); persistCache(); });
+}
+// OSRM 后台回填后防抖推回路线文件
+function scheduleDirtyPush(id) {
+  if (!ghEnabled() || !ghNeedToken()) return;
+  if (ghDirtyTimer) clearTimeout(ghDirtyTimer);
+  ghDirtyTimer = setTimeout(function () {
+    var pk = ROUTE_PACKS[id];
+    if (!pk) return;
+    if (ghBusy >= 3) { scheduleDirtyPush(id); return; }
+    ghBusy++;
+    ghWrite("routes/" + id + ".js", routeFileText(pk), "route: osrm cache " + pk.name)
+      .catch(function () {})
+      .then(function () { ghBusy--; });
+  }, 1500);
+}
+// 把当前目录推回仓库
+function pushCatalog(msg) { return ghWrite("routes/catalog.js", catalogFileText(), msg || "route: catalog update"); }
+// 启动时若已配置 Token：自动从仓库刷新目录（仓库是唯一真源）
 function ghInit() {
-  if (!ghEnabled()) return Promise.resolve();
-  return ghPull().then(function (doc) {
-    if (!doc || !Array.isArray(doc.routes)) {
-      if (store.routes.length && ghNeedToken()) return ghPush().then(function () {
-        ghLastVer = store._ver || 0; return { merged: false, pushed: true };
+  if (!ghEnabled() || !ghNeedToken()) return Promise.resolve();
+  return refreshFromRepo().then(function (info) {
+    if (info) toast("已从 GitHub 刷新目录：" + info.total + " 条路线" + (info.newFiles ? "（新拉取数据 " + info.newFiles + " 条）" : ""));
+    return info;
+  }).catch(function (e) { return { error: true, msg: e && e.message ? e.message : "" }; });
+}
+// 解析远端 catalog.js 文本（读入临时数组后还原本地数组，避免直接覆盖）
+function parseCatalogText(text) {
+  var keepCat = window.ROUTE_CATALOG, keepPlaces = window.ROUTE_PLACES;
+  try { (new Function(text))(); } catch (e) {}
+  var out = { cat: window.ROUTE_CATALOG || [], places: window.ROUTE_PLACES || [] };
+  window.ROUTE_CATALOG = keepCat;
+  window.ROUTE_PLACES = keepPlaces;
+  return out;
+}
+// 从仓库刷新：目录以仓库为准；只预取“站点未发布”的新路线数据文件（站点已有文件走同源懒加载）
+function refreshFromRepo() {
+  if (!ghEnabled()) return Promise.reject(new Error("未配置 GitHub 仓库（⚙ 设置）"));
+  var shipped = {};
+  (ROUTE_CATALOG || []).forEach(function (c) { shipped[c.id] = c.file; });
+  return ghRead("routes/catalog.js").then(function (doc) {
+    if (!doc) throw new Error("仓库里还没有 routes/catalog.js（保存任意一条路线时会自动创建目录）");
+    var remote = parseCatalogText(doc.text);
+    ROUTE_CATALOG.length = 0;
+    (remote.cat || []).forEach(function (c) {
+      if (!c || !c.id) return;
+      catUpsert({ id: c.id, name: c.name, file: c.file || "routes/" + c.id + ".js", days: c.days || 1, n: c.n || 0, color: c.color || "" });
+    });
+    (remote.places || []).forEach(function (p) {
+      if (!p || !p.name) return;
+      var dup = (window.ROUTE_PLACES || []).some(function (q) { return q.name === p.name && Math.abs(q.lat - p.lat) < 1e-6 && Math.abs(q.lng - p.lng) < 1e-6; });
+      if (!dup) window.ROUTE_PLACES.push(p);
+    });
+    var fetchList = (remote.cat || []).filter(function (c) { return c && c.id && !ROUTE_PACKS[c.id] && !shipped[c.id]; });
+    return fetchList.reduce(function (p, c) {
+      return p.then(function () {
+        return ghRead(c.file).then(function (fd) {
+          if (fd) { try { (new Function(fd.text))(); } catch (e) {} }
+        }).catch(function () {});
       });
-      return { merged: false, pushed: false };
-    }
-    var cloudVer = Number(doc.ver) || 0;
-    var localVer = Number(store._ver) || 0;
-    if (cloudVer === localVer && store.routes.length) return { merged: false };
-    if (cloudVer > localVer) {
-      if (store.routes.length) { try { localStorage.setItem(STORE_KEY + ":backup", JSON.stringify(store.routes)); } catch (e) {} }
-      var adopt = (doc.routes || []).map(function (r) {
-        return { id: r.id || newId(), name: String(r.name || "远端路线"), stops: r.stops || [], segs: r.segs || {}, preset: presetValid(r.preset) ? { c: r.preset.c, tag: String(r.preset.tag || "").slice(0, 8) } : undefined };
-      });
-      adopt.forEach(function (r) { normalizeRoute(r); });
-      store.routes = adopt;
-      store._ver = cloudVer;
-      ghLastVer = cloudVer;
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-      syncCustoms(); rebuildRouteList();
-      if (store.routes.length) switchRoute(store.routes[0].id, { nofit: false });
-      toast("已从 GitHub 同步 " + adopt.length + " 条路线");
-      return { merged: true, direction: "gh", n: adopt.length };
-    }
-    if (!ghNeedToken()) return { merged: false, readOnly: true };
-    return ghPush().then(function () { ghLastVer = store._ver || 0; return { merged: true, direction: "local", n: store.routes.length }; });
-  }).catch(function () { return { merged: false, error: true }; });
+    }, Promise.resolve()).then(function () {
+      rebuildMeta(); rebuildRouteList(); persistCache();
+      return { total: (remote.cat || []).length, newFiles: fetchList.length };
+    });
+  });
+}
+// 手动刷新按钮（侧栏 🔄 / 设置 🔄 刷新目录）
+function doRefresh() {
+  if (!ghEnabled()) { toast("请先在 ⚙ 设置 配置 GitHub 仓库"); openSettings(); return; }
+  ghStatusMsg("正在从 GitHub 刷新目录…");
+  refreshFromRepo().then(function (info) {
+    ghStatusMsg("刷新完成：仓库目录 " + info.total + " 条路线" + (info.newFiles ? "，新拉取数据 " + info.newFiles + " 条" : ""));
+  }).catch(function (e) {
+    ghStatusMsg("刷新失败：" + (e && e.message ? e.message : "未知错误"));
+  });
+}
+// 把 v5 前存于 localStorage 的旧路线逐条写入仓库（一次性迁移）
+function migrateLegacy() {
+  var arr = legacyRoutes();
+  if (!arr.length) { toast("没有需要迁移的旧路线（localStorage 无历史路线）"); return; }
+  if (!ghEnabled()) { toast("请先在 ⚙ 设置 配置 GitHub 仓库"); openSettings(); return; }
+  if (!ghNeedToken()) { toast("迁移需要 GitHub Token"); openSettings(); return; }
+  ghStatusMsg("正在迁移 " + arr.length + " 条旧路线到仓库…");
+  arr.reduce(function (p, r) {
+    return p.then(function () {
+      try { normalizeRoute(r); } catch (e2) {}
+      ROUTE_PACKS[r.id] = r;
+      catUpsert({ id: r.id, name: r.name, file: "routes/" + r.id + ".js", days: routeDays(r), n: (r.stops || []).length, color: routeColorOf(r.id, r) });
+      return ghWrite("routes/" + r.id + ".js", routeFileText(r), "route: migrate " + r.name);
+    });
+  }, Promise.resolve()).then(function () {
+    return pushCatalog("route: migrate legacy");
+  }).then(function () {
+    store.routes = [];
+    saveStore();
+    rebuildMeta(); rebuildRouteList(); persistCache();
+    ghStatusMsg("迁移完成：" + arr.length + " 条旧路线已写入仓库并清空本地旧库");
+  }).catch(function (e) {
+    ghStatusMsg("迁移失败：" + (e && e.message ? e.message : "未知错误"));
+  });
 }
 function ghStatusMsg(s) { toast(s, 4200); }
-// 保存 GitHub Token（仓库名/分支沿用默认或曾修改过的值）
+// 保存 GitHub Token / 仓库配置（路线真源仓库）
 function ghSaveConfig() {
   var cur = store.gh || {};
   cur.repo = (cur.repo || "").trim() || GH_DEFAULT_REPO;
   cur.branch = (cur.branch || "").trim() || GH_DEFAULT_BRANCH;
   cur.token = $("ghToken").value.trim();
   store.gh = cur;
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-  toast(cur.token ? "GitHub Token 已保存" : "已清除 Token（仍可查看内置路线）");
-  if (ghEnabled()) ghInit();
+  saveStore();
+  $("ghRepoLabel").innerHTML = esc(cur.repo) + " <b>✎</b>";
+  if (cur.token) {
+    toast("GitHub Token 已保存，正在刷新目录…");
+    if (ghEnabled()) refreshFromRepo().catch(function () {});
+  } else {
+    toast("已清除 Token（可浏览仓库路线，但保存/删除需 Token）");
+  }
 }
 $("ghSave").addEventListener("click", ghSaveConfig);
 // 点击仓库名可修改（支持 owner/repo 或 owner/repo@分支）
 $("ghRepoLabel").addEventListener("click", function () {
   var cur = store.gh || {};
   var old = (cur.repo || GH_DEFAULT_REPO) + (cur.branch && cur.branch !== "main" ? "@" + cur.branch : "");
-  var v = prompt("同步仓库（owner/repo），分支非 main 用 owner/repo@分支：", old);
+  var v = prompt("路线仓库（owner/repo），分支非 main 用 owner/repo@分支：", old);
   if (!v) return;
   v = v.trim();
   var br = GH_DEFAULT_BRANCH, rp = v;
@@ -1630,59 +1803,44 @@ $("ghRepoLabel").addEventListener("click", function () {
   store.gh = store.gh || {};
   store.gh.repo = rp;
   store.gh.branch = br || GH_DEFAULT_BRANCH;
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
+  saveStore();
   $("ghRepoLabel").innerHTML = esc(rp) + " <b>✎</b>";
-  toast("同步仓库已改为 " + rp + (br && br !== "main" ? "@" + br : ""));
+  toast("路线仓库已改为 " + rp + (br && br !== "main" ? "@" + br : ""));
 });
 $("ghTest").addEventListener("click", function () {
   if (!ghEnabled()) { toast("请先填写 仓库 owner/repo 并保存"); return; }
   ghStatusMsg("正在测试…");
-  ghPull().then(function (doc) {
-    if (doc && Array.isArray(doc.routes)) ghStatusMsg("连接成功 ✓ 远端有 " + doc.routes.length + " 条路线（" + ghConf().branch + "）");
-    else ghStatusMsg("连接成功 ✓ 远端还没有路线库文件，上传后将自动创建");
+  ghRead("routes/catalog.js").then(function (doc) {
+    if (doc) ghStatusMsg("连接成功 ✓ 仓库有 " + (parseCatalogText(doc.text).cat || []).length + " 条路线目录（" + ghConf().branch + "）");
+    else ghStatusMsg("连接成功 ✓ 仓库还没有目录文件，保存任意路线时会自动创建");
   }).catch(function (e) {
-    ghStatusMsg("连接失败：" + (e && e.message ? e.message : "未知错误") + (ghNeedToken() ? "" : "。私有仓库读取需要 Token"));
+    ghStatusMsg("连接失败：" + (e && e.message ? e.message : "未知错误") + (ghNeedToken() ? "" : "（读取公开仓库无需 Token）"));
   });
 });
-$("ghPull").addEventListener("click", function () {
-  if (!ghEnabled()) { toast("请先填写并保存 GitHub 配置"); return; }
-  ghStatusMsg("正在拉取…");
-  ghPull().then(function (doc) {
-    if (!doc || !Array.isArray(doc.routes) || !doc.routes.length) { ghStatusMsg("远端为空或不存在"); return; }
-    store.routes = doc.routes.map(function (r) {
-      return { id: r.id || newId(), name: String(r.name || "远端路线"), stops: r.stops || [], segs: r.segs || {}, preset: presetValid(r.preset) ? { c: r.preset.c, tag: String(r.preset.tag || "").slice(0, 8) } : undefined };
-    });
-    store.routes.forEach(function (r) { normalizeRoute(r); });
-    store._ver = Number(doc.ver) || Date.now();
-    ghLastVer = store._ver;
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-    syncCustoms(); rebuildRouteList();
-    if (store.routes.length) switchRoute(store.routes[0].id, { nofit: false });
-    ghStatusMsg("拉取完成：已载入 " + store.routes.length + " 条路线");
-  }).catch(function (e) { ghStatusMsg("拉取失败：" + (e && e.message ? e.message : "请检查配置")); });
-});
-$("ghPush").addEventListener("click", function () {
-  if (!ghEnabled()) { toast("请先填写并保存 GitHub 配置"); return; }
-  if (!ghNeedToken()) { toast("上传到 GitHub 需要 Token（私有仓库必填）"); return; }
-  if (!store.routes.length) { toast("本地没有路线可上传"); return; }
-  ghStatusMsg("正在上传…");
-  ghPush().then(function () {
-    ghLastVer = store._ver || 0;
-    ghStatusMsg("上传完成：本地 " + store.routes.length + " 条路线已写入 GitHub 的 " + GH_PATH);
-  }).catch(function (e) { ghStatusMsg("上传失败：" + (e && e.message ? e.message : "未知错误")); });
-});
+$("ghRefresh").addEventListener("click", doRefresh);
+$("ghMigrate").addEventListener("click", function () { migrateLegacy(); });
 
-/* ---------- 导入 / 导出 ---------- */
+/* ---------- 导入 / 导出（v5：导出=仓库路线快照；导入=逐条写入仓库） ---------- */
 $("edExport").addEventListener("click", function () {
-  var data = { app: "route-platform", version: 1, exportedAt: new Date().toISOString(), routes: store.routes };
-  var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
-  var a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "线路规划平台备份-" + new Date().toISOString().slice(0, 10) + ".json";
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-  toast("已导出备份文件");
+  var jobs = (ROUTE_CATALOG || []).map(function (c) { return c.id; });
+  jobs.reduce(function (p, id) {
+    return p.then(function () {
+      if (ROUTE_PACKS[id]) return null;
+      return loadRouteData(id).catch(function () { return null; });
+    });
+  }, Promise.resolve()).then(function () {
+    var routes = jobs.map(function (id) { var pk = ROUTE_PACKS[id]; return pk ? routeObjForFile(pk) : null; }).filter(Boolean);
+    if (!routes.length) { toast("没有可导出的路线"); return; }
+    var data = { app: "route-platform", version: 2, exportedAt: new Date().toISOString(), routes: routes };
+    var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "线路规划平台备份-" + new Date().toISOString().slice(0, 10) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    toast("已导出备份文件（" + routes.length + " 条路线）");
+  });
 });
 $("edImport").addEventListener("click", function () { $("fileImport").click(); });
 $("fileImport").addEventListener("change", function () {
@@ -1695,93 +1853,69 @@ $("fileImport").addEventListener("change", function () {
       var o = JSON.parse(rd.result);
       var arr = (o && o.routes) || [];
       if (!arr.length) { toast("文件中没有路线数据"); return; }
-      var nAdd = 0, nUpd = 0;
+      if (!ghEnabled()) { toast("导入的路线将写入 GitHub 仓库，请先在 ⚙ 设置 配置仓库"); openSettings(); return; }
+      if (!ghNeedToken()) { toast("导入路线需要 GitHub Token"); openSettings(); return; }
+      var valid = [];
       arr.forEach(function (r) {
         if (!r || !Array.isArray(r.stops) || !r.stops.length) return;
-        try { r.id = r.id || newId(); normalizeRoute(r); } catch (e2) { return; }
-        var ok = false;
-        for (var i = 0; i < store.routes.length; i++) {
-          if (store.routes[i].id === r.id) { store.routes[i] = r; ok = true; nUpd++; break; }
-        }
-        if (!ok) { store.routes.push(r); nAdd++; }
+        try { r.id = r.id || newId(); normalizeRoute(r); valid.push(r); } catch (e2) {}
       });
-      saveStore();
-      syncCustoms();
-      rebuildRouteList();
-      if (store.routes.length) switchRoute(store.routes[0].id, { nofit: true });
-      toast("导入完成：新增 " + nAdd + " 条，更新 " + nUpd + " 条");
+      if (!valid.length) { toast("文件中没有可导入的路线"); return; }
+      ghStatusMsg("正在导入 " + valid.length + " 条路线到仓库…");
+      valid.reduce(function (p, r) {
+        return p.then(function () {
+          ROUTE_PACKS[r.id] = r;
+          catUpsert({ id: r.id, name: r.name, file: "routes/" + r.id + ".js", days: routeDays(r), n: (r.stops || []).length, color: routeColorOf(r.id, r) });
+          return ghWrite("routes/" + r.id + ".js", routeFileText(r), "route: import " + r.name);
+        });
+      }, Promise.resolve()).then(function () { return pushCatalog("route: import"); })
+        .then(function () { rebuildMeta(); rebuildRouteList(); persistCache(); ghStatusMsg("导入完成：" + valid.length + " 条路线已写入仓库"); })
+        .catch(function (e) { ghStatusMsg("导入失败：" + (e && e.message ? e.message : "未知错误")); });
     } catch (e) { toast("导入失败：文件格式不正确"); }
   };
   rd.readAsText(f);
 });
 
-/* ---------- 同步自定义路线到注册表（删除重复 meta） ---------- */
-function syncCustoms() {
-  // 编辑器开着且有预览时，保留预览 meta（导入发生在编辑器内，防止预览失效）
-  var pv = (edCtx && edCtx.pvId && edCtx.work && edCtx.work.stops.length) ? edCtx.pvId : null;
-  for (var i = ROUTE_META.length - 1; i >= 0; i--) {
-    if (customMetaFlags[ROUTE_META[i].id] && ROUTE_META[i].id !== pv) ROUTE_META.splice(i, 1);
-  }
-  customMetaFlags = {};
-  store.routes.forEach(function (r) { registerCustom(r); });
-  if (pv) {
-    ROUTE_META.push({ id: pv, name: "__pv__", render: function () { return renderGeneric(edCtx.work); } });
-    customMetaFlags[pv] = true;
-  }
-}
-
-/* ---------- 启动：并入本地路线 ---------- */
-syncCustoms();
+/* ---------- 启动：并入离线缓存（只读副本）；已配置 Token 则自动从仓库刷新目录 ---------- */
+applyCache();
 rebuildRouteList();
 // 不预载/默认渲染任何内置路线：首屏为主页画廊，点卡片时才按需加载 routes/*.js（见 switchRoute 懒加载分支）
 
 /* ========== 主页（路线库画廊） ========== */
 function routeCardMeta(id) {
-  // 内置路线：优先取已加载数据算实际天数/点数；未加载时用 catalog 元信息（卡片先展示，点开才拉数据）
-  var cat = null;
-  (ROUTE_CATALOG || []).forEach(function (c) { if (c.id === id) cat = c; });
-  if (cat) {
-    var pk = ROUTE_PACKS[id];
-    var days = cat.days, n = cat.n;
-    if (pk && pk.stops && pk.stops.length) {
-      n = pk.stops.length;
-      var mx = 1;
-      pk.stops.forEach(function (s) { if ((s.day || 1) > mx) mx = s.day; });
-      days = mx;
-    }
-    return { name: cat.name, builtin: true, days: days, n: n, color: cat.color || DAY_PALETTE[0] };
+  // 所有路线同一来源：目录登记；优先取已加载数据算实际天数/点数，未加载用目录元信息（卡片先展示，点开才拉数据）
+  var cat = catGet(id);
+  if (!cat) return null;
+  var pk = ROUTE_PACKS[id];
+  var days = cat.days || 1, n = cat.n || 0;
+  if (pk && pk.stops && pk.stops.length) {
+    n = pk.stops.length;
+    var mx = 1;
+    pk.stops.forEach(function (s) { if ((s.day || 1) > mx) mx = s.day; });
+    days = mx;
   }
-  var r = null;
-  for (var i = 0; i < store.routes.length; i++) if (store.routes[i].id === id) { r = store.routes[i]; break; }
-  if (!r || !r.stops || !r.stops.length) return null;
-  var maxD = 1;
-  for (var k = 0; k < r.stops.length; k++) if ((r.stops[k].day || 1) > maxD) maxD = r.stops[k].day;
-  var p = routePresetOf(id);
-  var color = (p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length)
-    ? DAY_PALETTE[p.c]
-    : DAY_PALETTE[((r.stops[0].day || 1) - 1) % DAY_PALETTE.length];
-  return { name: r.name, builtin: false, days: maxD, n: r.stops.length, color: color, tag: (p && p.tag) ? String(p.tag) : "" };
+  var p = (pk && presetValid(pk.preset)) ? pk.preset : null;
+  var color = (p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length) ? DAY_PALETTE[p.c] : (cat.color || DAY_PALETTE[0]);
+  return { name: cat.name, days: days, n: n, color: color, tag: (p && p.tag) ? String(p.tag) : "" };
 }
 function renderHome() {
   var grid = $("homeGrid");
   var html = "";
   ROUTE_META.forEach(function (m) {
+    if (String(m.id).indexOf("__pv") >= 0) return; // 预览占位不展示
     var meta = routeCardMeta(m.id);
     if (!meta) return;
-    var badge = meta.builtin
-      ? ""
-      : (customMetaFlags[m.id] ? '<span class="badge cloud">我的</span>' : '<span class="badge cloud">远端</span>');
     var dots = "";
     var nDays = Math.min(meta.days, 12);
     for (var d = 0; d < nDays; d++) dots += '<i style="background:' + DAY_PALETTE[d % DAY_PALETTE.length] + ';"></i>';
     html += '<div class="home-card" data-route="' + m.id + '">' +
       '<div class="band" style="background:' + meta.color + ';"></div>' +
       '<div class="nm">' + (meta.tag ? '<span class="ptag">' + esc(meta.tag) + "</span>" : "") + esc(meta.name) + "</div>" +
-      '<div class="meta">' + badge + meta.days + " 天 · " + meta.n + " 个地点</div>" +
+      '<div class="meta">' + meta.days + " 天 · " + meta.n + " 个地点</div>" +
       (dots ? '<div class="days">' + dots + "</div>" : "") +
       "</div>";
   });
-  if (!html) html = '<div class="home-empty">暂无可进入的路线。点上方「＋ 新建路线」开始，或复制一条内置路线作为底稿。</div>';
+  if (!html) html = '<div class="home-empty">暂无可进入的路线。点上方「＋ 新建路线」创建，保存后写入 GitHub 仓库。</div>';
   grid.innerHTML = html;
 }
 function showHome() {
@@ -1808,10 +1942,9 @@ $("homeSettings").addEventListener("click", function () { hideHome(); openSettin
 // 初始进入：展示主页画廊
 showHome();
 
+// 已配置 Token：启动后自动从仓库刷新目录（仓库是唯一真源），刷新完重绘主页
 ghInit().then(function (r) {
-  // 启动同步后自动刷新主页（若用户在主页面）或直达地图看远端内容
-  if (r && r.merged && r.direction === "gh") hideHome();
-  if (r && r.merged === false && $("homeMask").style.display !== "none") renderHome();
+  if (r && !r.error && $("homeMask").style.display !== "none") renderHome();
 });
 </script>
 </body>
