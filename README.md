@@ -44,12 +44,12 @@
 把全部自定义路线备份到 GitHub 仓库（换电脑/换浏览器自动恢复）：
 
 1. github.com → Settings → Developer settings → Personal access tokens → 选 **Fine-grained** 或 classic token，**勾 `repo`**（写文件 + 读文件权限）
-2. 在本平台 ⚙ 设置 → GitHub 同步 → 填入：
-   - **仓库 owner/repo**（例如 `Sunyh-gi/route-planner`）
-   - **分支**（默认 `main`）
-   - **Token**（上述 PAT）
-3. 点「测试连接」→ 远端路线库存在则显示数量，不存在则提示上传时新建
-4. 本机后续每次保存路线 → 防抖 900ms 自动 push；启动时自动 pull 合并
+2. 在本平台 ⚙ 设置 → **GitHub Token** 框粘贴 PAT → 点「保存」
+
+> 设置面板默认同步到 `Sunyh-gi/route-planner#main`，若需换仓库点该标签右侧的 `✎` 弹输入框修改（支持 `owner/repo@分支` 格式）
+
+3. 点「测试」→ 远端路线库存在则 toast 显示数量，不存在则提示上传时新建
+4. 本机后续每次保存路线 → 防抖 900ms 自动 push；启动时自动 pull 合并（`ver` 时间戳大者胜，覆盖前本地备份到 `route-platform:v1:backup`）
 
 > 多电脑工作：每台机都填同样的 Token 即可双向同步。Token 只在本机 localStorage，不上传 GitHub；可在 github.com 随时撤销。
 
