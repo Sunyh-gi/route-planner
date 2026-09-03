@@ -16,6 +16,8 @@
 - **按天编排**：每个地点归属具体某一天，地点按天自动排序，段路径颜色取自全局 30 色莫兰迪色彩库 `DAY_PALETTE`（第 N 天取第 N 色）
 - **路径规划**：相邻地点通过 OSRM 公共接口浏览器端自动补全驾车路径（2 路并发、按坐标 key 缓存），失败时保留虚线占位
 - **数据持久化**：所有自定义路线保存在浏览器 localStorage（`route-platform:v1`），支持 JSON 导出 / 导入备份
+- **🔗 一键分享**：把某条路线压缩编码进 URL（`#r=` 参数），发给朋友打开链接即自动加载展示；幂等去重、打开后自动清除参数
+- **☁ 云共享路线库**（可选）：登录 LeanCloud 管理员账号后保存即自动发布到云端，任何设备/访客打开页面自动拉取同一份路线；未登录或非创建者账号一律只读（对象级 ACL 控制）
 - **底图**：标准 / 地形 / 卫星 / OpenStreetMap / National Geographic 五套底图 + 天地图中文注记叠加层（卫星模式下面板文字自动变白）
 
 ## 使用
@@ -37,12 +39,25 @@
 
 > Key 仅保存在本机浏览器 localStorage，不上传 GitHub；无 Key 时可用内置路线出现过的地名离线匹配。
 
+## ☁ 云共享路线库（可选，需自行开通免费后端）
+
+1. 注册 [console.leancloud.cn](https://console.leancloud.cn) → 新建应用选「开发版」（免费：1GB 存储 / 每天 3 万次请求）
+2. 设置 → 应用 Key：复制 **AppID / AppKey / API 域名**，填入平台 ⚙ 设置的云共享区并保存
+3. 数据存储 → 创建 Class 命名 `RouteStore`（权限默认即可，对象级读写由平台用 ACL 自动控制）
+4. 数据存储 → 创建用户（作为管理员账号），在平台云共享区登录
+
+> 权限模型：路线库文档 ACL =「创建它的管理员账号可写 + 所有人可读」。未登录访客只能查看；非创建者账号即使登录也会被云端拒绝写入。密码不落盘，仅会话 token 存本机。
+
 ## 验证
 
-`_smoke.js` 为无头浏览器冒烟测试（puppeteer-core + 系统 Edge），覆盖：初始渲染 → 新建路线 → GPS/地名加站 → 保存 → 编辑移天 → 删除 → 复制内置路线，16/16 断言全过。
+- `_smoke.js`：编辑器核心链路冒烟（puppeteer-core + 系统 Edge），16/16 断言全过
+- `_share_test.js`：分享链接端到端（生成 → 隔离浏览器自动加载 → 幂等 → 损坏容错），9/9
+- `_cloud_test.js` + `_lc_mock.js`：云共享路线库端到端（本地模拟 LeanCloud：管理员发布 / 访客拉取 / 非创建者被拒 / 更新同步），10/10
 
 ## 技术要点
 
 - 30 色 `DAY_PALETTE` 为全局唯一色彩真源；伊犁原 8 日配色与其前 8 色逐一对应
 - 川西历史坐标采集自 GCJ-02 图源，渲染前经内置 `gcj02towgs84` 转换；伊犁 / OSM / OSRM 为 WGS-84
 - 自定义路线数据模型：`{id, name, stops:[{name,lat,lng,day,tag}], segs:{segKey:{d,m,poly}}}`
+- 分享链接：`CompressionStream('deflate')` 压缩仅含地点的 JSON → base64url，伊犁 21 点约 760 字符
+- 云共享：Class `RouteStore` 单文档 `{routes, ver, updatedBy}`；`ver` 时间戳大者胜合并（覆盖前本地备份）；写请求带 `X-LC-Session`，`saveStore()` 900ms 防抖自动发布
