@@ -158,10 +158,79 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .toast.show { opacity: 1; }
 input[type="file"] { display: none; }
 
+/* ========== 主页（路线库画廊） ========== */
+#homeMask {
+  position: fixed; inset: 0; z-index: 2400;
+  background: linear-gradient(150deg, #eef1f6 0%, #dde4ee 55%, #ccd6e4 100%);
+  overflow-y: auto;
+}
+#homeMask .home-inner { max-width: 960px; margin: 0 auto; padding: 40px 22px 60px; }
+.home-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+.home-head h1 { margin: 0; font-size: 26px; font-weight: 800; color: #2C3E6B; letter-spacing: 1px; }
+.home-head .sub { font-size: 12.5px; color: #8a95a8; }
+.home-tools { display: flex; gap: 8px; margin: 14px 0 22px; flex-wrap: wrap; }
+.home-tools button {
+  border: none; border-radius: 10px; padding: 8px 14px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; background: rgba(255,255,255,0.75);
+  color: #2C3E6B; border: 1px solid rgba(44,62,107,0.16); transition: all .15s;
+}
+.home-tools button:hover { background: #2C3E6B; color: #fff; }
+.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.home-card {
+  background: rgba(255,255,255,0.82); border-radius: 16px; padding: 14px 15px 12px;
+  cursor: pointer; border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 2px 10px rgba(30,50,90,0.06); transition: transform .15s, box-shadow .15s;
+  position: relative; overflow: hidden;
+}
+.home-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(30,50,90,0.16); }
+.home-card .band { position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+.home-card .nm { font-size: 15px; font-weight: 700; color: #223; margin: 6px 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-card .meta { font-size: 11.5px; color: #8a95a8; margin-bottom: 8px; }
+.home-card .badge {
+  display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 999px;
+  background: rgba(44,62,107,0.08); color: #2C3E6B; font-weight: 600; margin-right: 6px;
+}
+.home-card .badge.cloud { background: rgba(80,140,120,0.12); color: #3c7a62; }
+.home-card .days { display: flex; gap: 3px; margin-top: 6px; }
+.home-card .days i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
+.home-empty { text-align: center; color: #8a95a8; font-size: 13px; padding: 40px 0; }
+.home-foot { margin-top: 26px; font-size: 11px; color: #9aa4b5; text-align: center; line-height: 1.7; }
+/* 回到主页悬浮钮 */
+#homeFab {
+  position: fixed; left: 16px; bottom: 16px; z-index: 1500;
+  background: rgba(255,255,255,0.9); border: 1px solid rgba(44,62,107,0.2);
+  color: #2C3E6B; border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  font-size: 13px; font-weight: 700; box-shadow: 0 4px 14px rgba(20,30,60,0.18); display: none;
+  font-family: inherit;
+}
+#homeFab:hover { background: #2C3E6B; color: #fff; }
+
 </style>
 </head>
 <body>
 <div id="map"></div>
+
+<!-- ========== 主页（路线库画廊） ========== -->
+<div id="homeMask">
+  <div class="home-inner">
+    <div class="home-head">
+      <h1>🧭 我的路线库</h1>
+      <span class="sub">点击进入某条路线 · 所有路线保存在本机浏览器，可用 ⚙ 上传 GitHub 备份</span>
+    </div>
+    <div class="home-tools">
+      <button id="homeNew">＋ 新建路线</button>
+      <button id="homeDupCx">📋 复制川西</button>
+      <button id="homeDupYl">📋 复制伊犁</button>
+      <button id="homeSettings">⚙ 设置（高德 Key / GitHub 同步）</button>
+    </div>
+    <div class="home-grid" id="homeGrid"></div>
+    <div class="home-foot">
+      内置川西 / 伊犁路线写死在页面里，人人可见；你新建的自定义路线默认仅存本机。<br>
+      需要换设备或分享给朋友时，用 ⚙ GitHub 同步或左侧 📋 / 🔗 分享链接。
+    </div>
+  </div>
+</div>
+<button id="homeFab">⌂ 主页</button>
 
 <div class="info-panel">
   <div class="route-switch" id="routeSwitch"></div>
@@ -536,33 +605,22 @@ switchRoute(ROUTE_META[0].id);
 
       <div class="cloud-sep" style="height:1px;background:rgba(0,0,0,0.08);margin:14px 0 10px;"></div>
       <div class="ed-help" style="margin-top:0;">
-        <b>☁ 云共享路线库</b>（可选）——把路线发布到云端，任何人打开同一份页面都能看到；<b>只有登录管理员账号后才能发布/修改</b>，未登录用户自动只读。<br>
-        免费后端：<b>LeanCloud 开发版</b>（leancloud.cn，1GB 存储 / 每天 3 万次请求）。<br>
-        开通：控制台新建应用（选<b>开发版</b>）→ <b>设置 → 应用 Key</b> 复制 AppID / AppKey / API 域名填到下面；再到 <b>数据存储 → 创建 Class</b> 命名 <span style="font-family:Consolas,monospace;color:#2C3E6B;">RouteStore</span>（权限默认即可，对象级读写由平台用 ACL 自动控制）。<br>
-        管理员账号即你 LeanCloud 应用下的普通用户：<b>数据存储 → 创建用户</b> 或用「用户」面板添加，把用户名密码记在本机密码管理器。
+        <b>☁ GitHub 同步</b>（可选）——把全部自定义路线备份到 GitHub 仓库，换电脑/浏览器后可拉取恢复。<br>
+        「上传到 GitHub」= 把路线库写入仓库 <b>routes/route-library.json</b>；「从 GitHub 拉取」= 下载该文件并合并到本地。<br>
+        Token 需 <b>repo</b> 权限（github.com → Settings → Developer settings → Personal access tokens → 勾 repo），仅保存在本机浏览器，不上传。
       </div>
-      <input class="ed-name" id="lcAppId" placeholder="LeanCloud AppID" style="font-size:11.5px;">
-      <input class="ed-name" id="lcAppKey" placeholder="LeanCloud AppKey" style="font-size:11.5px;">
-      <input class="ed-name" id="lcApiHost" placeholder="API 域名，如 https://xxxx.api.lc.com" style="font-size:11.5px;">
-      <div class="ed-help" style="margin:2px 0 6px;font-size:11px;color:#2C3E6B;font-weight:600;">▸ 管理员账号（登录后本机记住会话，密码不保存）</div>
-      <div class="ed-row" style="margin-bottom:6px;">
-        <input class="ed-search" id="lcAdminUser" placeholder="管理员用户名" style="flex:1;">
-      </div>
-      <div class="ed-row" style="margin-bottom:6px;">
-        <input class="ed-search" id="lcAdminPass" type="password" placeholder="密码（仅用于登录，不保存）" style="flex:1;">
-        <button class="ed-btn gray" id="lcLogin" style="flex:none;padding:7px 12px;font-size:11.5px;">登录</button>
-        <button class="ed-btn gray" id="lcLogout" style="flex:none;padding:7px 12px;font-size:11.5px;display:none;">退出</button>
-      </div>
-      <div class="ed-help" id="lcAuthStatus" style="margin:0 0 10px;font-size:11px;">未登录 · 只读模式（可查看云端路线，不能发布）</div>
+      <input class="ed-name" id="ghRepo" placeholder="仓库 owner/repo，如 Sunyh-gi/route-planner" style="font-size:11.5px;">
+      <input class="ed-name" id="ghBranch" placeholder="分支（默认 main）" style="font-size:11.5px;">
+      <input class="ed-name" id="ghToken" placeholder="GitHub Token（私有仓库必填）" style="font-size:11.5px;background:#fdf6ec;">
       <div class="ed-row" style="margin-bottom:0;justify-content:space-between;">
         <div style="display:flex;gap:6px;">
-          <button class="ed-btn gray" id="lcTest" style="flex:none;padding:6px 10px;font-size:11.5px;">测试连接</button>
-          <button class="ed-btn gray" id="lcPull" style="flex:none;padding:6px 10px;font-size:11.5px;">↓ 拉取云端</button>
-          <button class="ed-btn gray" id="lcPush" style="flex:none;padding:6px 10px;font-size:11.5px;">↑ 发布本地</button>
+          <button class="ed-btn gray" id="ghTest" style="flex:none;padding:6px 10px;font-size:11.5px;">测试连接</button>
+          <button class="ed-btn gray" id="ghPull" style="flex:none;padding:6px 10px;font-size:11.5px;">↓ 从 GitHub 拉取</button>
+          <button class="ed-btn gray" id="ghPush" style="flex:none;padding:6px 10px;font-size:11.5px;">↑ 上传到 GitHub</button>
         </div>
-        <button class="ed-btn" id="lcSave" style="flex:none;padding:6px 14px;font-size:11.5px;">保存配置</button>
+        <button class="ed-btn" id="ghSave" style="flex:none;padding:6px 14px;font-size:11.5px;">保存配置</button>
       </div>
-      <div class="ed-help" id="lcStatus" style="margin:8px 0 0;font-size:11px;color:#888;"></div>
+      <div class="ed-help" id="ghStatus" style="margin:8px 0 0;font-size:11px;color:#888;"></div>
     </div>
   </div>
 </div>
@@ -617,7 +675,7 @@ function saveStore() {
   store._ver = Date.now(); // 本地修改时间戳，供云同步比较版本
   try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
   catch (e) { toast("本地保存失败：" + e.message); }
-  if (typeof scheduleCloudPush === "function") scheduleCloudPush(); // 云同步启用时自动上传
+  if (typeof scheduleGhPush === "function") scheduleGhPush(); // GitHub 同步启用时自动上传
 }
 
 var toastTimer = null;
@@ -1298,12 +1356,11 @@ $("edSearch").addEventListener("keydown", function (ev) { if (ev.key === "Enter"
 /* ---------- 设置（高德 Key） ---------- */
 function openSettings() {
   $("amapKeyInput").value = store.amapKey || "";
-  var c = store.cloud || {};
-  $("lcAppId").value = c.appId || "";
-  $("lcAppKey").value = c.appKey || "";
-  $("lcApiHost").value = c.apiHost || "";
-  $("lcStatus").textContent = "";
-  refreshAuthUI();
+  var g = store.gh || {};
+  $("ghRepo").value = g.repo || "";
+  $("ghBranch").value = g.branch || "";
+  $("ghToken").value = g.token || "";
+  $("ghStatus").textContent = "";
   $("settingsMask").classList.add("open");
   setTimeout(function () { $("amapKeyInput").focus(); }, 60);
 }
@@ -1331,133 +1388,81 @@ $("amapTest").addEventListener("click", function () {
     .catch(function () { toast("网络错误，无法测试"); });
 });
 
-/* ---------- 设置（云共享路线库 · LeanCloud 账号体系） ---------- */
-var LC_CLASS = "RouteStore", LC_DOC = "shared";
-var cloudPushing = false, cloudTimer = null, cloudLastVer = 0;
-function cloudConf() {
-  var c = store.cloud || {};
-  return {
-    appId: (c.appId || "").trim(),
-    appKey: (c.appKey || "").trim(),
-    apiHost: (c.apiHost || "").trim(),
-    session: c.session || "",
-    uid: c.uid || "",
-    username: c.username || ""
-  };
+/* ---------- 设置（GitHub 同步） ---------- */
+var GH_PATH = "routes/route-library.json";
+var ghPushing = false, ghTimer = null, ghLastVer = 0;
+function ghConf() {
+  var g = store.gh || {};
+  return { repo: (g.repo || "").trim(), branch: (g.branch || "").trim() || "main", token: (g.token || "").trim() };
 }
-function cloudEnabled() { var c = cloudConf(); return !!(c.appId && c.appKey && c.apiHost); }
-function cloudLoggedIn() { return cloudEnabled() && !!cloudSession(); }
-function cloudSession() { return cloudConf().session || ""; }
-// 写权限 = 已登录管理员账号（云端文档 ACL 只允许创建它的账号修改）
-function cloudCanWrite() { return cloudLoggedIn(); }
-function cloudHost() { return cloudConf().apiHost.replace(/\/+$/, ""); }
-function cloudDocUrl() { return cloudHost() + "/1.1/classes/" + LC_CLASS + "/" + LC_DOC; }
-function cloudClassUrl() { return cloudHost() + "/1.1/classes/" + LC_CLASS; }
-// useSession=true 时附带登录会话（用于登录后写操作）
-function cloudReq(url, method, body, useSession) {
-  var c = cloudConf();
-  var headers = { "X-LC-Id": c.appId, "X-LC-Key": c.appKey, "Content-Type": "application/json" };
-  if (useSession) headers["X-LC-Session"] = c.session;
+function ghEnabled() { var g = ghConf(); return !!(g.repo && g.branch && g.repo.indexOf("/") > 0); }
+function ghNeedToken() { var g = ghConf(); return !!g.token; }
+function ghParts() { var g = ghConf(); var p = g.repo.split("/"); return { owner: p[0].trim(), repo: p[1].trim() }; }
+function ghApi(url, method, body) {
+  var g = ghConf();
+  var headers = { "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  if (g.token) headers["Authorization"] = "Bearer " + g.token;
+  if (body) headers["Content-Type"] = "application/json";
   var opt = { method: method, headers: headers };
   if (body) opt.body = JSON.stringify(body);
   return fetch(url, opt).then(function (r) {
-    return r.json().then(function (j) {
-      return { status: r.status, json: j };
-    });
+    return r.json().then(function (j) { return { status: r.status, json: j }; });
   });
 }
-// 拉取云端整库文档（404 表示尚未建库返回 null，其它错误抛出）
-function cloudPull() {
-  return cloudReq(cloudDocUrl(), "GET").then(function (res) {
-    if (res.status === 200 && res.json) return res.json;
-    if (res.status === 404) return null;
-    throw new Error("HTTP " + res.status + (res.json && res.json.error ? " " + res.json.error : ""));
-  });
+function ghContentsUrl() {
+  var o = ghParts();
+  return "https://api.github.com/repos/" + o.owner + "/" + o.repo + "/contents/" + GH_PATH + "?ref=" + encodeURIComponent(ghConf().branch);
 }
-// 上传/更新云端整库（写走登录会话；首次创建带 ACL：管理员可写，所有人可读）
-function cloudPush() {
-  if (!cloudCanWrite()) return Promise.reject(new Error("未登录管理员账号，无法发布（只读模式）"));
-  var c = cloudConf();
-  var payload = { routes: store.routes, ver: store._ver || Date.now(), updatedBy: c.username || "admin" };
-  return cloudReq(cloudDocUrl(), "GET").then(function (res) {
-    if (res.status === 200) {
-      return cloudReq(cloudDocUrl(), "PUT", payload, true).then(function (r2) {
-        if (r2.status === 200 || r2.status === 201) return r2.json;
-        if (r2.status === 403) throw new Error("发布被拒：当前账号不是路线库创建者（仅创建它的管理员账号可修改）");
-        throw new Error("上传失败 " + r2.status + (r2.json && r2.json.error ? " " + r2.json.error : ""));
-      });
+function ghLibUrl() {
+  var o = ghParts();
+  return "https://api.github.com/repos/" + o.owner + "/" + o.repo + "/contents/" + GH_PATH;
+}
+// 拉取远端路线库文件（不存在返回 null；其它错误抛出）
+function ghPull() {
+  return ghApi(ghContentsUrl(), "GET").then(function (res) {
+    if (res.status === 200 && res.json && res.json.content) {
+      try { return JSON.parse(atob(res.json.content.replace(/\s/g, ""))); }
+      catch (e) { throw new Error("远端文件格式错误"); }
     }
-    // 云端还没有文档：管理员登录状态下以固定 objectId 创建，ACL=该管理员可写 + 所有人可读
-    payload.objectId = LC_DOC;
-    payload.ACL = {};
-    payload.ACL[c.uid] = { read: true, write: true };
-    payload.ACL["*"] = { read: true };
-    return cloudReq(cloudClassUrl(), "POST", payload, true).then(function (r3) {
-      if (r3.status === 201 || r3.status === 200) return r3.json;
-      throw new Error("创建失败 " + r3.status + (r3.json && r3.json.error ? " " + r3.json.error : ""));
+    if (res.status === 404) return null;
+    throw new Error("拉取失败 HTTP " + res.status + (res.json && res.json.message ? " " + res.json.message : ""));
+  });
+}
+// 上传路线库到 GitHub（写文件；已存在则带 sha 覆盖）
+function ghPush() {
+  if (!ghNeedToken()) return Promise.reject(new Error("上传到 GitHub 需要 Token（私有仓库必填）"));
+  var payload = { message: "route-library update", branch: ghConf().branch };
+  var data = { app: "route-platform", version: 1, updatedAt: new Date().toISOString(), ver: store._ver || Date.now(), routes: store.routes };
+  var bytes = new TextEncoder().encode(JSON.stringify(data));
+  var bin = "";
+  for (var i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  payload.content = btoa(bin);
+  return ghApi(ghLibUrl(), "GET").then(function (res) {
+    if (res.status === 200 && res.json && res.json.sha) payload.sha = res.json.sha;
+    return ghApi(ghLibUrl(), "PUT", payload).then(function (r2) {
+      if (r2.status === 200 || r2.status === 201) return r2.json;
+      throw new Error("上传失败 HTTP " + r2.status + (r2.json && r2.json.message ? " " + r2.json.message : "") + "（Token 需 repo 权限）");
     });
   });
 }
-// 登录（LeanCloud 用户名密码登录；只保存会话 token，不保存密码）
-function cloudLogin(username, password) {
-  return cloudReq(cloudHost() + "/1.1/login", "POST", { username: username, password: password })
-    .then(function (res) {
-      if (res.status === 200 && res.json && res.json.sessionToken) {
-        store.cloud = store.cloud || {};
-        store.cloud.session = res.json.sessionToken;
-        store.cloud.uid = res.json.objectId;
-        store.cloud.username = res.json.username || username;
-        try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-        refreshAuthUI();
-        return true;
-      }
-      var msg = (res.json && res.json.error) ? res.json.error : ("HTTP " + res.status);
-      throw new Error("登录失败：" + msg);
-    });
-}
-function cloudLogout() {
-  var tok = cloudSession();
-  if (tok) { try { cloudReq(cloudHost() + "/1.1/logout", "POST", null, true); } catch (e) {} }
-  if (store.cloud) { delete store.cloud.session; delete store.cloud.uid; delete store.cloud.username; }
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-  refreshAuthUI();
-}
-function refreshAuthUI() {
-  var logged = cloudLoggedIn();
-  var user = cloudConf().username;
-  var st = $("lcAuthStatus");
-  $("lcLogout").style.display = logged ? "" : "none";
-  if (logged) {
-    st.style.color = "#2C3E6B";
-    st.innerHTML = "已登录：<b>" + esc(user) + "</b> · 可发布路线（在任意电脑登录同一账号即可管理）";
-  } else {
-    st.style.color = "#999";
-    st.textContent = "未登录 · 只读模式（可查看云端路线，不能发布）";
-  }
-}
-// 本地任意保存后防抖上传（仅登录管理员会话时自动发布）
-function scheduleCloudPush() {
-  if (!cloudCanWrite()) return;
-  if (cloudTimer) clearTimeout(cloudTimer);
-  cloudTimer = setTimeout(function () {
-    if (cloudPushing) return;
-    cloudPushing = true;
-    cloudPush().then(function () {
-      cloudPushing = false;
-      cloudLastVer = store._ver || 0;
-    }).catch(function () {
-      cloudPushing = false; // 静默失败，保留本地；用户可在设置里手动发布查看错误
-    });
+// 本地任意保存后防抖上传（仅配置了 Token 的本机自动上传）
+function scheduleGhPush() {
+  if (!ghEnabled() || !ghNeedToken()) return;
+  if (ghTimer) clearTimeout(ghTimer);
+  ghTimer = setTimeout(function () {
+    if (ghPushing) return;
+    ghPushing = true;
+    ghPush().then(function () { ghPushing = false; ghLastVer = store._ver || 0; })
+      .catch(function () { ghPushing = false; });
   }, 900);
 }
-// 启动时自动拉取合并（云端新则采用；本地新则仅在登录管理员会话时回传）
-function cloudInit() {
-  if (!cloudEnabled()) return Promise.resolve();
-  return cloudPull().then(function (doc) {
+// 启动时自动拉取合并（远端新则采用；本地新且带 Token 则回传）
+function ghInit() {
+  if (!ghEnabled()) return Promise.resolve();
+  return ghPull().then(function (doc) {
     if (!doc || !Array.isArray(doc.routes)) {
-      if (store.routes.length && cloudCanWrite()) return cloudPush().then(function () {
-        cloudLastVer = store._ver || 0;
-        return { merged: false, pushed: true };
+      if (store.routes.length && ghNeedToken()) return ghPush().then(function () {
+        ghLastVer = store._ver || 0; return { merged: false, pushed: true };
       });
       return { merged: false, pushed: false };
     }
@@ -1465,110 +1470,73 @@ function cloudInit() {
     var localVer = Number(store._ver) || 0;
     if (cloudVer === localVer && store.routes.length) return { merged: false };
     if (cloudVer > localVer) {
-      if (store.routes.length) {
-        try { localStorage.setItem(STORE_KEY + ":backup", JSON.stringify(store.routes)); } catch (e) {}
-      }
+      if (store.routes.length) { try { localStorage.setItem(STORE_KEY + ":backup", JSON.stringify(store.routes)); } catch (e) {} }
       var adopt = (doc.routes || []).map(function (r) {
-        return { id: r.id || newId(), name: String(r.name || "云端路线"), stops: r.stops || [], segs: r.segs || {} };
+        return { id: r.id || newId(), name: String(r.name || "远端路线"), stops: r.stops || [], segs: r.segs || {} };
       });
       adopt.forEach(function (r) { normalizeRoute(r); });
       store.routes = adopt;
       store._ver = cloudVer;
-      cloudLastVer = cloudVer;
+      ghLastVer = cloudVer;
       try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-      syncCustoms();
-      rebuildRouteList();
+      syncCustoms(); rebuildRouteList();
       if (store.routes.length) switchRoute(store.routes[0].id, { nofit: false });
-      toast("已从云端同步 " + adopt.length + " 条路线");
-      return { merged: true, direction: "cloud", n: adopt.length };
+      toast("已从 GitHub 同步 " + adopt.length + " 条路线");
+      return { merged: true, direction: "gh", n: adopt.length };
     }
-    if (!cloudCanWrite()) return { merged: false, readOnly: true };
-    return cloudPush().then(function () {
-      cloudLastVer = store._ver || 0;
-      return { merged: true, direction: "local", n: store.routes.length };
-    });
+    if (!ghNeedToken()) return { merged: false, readOnly: true };
+    return ghPush().then(function () { ghLastVer = store._ver || 0; return { merged: true, direction: "local", n: store.routes.length }; });
   }).catch(function () { return { merged: false, error: true }; });
 }
-function lcStatusMsg(s) {
-  $("lcStatus").textContent = s || "";
+function ghStatusMsg(s) { $("ghStatus").textContent = s || ""; }
+function ghSaveConfig() {
+  var cur = store.gh || {};
+  cur.repo = $("ghRepo").value.trim();
+  cur.branch = ($("ghBranch").value.trim() || "main");
+  cur.token = $("ghToken").value.trim();
+  store.gh = cur;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
+  toast(ghEnabled() ? "GitHub 配置已保存" : "已清除 GitHub 配置");
+  if (ghEnabled()) ghInit();
 }
-$("lcTest").addEventListener("click", function () {
-  if (!cloudEnabled()) { toast("请先填写 AppID / AppKey / API 域名并保存"); return; }
-  lcStatusMsg("正在测试连接…");
-  cloudPull().then(function (doc) {
-    if (doc && Array.isArray(doc.routes)) lcStatusMsg("连接成功 ✓ 云端现有 " + doc.routes.length + " 条路线");
-    else lcStatusMsg("连接成功 ✓ 云端尚无路线库，登录管理员后发布将自动创建");
+$("ghSave").addEventListener("click", ghSaveConfig);
+$("ghTest").addEventListener("click", function () {
+  if (!ghEnabled()) { toast("请先填写 仓库 owner/repo 并保存"); return; }
+  ghStatusMsg("正在测试…");
+  ghPull().then(function (doc) {
+    if (doc && Array.isArray(doc.routes)) ghStatusMsg("连接成功 ✓ 远端有 " + doc.routes.length + " 条路线（" + ghConf().branch + "）");
+    else ghStatusMsg("连接成功 ✓ 远端还没有路线库文件，上传后将自动创建");
   }).catch(function (e) {
-    lcStatusMsg("连接失败：" + (e && e.message ? e.message : "网络/权限错误") + "。请核对三项配置与 Class「RouteStore」是否存在");
+    ghStatusMsg("连接失败：" + (e && e.message ? e.message : "未知错误") + (ghNeedToken() ? "" : "。私有仓库读取需要 Token"));
   });
 });
-$("lcPull").addEventListener("click", function () {
-  if (!cloudEnabled()) { toast("请先填写并保存云配置"); return; }
-  lcStatusMsg("正在拉取…");
-  cloudPull().then(function (doc) {
-    if (!doc || !Array.isArray(doc.routes) || !doc.routes.length) { lcStatusMsg("云端为空或不存在"); return; }
+$("ghPull").addEventListener("click", function () {
+  if (!ghEnabled()) { toast("请先填写并保存 GitHub 配置"); return; }
+  ghStatusMsg("正在拉取…");
+  ghPull().then(function (doc) {
+    if (!doc || !Array.isArray(doc.routes) || !doc.routes.length) { ghStatusMsg("远端为空或不存在"); return; }
     store.routes = doc.routes.map(function (r) {
-      return { id: r.id || newId(), name: String(r.name || "云端路线"), stops: r.stops || [], segs: r.segs || {} };
+      return { id: r.id || newId(), name: String(r.name || "远端路线"), stops: r.stops || [], segs: r.segs || {} };
     });
     store.routes.forEach(function (r) { normalizeRoute(r); });
     store._ver = Number(doc.ver) || Date.now();
-    cloudLastVer = store._ver;
+    ghLastVer = store._ver;
     try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-    syncCustoms();
-    rebuildRouteList();
+    syncCustoms(); rebuildRouteList();
     if (store.routes.length) switchRoute(store.routes[0].id, { nofit: false });
-    lcStatusMsg("拉取完成：已载入 " + store.routes.length + " 条云端路线");
-  }).catch(function () { lcStatusMsg("拉取失败：请检查配置与网络"); });
+    ghStatusMsg("拉取完成：已载入 " + store.routes.length + " 条路线");
+  }).catch(function (e) { ghStatusMsg("拉取失败：" + (e && e.message ? e.message : "请检查配置")); });
 });
-$("lcPush").addEventListener("click", function () {
-  if (!cloudEnabled()) { toast("请先填写并保存云配置"); return; }
-  if (!cloudLoggedIn()) { toast("请先登录管理员账号再发布"); return; }
-  if (!store.routes.length) { toast("本地没有路线可发布"); return; }
-  lcStatusMsg("正在发布…");
-  cloudPush().then(function () {
-    cloudLastVer = store._ver || 0;
-    lcStatusMsg("发布完成：本地 " + store.routes.length + " 条路线已写入云端");
-  }).catch(function (e) {
-    lcStatusMsg("发布失败：" + (e && e.message ? e.message : "未知错误"));
-  });
+$("ghPush").addEventListener("click", function () {
+  if (!ghEnabled()) { toast("请先填写并保存 GitHub 配置"); return; }
+  if (!ghNeedToken()) { toast("上传到 GitHub 需要 Token（私有仓库必填）"); return; }
+  if (!store.routes.length) { toast("本地没有路线可上传"); return; }
+  ghStatusMsg("正在上传…");
+  ghPush().then(function () {
+    ghLastVer = store._ver || 0;
+    ghStatusMsg("上传完成：本地 " + store.routes.length + " 条路线已写入 GitHub 的 " + GH_PATH);
+  }).catch(function (e) { ghStatusMsg("上传失败：" + (e && e.message ? e.message : "未知错误")); });
 });
-$("lcLogin").addEventListener("click", function () {
-  var u = $("lcAdminUser").value.trim();
-  var p = $("lcAdminPass").value;
-  if (!u || !p) { toast("请输入管理员用户名和密码"); return; }
-  if (!cloudEnabled()) { toast("请先填写 AppID / AppKey / API 域名并保存"); return; }
-  var btn = $("lcLogin");
-  var old = btn.textContent;
-  btn.textContent = "登录中…";
-  cloudLogin(u, p).then(function () {
-    btn.textContent = old;
-    $("lcAdminPass").value = "";
-    lcStatusMsg("登录成功，可在本机发布路线到云端");
-    toast("管理员已登录");
-    cloudInit();
-  }).catch(function (e) {
-    btn.textContent = old;
-    lcStatusMsg(e && e.message ? e.message : "登录失败");
-  });
-});
-$("lcLogout").addEventListener("click", function () {
-  cloudLogout();
-  lcStatusMsg("已退出管理员登录，当前为只读模式");
-  toast("已退出登录");
-});
-// 保存云配置（保留已有会话，不清登录态）
-function lcSaveFromPanel() {
-  var cur = store.cloud || {};
-  cur.appId = $("lcAppId").value.trim();
-  cur.appKey = $("lcAppKey").value.trim();
-  cur.apiHost = $("lcApiHost").value.trim();
-  store.cloud = cur;
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); } catch (e) {}
-  toast(cloudEnabled() ? "云配置已保存" : "已清除云配置");
-  refreshAuthUI();
-  if (cloudEnabled()) cloudInit();
-}
-$("lcSave").addEventListener("click", lcSaveFromPanel);
 
 /* ---------- 导入 / 导出 ---------- */
 $("edExport").addEventListener("click", function () {
@@ -1742,7 +1710,75 @@ function clearShareHash() {
   } catch (e) { /* file:// 下不允许改历史记录，忽略 */ }
 }
 handleSharedHash();
-cloudInit(); // 已启用云同步时启动拉取云端路线库
+
+/* ========== 主页（路线库画廊） ========== */
+function routeCardMeta(id) {
+  if (id === "cx") {
+    var W = window.CX.WAYPOINTS;
+    return { name: "川西路线", builtin: true, days: 1, n: W.length, color: "#f28e16" };
+  }
+  if (id === "yl") {
+    var Y = window.YL.WAYPOINTS;
+    return { name: "伊犁环线（夏）", builtin: true, days: window.YL.DAY_NAMES.length, n: Y.length, color: DAY_PALETTE[0] };
+  }
+  var r = null;
+  for (var i = 0; i < store.routes.length; i++) if (store.routes[i].id === id) { r = store.routes[i]; break; }
+  if (!r || !r.stops || !r.stops.length) return null;
+  var maxD = 1;
+  for (var k = 0; k < r.stops.length; k++) if ((r.stops[k].day || 1) > maxD) maxD = r.stops[k].day;
+  return { name: r.name, builtin: false, days: maxD, n: r.stops.length, color: DAY_PALETTE[((r.stops[0].day || 1) - 1) % DAY_PALETTE.length] };
+}
+function renderHome() {
+  var grid = $("homeGrid");
+  var html = "";
+  ROUTE_META.forEach(function (m) {
+    var meta = routeCardMeta(m.id);
+    if (!meta) return;
+    var badge = meta.builtin
+      ? '<span class="badge">内置</span>'
+      : (customMetaFlags[m.id] ? '<span class="badge cloud">我的</span>' : '<span class="badge cloud">远端</span>');
+    var dots = "";
+    var nDays = Math.min(meta.days, 12);
+    for (var d = 0; d < nDays; d++) dots += '<i style="background:' + DAY_PALETTE[d % DAY_PALETTE.length] + ';"></i>';
+    html += '<div class="home-card" data-route="' + m.id + '">' +
+      '<div class="band" style="background:' + meta.color + ';"></div>' +
+      '<div class="nm">' + esc(meta.name) + '</div>' +
+      '<div class="meta">' + badge + meta.days + " 天 · " + meta.n + " 个地点</div>" +
+      (dots ? '<div class="days">' + dots + "</div>" : "") +
+      "</div>";
+  });
+  if (!html) html = '<div class="home-empty">暂无可进入的路线。点上方「＋ 新建路线」开始，或复制一条内置路线作为底稿。</div>';
+  grid.innerHTML = html;
+}
+function showHome() {
+  renderHome();
+  $("homeMask").style.display = "";
+  $("homeFab").style.display = "none";
+}
+function hideHome() {
+  $("homeMask").style.display = "none";
+  $("homeFab").style.display = "";
+}
+$("homeMask").addEventListener("click", function (ev) {
+  var card = ev.target.closest ? ev.target.closest(".home-card") : null;
+  if (!card) return;
+  var id = card.getAttribute("data-route");
+  hideHome();
+  switchRoute(id);
+});
+$("homeFab").addEventListener("click", showHome);
+$("homeNew").addEventListener("click", function () { hideHome(); openNewEditor(); });
+$("homeDupCx").addEventListener("click", function () { hideHome(); copyRoute("cx"); });
+$("homeDupYl").addEventListener("click", function () { hideHome(); copyRoute("yl"); });
+$("homeSettings").addEventListener("click", function () { hideHome(); openSettings(); });
+// 初始进入：分享链接直达地图；否则展示主页
+if (location.hash.indexOf("#r=") !== 0) showHome();
+
+ghInit().then(function (r) {
+  // 启动同步后自动刷新主页（若用户在主页面）或直达地图看远端内容
+  if (r && r.merged && r.direction === "gh") hideHome();
+  if (r && r.merged === false && $("homeMask").style.display !== "none") renderHome();
+});
 </script>
 </body>
 </html>
