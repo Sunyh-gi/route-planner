@@ -278,7 +278,7 @@ input[type="file"] { display: none; }
     </div>
     <div class="home-grid" id="homeGrid"></div>
     <div class="home-foot">
-      内置川西 / 伊犁路线随站点目录一起提供，人人可见；你新建的自定义路线默认仅存本机。<br>
+      川西 / 伊犁路线随站点目录一起提供，人人可见；你新建的自定义路线默认仅存本机。<br>
       需要换设备使用时，用 ⚙ GitHub 同步把路线库备份到你的仓库，即可多端恢复。
     </div>
   </div>
@@ -1769,7 +1769,7 @@ function renderHome() {
     var meta = routeCardMeta(m.id);
     if (!meta) return;
     var badge = meta.builtin
-      ? '<span class="badge">内置</span>'
+      ? ""
       : (customMetaFlags[m.id] ? '<span class="badge cloud">我的</span>' : '<span class="badge cloud">远端</span>');
     var dots = "";
     var nDays = Math.min(meta.days, 12);
