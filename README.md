@@ -22,7 +22,10 @@
 
 直接用浏览器打开 `线路规划平台.html` 即可（单文件，无构建步骤；图标已内嵌，不依赖外部资源文件）。
 
-在线预览（GitHub Pages）：打开仓库 Settings → Pages → 部署根目录即可，或直接访问 https://sunyh-gi.github.io/route-planner/
+> 在线预览提示：本仓库为 **Private（私有）**，免费账户的 GitHub Pages 不支持私有仓库。若想生成可分享的在线链接，可选：
+> 1. 复制一份公开副本仓库（如 `route-planner-preview`）并在其 Settings → Pages 部署根目录；
+> 2. 或使用 WorkBuddy「发布为应用」将本目录发布为临时在线链接（路线数据仍在浏览器本地存储）。
+> 自用场景直接双击 HTML 即可，无需在线部署。
 
 ## 地名搜索 Key（可选）
 
