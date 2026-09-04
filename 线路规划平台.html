@@ -281,28 +281,57 @@ input[type="file"] { display: none; }
 
 /* 搜索 + 天数 stepper：紧凑一行 */
 .info-panel .route-edit-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-/* 液态玻璃搜索框（v6：内联 SVG 放大镜作为视觉占位，placeholder 留空让放大镜成为唯一内容） */
+/* 液态玻璃搜索框（v6.4：放大镜移出到右侧按钮，输入框仅放 placeholder 提示文字） */
 .info-panel .ed-search-wrap { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
-.info-panel .ed-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; pointer-events: none; color: rgba(80,80,90,0.55); display: inline-flex; align-items: center; justify-content: center; }
-.info-panel .ed-search-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.info-panel .route-edit-row .ed-search { flex: 1; min-width: 0; width: 100%; padding: 6px 9px 6px 28px; font-size: 12.5px;
+.info-panel .route-edit-row .ed-search {
+  flex: 1; min-width: 0; width: 100%; padding: 7px 11px; font-size: 12.5px;
   background: rgba(255,255,255,0.55);
   backdrop-filter: blur(18px) saturate(160%);
   -webkit-backdrop-filter: blur(18px) saturate(160%);
   border: 1px solid rgba(255,255,255,0.72);
   border-radius: 11px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 6px rgba(0,0,0,0.06);
-  color: rgba(0,0,0,0.70);
+  color: rgba(0,0,0,0.78);
   transition: border-color .15s, box-shadow .15s;
 }
-.info-panel .route-edit-row .ed-search::placeholder { color: transparent; }
+.info-panel .route-edit-row .ed-search::placeholder { color: rgba(80,85,95,0.42); font-weight: 500; }
 .info-panel .route-edit-row .ed-search:focus { outline: none; border-color: rgba(80,85,95,0.55); box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 10px rgba(80,85,95,0.18); }
 .info-panel.sat-active .route-edit-row .ed-search { background: rgba(20,30,50,0.32); border-color: rgba(255,255,255,0.22); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.25); color: rgba(255,255,255,0.92); }
-.info-panel.sat-active .ed-search-icon { color: rgba(255,255,255,0.55); }
-.info-panel .route-edit-row .ed-btn { padding: 6px 12px; font-size: 12px; }
-.info-panel .day-stepper { margin: 0 0 8px; font-size: 12px; }
-.info-panel .day-stepper .n { font-size: 13px; }
-.info-panel .day-stepper button { width: 22px; height: 22px; font-size: 13px; }
+.info-panel.sat-active .route-edit-row .ed-search::placeholder { color: rgba(255,255,255,0.50); }
+/* 液态玻璃「放大镜」搜索按钮（取代原 搜索 文字按钮，保持 v6 玻璃风格） */
+.info-panel .ed-search-go {
+  flex: none; width: 34px; height: 34px; border-radius: 11px; cursor: pointer; border: 0;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 6px rgba(0,0,0,0.06);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: rgba(80,85,95,0.78); padding: 0;
+  transition: background .15s, color .15s, transform .1s;
+}
+.info-panel .ed-search-go:hover { background: rgba(80,85,95,0.88); color: #fff; }
+.info-panel .ed-search-go:active { transform: scale(0.95); }
+.info-panel .ed-search-go svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.info-panel.sat-active .ed-search-go { background: rgba(20,30,50,0.32); border-color: rgba(255,255,255,0.22); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.25); color: rgba(255,255,255,0.88); }
+.info-panel.sat-active .ed-search-go:hover { background: rgba(255,255,255,0.85); color: rgba(80,85,95,0.95); }
+
+/* 编辑中标记（路线名右侧的「编辑中」小药丸） */
+.info-panel .route-head .edit-pill {
+  flex: none; font-size: 10.5px; font-weight: 700; color: #fff;
+  background: rgba(80,85,95,0.88); padding: 2px 8px; border-radius: 999px; letter-spacing: 0.4px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+}
+.info-panel.sat-active .route-head .edit-pill { background: rgba(255,255,255,0.85); color: rgba(40,45,55,0.95); }
+
+/* ===== v6.4 视图/编辑模式切换 ===== */
+/* 默认（视图模式）：隐藏搜索行、保存行、内联编辑按钮、关闭拖拽 */
+.info-panel:not(.editing) .route-edit-row,
+.info-panel:not(.editing) .save-row { display: none; }
+.info-panel:not(.editing) .wp-item .ops { display: none !important; }
+.info-panel:not(.editing) .wp-item[draggable] { cursor: pointer; }
+/* 视图模式下空列表的提示更柔和 */
+.info-panel:not(.editing) .wp-list { padding-top: 2px; }
 
 /* ===== 地图旁「添加到第 N 天」液态玻璃卡片（v6：搜索/点图后预览点右侧弹出） ===== */
 .map-daypop .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; border-radius: 16px; padding: 0; }
@@ -408,23 +437,41 @@ input[type="file"] { display: none; }
   display: flex; align-items: center; gap: 8px;
   margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.08);
 }
-.save-row .save-btn { flex: 1; padding: 9px 12px; font-size: 13px; }
+/* v6.4 保存按钮：液态玻璃 + 仅「保存」二字 */
+.save-row .save-btn {
+  flex: 1; padding: 9px 12px; font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.72);
+  border-radius: 11px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 8px rgba(0,0,0,0.06);
+  color: rgba(80,85,95,0.95);
+  transition: background .15s, color .15s, transform .1s;
+  font-family: inherit;
+}
+.save-row .save-btn:hover { background: rgba(80,85,95,0.88); color: #fff; }
+.save-row .save-btn:active { transform: scale(0.98); }
 .save-row .dirty-hint {
   flex: none; font-size: 11px; color: #c0392b; font-weight: 600;
   opacity: 0; transition: opacity .2s;
 }
 .save-row.dirty .dirty-hint { opacity: 1; }
 .save-row.dirty .save-btn {
-  box-shadow: 0 0 0 2px rgba(192,57,43,0.32);
+  background: rgba(80,85,95,0.92); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 2px rgba(192,57,43,0.32);
   animation: pulseDirty 1.5s ease-in-out infinite;
 }
 @keyframes pulseDirty {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(192,57,43,0.3); }
-  50% { box-shadow: 0 0 0 4px rgba(192,57,43,0.55); }
+  0%, 100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 2px rgba(192,57,43,0.3); }
+  50%      { box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 4px rgba(192,57,43,0.55); }
 }
 .save-row .save-btn:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
 .info-panel.sat-active .save-row { border-top-color: rgba(255,255,255,0.18); }
 .info-panel.sat-active .save-row .dirty-hint { color: #ff8e7a; }
+.info-panel.sat-active .save-row .save-btn { background: rgba(20,30,50,0.32); border-color: rgba(255,255,255,0.22); color: rgba(255,255,255,0.95); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 8px rgba(0,0,0,0.25); }
+.info-panel.sat-active .save-row .save-btn:hover { background: rgba(255,255,255,0.85); color: rgba(40,45,55,0.95); }
+.info-panel.sat-active .save-row.dirty .save-btn { background: rgba(255,255,255,0.92); color: rgba(40,45,55,0.95); }
 
 /* 路线菜单弹层 */
 .route-menu-pop {
@@ -476,33 +523,30 @@ input[type="file"] { display: none; }
 <div class="info-panel">
   <div class="route-head">
     <span class="nm" id="routeName">未选择路线</span>
+    <span class="edit-pill" id="editPill" hidden>编辑中</span>
     <span class="menu" id="routeMenuBtn" title="更多">⋯</span>
   </div>
   <div class="route-edit-row">
     <div class="ed-search-wrap">
-      <span class="ed-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.7" y1="15.7" x2="20.5" y2="20.5"/></svg></span>
-      <input class="ed-search" id="edSearch" placeholder=" ">
+      <input class="ed-search" id="edSearch" placeholder="地名 / GPS 坐标" autocomplete="off" spellcheck="false">
     </div>
-    <button class="ed-btn" id="edSearchBtn">搜索</button>
-  </div>
-  <div class="day-stepper">
-    <span>添加至第</span><button id="dayMinus" type="button">−</button>
-    <span class="n" id="dayNum">1</span><button id="dayPlus" type="button">＋</button>
-    <span>天</span>
+    <button class="ed-search-go" id="edSearchBtn" title="搜索" type="button" aria-label="搜索">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.7" y1="15.7" x2="20.5" y2="20.5"/></svg>
+    </button>
   </div>
   <div class="search-res" id="edResults"></div>
   <div class="wp-list" id="wpList"></div>
   <div class="save-row">
-    <button class="ed-btn save-btn" id="saveBtn">💾 保存到 GitHub</button>
+    <button class="ed-btn save-btn" id="saveBtn">保存</button>
     <span class="dirty-hint" id="dirtyHint"></span>
   </div>
 </div>
 
-<!-- 路线操作菜单（复制 / 删除 / 回主页） -->
+<!-- 路线操作菜单（编辑路线 / 删除路线 / 回到主页） -->
 <div class="route-menu-pop" id="routeMenuPop">
-  <button id="routeMenuCopy">📋 复制为新路线</button>
-  <button id="routeMenuDel" class="del">🗑️ 删除路线</button>
-  <button id="routeMenuHome">⌂ 回到主页</button>
+  <button id="routeMenuEdit">编辑路线</button>
+  <button id="routeMenuDel" class="del">删除路线</button>
+  <button id="routeMenuHome">回到主页</button>
 </div>
 
 <div class="osm-credit">
@@ -516,10 +560,12 @@ input[type="file"] { display: none; }
 
 <script>
 // ===== 路线日色彩库（30 色 · 色轮柔和蓝 → 柔和紫 平滑过渡）=====
-// 供全平台按"天"取色：第 N 天路线颜色 = DAY_PALETTE[N-1]（N≤30）。
+// 供全平台按"天"取色：第 N 天路线颜色 = DAY_PALETTE[ dayShuffle(routeId)[N-1] ]（N≤30）。
 // iOS 26 液态玻璃统一调色板：色轮上 h=214°(柔蓝) → h=286°(柔紫) 顺时针 72° 弧段；
 // 饱和 S≈0.48，明度 L 沿 0.56→0.63→0.56 正弦起伏（中间略浅两端略深），保持"柔和"且 30 色整体连
 // 贯可辨。fgOn() 按背景亮度自动选文字色。
+// 关键：每条路线用 routeId 当种子把 30 个索引洗牌后再按天取值，避免相邻天颜色高度雷同；
+// 洗牌结果按 routeId 缓存（一次会话内稳定，跨会话也稳定，方便截图比对）。
 var DAY_PALETTE = [
   "#5988c5", //  1  柔蓝
   "#5c85c6", //  2
@@ -552,6 +598,51 @@ var DAY_PALETTE = [
   "#a95cc6", // 29
   "#ac59c5"  // 30 柔紫
 ];
+// FNV-1a 哈希 → mulberry32 PRNG → Fisher-Yates 洗牌
+function _fnv1a(s) { var h = 2166136261 >>> 0; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
+function _shuffledIndices(seedStr) {
+  var h = _fnv1a(String(seedStr || "_default"));
+  function rng() { h = (h + 0x6D2B79F5) | 0; var t = h; t = Math.imul(t ^ (t >>> 15), 1 | t); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+  var arr = new Array(DAY_PALETTE.length); for (var i = 0; i < arr.length; i++) arr[i] = i;
+  for (var i = arr.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
+  return arr;
+}
+var _dayShuffleCache = {};
+// FNV-1a 哈希 → 「间隔步长」洗牌（v6.4）
+// 选与 30 互质且 ≥ ⌈30/N⌉ 的最小步长（gcd=1 保证 mod 30 是置换、相邻索引差最大）
+// 这样无论 N 是 2 还是 30，相邻天索引差至少 7（30/4），色相差 ≥ 7 × 2.48° ≈ 17°，肉眼显著
+// 起点由 routeId 哈希决定，保证不同路线起点不同（视觉上各有各的色相起点）
+function dayShuffle(routeId) {
+  var k = String(routeId || "_default");
+  if (_dayShuffleCache[k]) return _dayShuffleCache[k];
+  var N = 30;
+  try {
+    var cat = (typeof catGet === "function") ? catGet(routeId) : null;
+    if (cat && cat.days) N = cat.days;
+    else if (typeof ROUTE_PACKS !== "undefined" && ROUTE_PACKS && ROUTE_PACKS[routeId] && ROUTE_PACKS[routeId].stops) N = routeDays(ROUTE_PACKS[routeId]) || 30;
+    else if (typeof edCtx !== "undefined" && edCtx && edCtx.work && edCtx.work.id === routeId) N = routeDays(edCtx.work) || 30;
+  } catch (e) { N = 30; }
+  N = Math.max(2, Math.min(30, N));
+  var seed = _fnv1a(k);
+  var start = seed % 30;
+  var minStep = Math.ceil(30 / N);
+  var step = minStep;
+  for (var s = minStep; s < 30; s++) {
+    var a = s, b = 30, t;
+    while (b) { t = b; b = a % b; a = t; }
+    if (a === 1) { step = s; break; }
+  }
+  var arr = new Array(30);
+  for (var i = 0; i < 30; i++) arr[i] = (start + i * step) % 30;
+  _dayShuffleCache[k] = arr;
+  return arr;
+}
+// 第 N 天的实际颜色：取洗牌后第 N-1 个索引对应的调色板色
+function dayColor(d, routeId) {
+  var rid = routeId || (typeof activeRouteId !== "undefined" ? activeRouteId : null) || (edCtx && edCtx.work ? edCtx.work.id : null) || "_default";
+  var sh = dayShuffle(rid);
+  return DAY_PALETTE[sh[(Math.max(1, d) - 1) % sh.length]];
+}
 
 // ========== 通用工具 ==========
 // GCJ-02 to WGS-84（川西历史坐标采集自 GCJ-02 图源）
@@ -968,7 +1059,7 @@ function renderGeneric(route) {
   // 段
   for (i = 0; i < stops.length - 1; i++) {
     var a = stops[i], b = stops[i + 1];
-    var color = DAY_PALETTE[(b.day - 1) % DAY_PALETTE.length];
+    var color = dayColor(b.day, route.id);
     var key = segKey(a, b);
     var c = route.segs[key];
     var poly = c ? c.poly : [[a.lat, a.lng], [b.lat, b.lng]];
@@ -983,7 +1074,7 @@ function renderGeneric(route) {
   // 标记与侧栏
   for (i = 0; i < stops.length; i++) {
     var st = stops[i];
-    var color2 = DAY_PALETTE[(st.day - 1) % DAY_PALETTE.length];
+    var color2 = dayColor(st.day, route.id);
     var marker = L.marker([eff[i][0], eff[i][1]], { icon: pinIcon(pinSvg(String(i + 1), color2, 13, "u" + route.id + "_" + i)) }).addTo(group);
     marker.bindPopup(popupHtmlFor(route, i), { closeButton: false });
     lookup[String(i)] = { lat: eff[i][0], lng: eff[i][1], marker: marker };
@@ -1127,18 +1218,38 @@ function renderRouteHeader() {
   if (!edCtx.work) { nameEl.textContent = "未选择路线"; return; }
   nameEl.textContent = edCtx.work.name && edCtx.work.name.trim() ? edCtx.work.name : (activeRouteId ? "未命名路线" : "新路线");
 }
+/* v6.4：视图/编辑模式切换
+ * 视图模式（默认进入已存在路线）：仅显示路线名 + ⋯ + 各天及地点（只读、点击飞往）；搜索行 / 保存行 / 内联编辑按钮全部隐藏，拖拽关闭
+ * 编辑模式：恢复搜索、保存、内联改名/上下移/换天/删除按钮、整行拖拽换位换天；地图点击空白处弹「添加到第几天」卡片
+ * 新建 / 复制 进入即编辑模式；点击 ⋯ 中的「编辑路线」可在两态间切换 */
+function applyEditMode() {
+  var panel = document.querySelector(".info-panel");
+  if (panel) panel.classList.toggle("editing", !!edCtx.editMode);
+  var pill = document.getElementById("editPill");
+  if (pill) pill.hidden = !edCtx.editMode;
+  // 路由菜单第一项文案随状态切换
+  var editBtn = document.getElementById("routeMenuEdit");
+  if (editBtn) editBtn.textContent = edCtx.editMode ? "完成编辑" : "编辑路线";
+}
+function toggleEditMode(force) {
+  if (!edCtx.work) return;
+  edCtx.editMode = force === undefined ? !edCtx.editMode : !!force;
+  applyEditMode();
+  renderWpList(); // 行内编辑按钮 / draggable 随状态重渲
+}
 function toggleRouteMenu(force) {
   var pop = document.getElementById("routeMenuPop");
   var open = force === undefined ? !pop.classList.contains("open") : !!force;
   pop.classList.toggle("open", open);
   if (open) {
     var home = document.getElementById("routeMenuHome");
-    var copy = document.getElementById("routeMenuCopy");
+    var edit = document.getElementById("routeMenuEdit");
     var del = document.getElementById("routeMenuDel");
     home.style.display = "";
-    // 复制 / 删除需要当前路由已加载；新路线（activeRouteId === null）不可删除/复制
+    edit.style.display = "";
+    edit.textContent = edCtx.editMode ? "完成编辑" : "编辑路线";
+    // 删除路线需要当前路由已加载（activeRouteId 非空）；新路线 / 副本未入库不可删除
     var ready = !!activeRouteId;
-    copy.style.display = ready ? "" : "none";
     del.style.display = ready ? "" : "none";
   }
 }
@@ -1153,7 +1264,7 @@ document.addEventListener("click", function (ev) {
   if (ev.target.closest("#routeMenuPop") || ev.target.closest("#routeMenuBtn")) return;
   pop.classList.remove("open");
 });
-document.getElementById("routeMenuCopy").addEventListener("click", function () { toggleRouteMenu(false); inlineCopyRoute(); });
+document.getElementById("routeMenuEdit").addEventListener("click", function () { toggleRouteMenu(false); toggleEditMode(); });
 document.getElementById("routeMenuDel").addEventListener("click", function () { toggleRouteMenu(false); inlineDeleteRoute(); });
 document.getElementById("routeMenuHome").addEventListener("click", function () { toggleRouteMenu(false); exitToHome(); });
 
@@ -1203,7 +1314,7 @@ function copyRoute(id) {
 /* ============================================================
  * 编辑器
  * ============================================================ */
-var edCtx = { work: null, dirty: false, preset: { c: null, tag: "" } };
+var edCtx = { work: null, dirty: false, preset: { c: null, tag: "" }, editMode: false };
 
 /* ---------- 路线名称：点击标题进入内联改名（事件委托，自动应对后续 span 重建） ---------- */
 document.querySelector(".route-head").addEventListener("click", function (ev) {
@@ -1270,32 +1381,33 @@ function routePresetOf(id) {
 function renderWpList() {
   var box = $("wpList");
   if (!edCtx.work) { box.innerHTML = '<div class="ed-hint" style="text-align:center;margin:14px 0;color:#999;">尚未进入路线 · 从主页点卡片进入，或点新建路线开始编辑</div>'; return; }
-  if (!edCtx.work.stops.length) { box.innerHTML = '<div class="ed-hint" style="text-align:center;margin:14px 0;color:#999;">尚无地点 · 用上方搜索框（地名或 GPS）添加</div>'; return; }
+  if (!edCtx.work.stops.length) { box.innerHTML = '<div class="ed-hint" style="text-align:center;margin:14px 0;color:#999;">' + (edCtx.editMode ? '尚无地点 · 用上方搜索框（地名或 GPS）添加' : '尚无地点') + '</div>'; return; }
+  var inEdit = !!edCtx.editMode;
   var h = "", lastDay = -1;
   for (var i = 0; i < edCtx.work.stops.length; i++) {
     var s = edCtx.work.stops[i];
-    var c = dayColor(s.day);
+    var c = dayColor(s.day, edCtx.work.id);
     if (s.day !== lastDay) {
       h += '<div class="day-label" data-day="' + s.day + '" style="color:' + darkOnLight(c) + ';"><span class="day-line" style="background:' + c + ';"></span>第' + s.day + "天</div>";
       lastDay = s.day;
     }
-    h += '<div class="wp-item" data-key="' + i + '" data-i="' + i + '" draggable="true">' +
+    h += '<div class="wp-item" data-key="' + i + '" data-i="' + i + '"' + (inEdit ? ' draggable="true"' : '') + '>' +
       '<span class="dot" style="background:' + c + ';color:' + fgOn(c) + ';">' + (i + 1) + "</span>" +
       '<span class="nm">' + esc(s.name) + '</span>' +
-      '<span class="ops">' +
+      (inEdit ? '<span class="ops">' +
       '<button data-op="rename" class="ren" title="改名">✎</button>' +
       '<button data-op="up" title="同天前移">↑</button>' +
       '<button data-op="down" title="同天后移">↓</button>' +
       '<button data-op="prevDay" title="前一天">◀</button>' +
       '<button data-op="nextDay" title="后一天">▶</button>' +
       '<button data-op="del" class="del" title="删除">✕</button>' +
-      "</span></div>";
+      "</span>" : "") + "</div>";
   }
   box.innerHTML = h;
 }
 // v5 renderEdList 别名（保留兼容旧调用方，但实际渲染走 renderWpList）
 function renderEdList() { renderWpList(); }
-function dayColor(d) { return DAY_PALETTE[((Math.max(1, d)) - 1) % DAY_PALETTE.length]; }
+// dayColor(d, routeId) 已在 DAY_PALETTE 后声明（v6.4：按 routeId 种子洗牌后取色）
 $("wpList").addEventListener("click", function (ev) {
   var opBtn = ev.target.closest("button[data-op]");
   if (!opBtn) return; // 非操作按钮 → 交给 wpList 主点击事件处理（飞往标记）
@@ -1454,7 +1566,7 @@ edStopsBox.addEventListener("dragleave", function (ev) {
 var curDay = 1;
 function setDayNum(n) {
   curDay = Math.max(1, n);
-  $("dayNum").textContent = curDay;
+  // v6.4：搜索栏下「添加到第几天」stepper 已移除，此处不再回写 #dayNum 文本（DOM 已下线）
   // 若地图旁「添加到第 N 天」液态玻璃卡片正开着，同步高亮当前天 chip
   var box = document.querySelector(".daypop-inner");
   if (box) {
@@ -1464,8 +1576,6 @@ function setDayNum(n) {
     if (hit) hit.classList.add("cur");
   }
 }
-$("dayMinus").addEventListener("click", function () { setDayNum(curDay - 1); });
-$("dayPlus").addEventListener("click", function () { setDayNum(curDay + 1); });
 
 function addStop(name, lat, lng, dayOpt) {
   if (!(isFinite(lat) && isFinite(lng))) return;
@@ -1572,8 +1682,9 @@ function bindDayCard(box) {
   if (cancel) cancel.addEventListener("click", function (ev) { ev.stopPropagation(); clearPreview(); try { map.closePopup(); } catch (e) {} });
 }
 // 地图点击：预览点可移动；点已有 marker / popup / 控件不响应
+// v6.4：仅在编辑模式下点空白处才弹「添加到第几天」卡片（视图模式只读，不加站）
 map.on("click", function (ev) {
-  if (!edCtx.work) return;
+  if (!edCtx.work || !edCtx.editMode) return;
   var t = ev.originalEvent && ev.originalEvent.target;
   if (t && t.closest && (t.closest(".leaflet-interactive") || t.closest(".leaflet-popup") || t.closest(".leaflet-control") || t.closest(".wp-marker"))) return;
   openDayCard({ name: "", lat: ev.latlng.lat, lng: ev.latlng.lng });
@@ -1583,9 +1694,11 @@ map.on("click", function (ev) {
 function enterNewRoute() {
   edCtx.work = { id: newId(), name: "", stops: [], segs: {} };
   edCtx.preset = { c: null, tag: "" };
+  edCtx.editMode = true; // 新建路线直接进入编辑模式（搜索 / 加站 / 保存）
   activeRouteId = null;
   hideHome();
   setDayNum(1);
+  applyEditMode();
   markDirty(); // 新路线未入库即视为有改动
   renderRouteHeader();
   renderWpList();
@@ -1596,6 +1709,9 @@ function enterNewRoute() {
 function enterRoute(id) {
   ensureRouteData(id).then(function (t) {
     if (!t || !t.stops || !t.stops.length) { toast("路线数据不可用，无法编辑"); return; }
+    // v6.4：进入新路线前清理前一条路线的预览点 / 玻璃卡片，避免 popup 残留叠加
+    try { clearPreview(); } catch (e) {}
+    try { map.closePopup(); } catch (e) {}
     edCtx.work = {
       id: id, name: t.name,
       stops: t.stops.map(function (s) { return { name: s.name, lat: Number(s.lat), lng: Number(s.lng), day: s.day, tag: s.tag }; }),
@@ -1604,6 +1720,8 @@ function enterRoute(id) {
     for (var key in t.segs) if (t.segs.hasOwnProperty(key)) edCtx.work.segs[key] = t.segs[key];
     presetFromRoute(t);
     activeRouteId = id;
+    edCtx.editMode = false; // 已存在路线：默认视图模式（只读）；点 ⋯ → 编辑路线才出现搜索 / 保存 / 内联编辑按钮
+    applyEditMode();
     markClean(); // 进入已入库路线：无未保存修改
     hideHome();
     var maxDay = 1;
@@ -1620,7 +1738,12 @@ function exitToHome() {
   if (edCtx.work && edCtx.dirty) {
     if (!confirm("当前路线有未保存的修改，确定回到主页吗？")) return;
   }
+  // v6.4：离开当前路线前清理掉残留的预览点 / 地图旁「添加到第几天」卡片，避免切换到下一条路线时还在显示
+  try { clearPreview(); } catch (e) {}
+  try { map.closePopup(); } catch (e) {}
   edCtx.work = null;
+  edCtx.editMode = false;
+  applyEditMode();
   markClean();
   activeRouteId = null;
   $("edResults").classList.remove("show");
@@ -1645,6 +1768,8 @@ function inlineCopyRoute() {
   for (var k in r.segs) if (r.segs.hasOwnProperty(k)) edCtx.work.segs[k] = r.segs[k];
   presetFromRoute(r);
   activeRouteId = null;
+  edCtx.editMode = true; // 副本未入库：直接进入编辑模式
+  applyEditMode();
   setDayNum(routeDays(edCtx.work));
   markDirty(); // 副本未入库即视为有改动（save-row 亮起 dirty 提示）
   renderRouteHeader();
@@ -2137,6 +2262,7 @@ $("fileImport").addEventListener("change", function () {
 rebuildMeta(); // 依 catalog 生成画廊展示列表（applyCache 无缓存时会提前 return，故此处统一重建一次）
 applyCache();
 rebuildRouteList();
+applyEditMode(); // v6.4：初始按 edCtx.editMode=false（视图模式）设置 .info-panel .editing 类与「编辑中」徽标隐藏
 // 不预载/默认渲染任何内置路线：首屏为主页画廊，点卡片时才按需加载 routes/*.js（见 switchRoute 懒加载分支）
 
 /* ========== 主页（路线库画廊） ========== */
@@ -2165,7 +2291,7 @@ function renderHome() {
     if (!meta) return;
     var dots = "";
     var nDays = Math.min(meta.days, 12);
-    for (var d = 0; d < nDays; d++) dots += '<i style="background:' + DAY_PALETTE[d % DAY_PALETTE.length] + ';"></i>';
+    for (var d = 0; d < nDays; d++) dots += '<i style="background:' + dayColor(d + 1, m.id) + ';"></i>';
     html += '<div class="home-card" data-route="' + m.id + '">' +
       '<div class="band" style="background:' + meta.color + ';"></div>' +
       '<div class="nm">' + (meta.tag ? '<span class="ptag">' + esc(meta.tag) + "</span>" : "") + esc(meta.name) + "</div>" +
