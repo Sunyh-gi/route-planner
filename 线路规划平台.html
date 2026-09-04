@@ -258,6 +258,122 @@ input[type="file"] { display: none; }
 }
 #homeFab:hover { background: #2C3E6B; color: #fff; }
 
+/* ========== 路线界面 · 内联编辑器（侧栏） ========== */
+.info-panel .route-head {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0 0 10px 0;
+  padding: 0 2px;
+}
+.info-panel .route-head .nm {
+  flex: 1; min-width: 0;
+  font-size: 16px; font-weight: 800; color: #2C3E6B; letter-spacing: 0.4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.info-panel .route-head .menu {
+  flex: none; cursor: pointer; padding: 2px 9px 4px; border-radius: 8px;
+  font-size: 17px; color: #555; line-height: 1; background: rgba(0,0,0,0.05);
+  user-select: none;
+}
+.info-panel .route-head .menu:hover { background: rgba(0,0,0,0.12); }
+.info-panel.sat-active .route-head .nm { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
+.info-panel.sat-active .route-head .menu { color: #fff; background: rgba(255,255,255,0.18); }
+.info-panel.sat-active .route-head .menu:hover { background: rgba(255,255,255,0.32); }
+
+/* 搜索 + 天数 stepper：紧凑一行 */
+.info-panel .route-edit-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.info-panel .route-edit-row .ed-search { flex: 1; min-width: 0; padding: 6px 9px; font-size: 12.5px; }
+.info-panel .route-edit-row .ed-btn { padding: 6px 12px; font-size: 12px; }
+.info-panel .day-stepper { margin: 0 0 8px; font-size: 12px; }
+.info-panel .day-stepper .n { font-size: 13px; }
+.info-panel .day-stepper button { width: 22px; height: 22px; font-size: 13px; }
+
+.info-panel .search-res { margin-bottom: 8px; max-height: 132px; }
+.info-panel .search-res .res-item { padding: 5px 8px; font-size: 12px; }
+.info-panel .search-res .res-add { padding: 4px 8px; font-size: 11px; }
+.info-panel.sat-active .search-res { background: rgba(20,30,50,0.88); color: #fff; border-color: rgba(255,255,255,0.18); }
+.info-panel.sat-active .search-res .res-item { color: #fff; border-bottom-color: rgba(255,255,255,0.1); }
+.info-panel.sat-active .search-res .res-item:hover { background: rgba(255,255,255,0.15); }
+.info-panel.sat-active .search-res .res-item .a { color: rgba(255,255,255,0.65); }
+.info-panel.sat-active .search-res .res-add { background: #fff; color: #2C3E6B; }
+
+/* 各天及地点（侧栏 wpList 同时承担阅读 + 编辑） */
+.wp-list { gap: 0; }
+.wp-list .day-label { margin-top: 7px; }
+.wp-item { padding: 4px 6px; border-radius: 8px; }
+.wp-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wp-item .ops {
+  display: flex; gap: 1px; flex: none;
+  opacity: 0; transition: opacity .12s;
+  margin-left: 4px;
+}
+.wp-item:hover .ops, .wp-item.flying .ops { opacity: 0.92; }
+.wp-item .ops button {
+  border: none; background: transparent; cursor: pointer; color: #888;
+  font-size: 12px; padding: 1px 3px; line-height: 1; border-radius: 5px;
+  font-family: inherit;
+}
+.wp-item .ops button:hover { background: rgba(0,0,0,0.1); color: #222; }
+.wp-item .ops button.del:hover { color: #c0392b; background: rgba(192,57,43,0.12); }
+.wp-item .ops button.ren:hover { color: #2C3E6B; background: rgba(44,62,107,0.15); }
+.wp-item.editing { background: rgba(44,62,107,0.1); }
+.wp-item.editing .ops { display: none; }
+.wp-item .nm-input {
+  flex: 1; min-width: 0; border: 1px solid #2C3E6B; border-radius: 6px;
+  padding: 1px 5px; font-size: 12px; outline: none; background: #fff; color: #222; box-sizing: border-box;
+}
+.wp-item.dragging-src { opacity: 0.4; }
+.wp-item.drop-above { box-shadow: 0 -2px 0 0 #2C3E6B inset; }
+.wp-item.drop-below { box-shadow: 0 2px 0 0 #2C3E6B inset; }
+.wp-list .day-label.drop-target { outline: 1px dashed rgba(44,62,107,0.55); outline-offset: 2px; border-radius: 6px; }
+.info-panel.sat-active .wp-item .ops button { color: rgba(255,255,255,0.85); }
+.info-panel.sat-active .wp-item .ops button:hover { background: rgba(255,255,255,0.2); color: #fff; }
+.info-panel.sat-active .wp-item.editing { background: rgba(255,255,255,0.15); }
+.info-panel.sat-active .wp-item .nm-input { background: rgba(255,255,255,0.95); color: #222; }
+
+/* 保存行 */
+.save-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.08);
+}
+.save-row .save-btn { flex: 1; padding: 9px 12px; font-size: 13px; }
+.save-row .dirty-hint {
+  flex: none; font-size: 11px; color: #c0392b; font-weight: 600;
+  opacity: 0; transition: opacity .2s;
+}
+.save-row.dirty .dirty-hint { opacity: 1; }
+.save-row.dirty .save-btn {
+  box-shadow: 0 0 0 2px rgba(192,57,43,0.32);
+  animation: pulseDirty 1.5s ease-in-out infinite;
+}
+@keyframes pulseDirty {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(192,57,43,0.3); }
+  50% { box-shadow: 0 0 0 4px rgba(192,57,43,0.55); }
+}
+.save-row .save-btn:disabled { opacity: 0.5; cursor: not-allowed; animation: none; }
+.info-panel.sat-active .save-row { border-top-color: rgba(255,255,255,0.18); }
+.info-panel.sat-active .save-row .dirty-hint { color: #ff8e7a; }
+
+/* 路线菜单弹层 */
+.route-menu-pop {
+  position: fixed; top: 56px; left: 18px; z-index: 1600;
+  background: #fdfdfd; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.22);
+  display: none; flex-direction: column; min-width: 168px;
+  border: 1px solid rgba(0,0,0,0.08); overflow: hidden;
+  font-family: inherit;
+}
+.route-menu-pop.open { display: flex; }
+.route-menu-pop button {
+  border: none; background: transparent; padding: 10px 14px;
+  font-size: 13px; color: #333; cursor: pointer; text-align: left;
+  border-bottom: 1px solid rgba(0,0,0,0.05); font-family: inherit;
+}
+.route-menu-pop button:last-child { border-bottom: none; }
+.route-menu-pop button:hover { background: rgba(44,62,107,0.1); color: #2C3E6B; }
+.route-menu-pop button.del { color: #c0392b; }
+.route-menu-pop button.del:hover { background: rgba(192,57,43,0.12); }
+
+/* 路线操作失败/成功 toast 颜色变体（沿用 .toast） */
+
 </style>
 </head>
 <body>
@@ -272,9 +388,8 @@ input[type="file"] { display: none; }
     </div>
     <div class="home-tools">
       <button id="homeNew">＋ 新建路线</button>
-      <button id="homeDupCx">📋 复制川西</button>
-      <button id="homeDupYl">📋 复制伊犁</button>
       <button id="homeSettings">⚙ 设置（高德 Key / GitHub 同步）</button>
+      <button id="homeRefresh">🔄 刷新</button>
     </div>
     <div class="home-grid" id="homeGrid"></div>
     <div class="home-foot">
@@ -286,8 +401,32 @@ input[type="file"] { display: none; }
 <button id="homeFab">⌂ 主页</button>
 
 <div class="info-panel">
-  <div class="route-switch" id="routeSwitch"></div>
+  <div class="route-head">
+    <span class="nm" id="routeName">未选择路线</span>
+    <span class="menu" id="routeMenuBtn" title="更多">⋯</span>
+  </div>
+  <div class="route-edit-row">
+    <input class="ed-search" id="edSearch" placeholder="地名 或 GPS 经纬度">
+    <button class="ed-btn" id="edSearchBtn">搜索</button>
+  </div>
+  <div class="day-stepper">
+    <span>添加至第</span><button id="dayMinus" type="button">−</button>
+    <span class="n" id="dayNum">1</span><button id="dayPlus" type="button">＋</button>
+    <span>天</span>
+  </div>
+  <div class="search-res" id="edResults"></div>
   <div class="wp-list" id="wpList"></div>
+  <div class="save-row">
+    <button class="ed-btn save-btn" id="saveBtn">💾 保存到 GitHub</button>
+    <span class="dirty-hint" id="dirtyHint"></span>
+  </div>
+</div>
+
+<!-- 路线操作菜单（复制 / 删除 / 回主页） -->
+<div class="route-menu-pop" id="routeMenuPop">
+  <button id="routeMenuCopy">📋 复制为新路线</button>
+  <button id="routeMenuDel" class="del">🗑️ 删除路线</button>
+  <button id="routeMenuHome">⌂ 回到主页</button>
 </div>
 
 <div class="osm-credit">
@@ -450,11 +589,10 @@ function rebuildMeta() {
   var arr = (ROUTE_CATALOG || []).map(function (c) {
     return { id: c.id, name: c.name, render: ROUTE_PACKS[c.id] ? function () { return renderGeneric(ROUTE_PACKS[c.id]); } : null };
   });
-  if (typeof pvList !== "undefined" && pvList.length) arr = arr.concat(pvList); // 编辑器预览占位（不入目录/缓存）
   ROUTE_META = arr;
   return ROUTE_META;
 }
-function pvEntries() { return (typeof pvList !== "undefined") ? pvList.slice() : []; }
+function pvEntries() { return []; } // v6：预览占位移除
 function metaOf(id) { for (var i = 0; i < ROUTE_META.length; i++) if (ROUTE_META[i].id === id) return ROUTE_META[i]; return null; }
 function addMeta(id, name, render) {
   var m = metaOf(id);
@@ -511,17 +649,8 @@ function rendererFor(id) {
   return function () { return renderGeneric(pack); };
 }
 
-// 动态生成顶部路线切换按钮（初始兜底；rebuildRouteList 会接管更完整的列表）
-var routeSwitch = document.getElementById("routeSwitch");
-rebuildMeta(); // 依目录生成展示列表（名称来自 catalog）
-ROUTE_META.forEach(function(m) {
-  var b = document.createElement("button");
-  b.className = "rs-btn";
-  b.setAttribute("data-route", m.id);
-  b.textContent = m.name;
-  b.addEventListener("click", function() { switchRoute(m.id); });
-  routeSwitch.appendChild(b);
-});
+// v6：顶部路线切换按钮（v5 routeSwitch DOM）已随弹窗编辑器一并移除，
+// 路线从主页卡片进入（enterRoute），此处不再生成任何按钮，避免对空 DOM 报错。
 
 // #1 兜底 switchRoute（#2 中覆盖的同名函数才支持 nofit；两版都处理数据未加载）
 function switchRoute(id, opts) {
@@ -539,8 +668,10 @@ function switchRoute(id, opts) {
   }
 }
 
-// 侧栏点击：飞到对应标记并打开弹窗（事件委托，切换路线无需重绑）
+// 侧栏点击：飞到对应标记并打开弹窗（事件委托，切换路线无需重绑；跳过 ops 操作按钮）
 wpList.addEventListener("click", function(ev) {
+  if (ev.target.closest("button[data-op]")) return; // v6：行内操作按钮单独处理，不触发飞往
+  if (ev.target.closest(".nm-input")) return; // 行内改名 input 不触发飞往
   var item = ev.target.closest ? ev.target.closest(".wp-item") : null;
   if (!item || !currentLookup) return;
   var key = item.getAttribute("data-key");
@@ -553,37 +684,8 @@ wpList.addEventListener("click", function(ev) {
 // 不默认加载任何路线：首屏为主页画廊，点击卡片时才按需加载对应数据
 </script>
 
-<!-- ========== 路线编辑器 ========== -->
-<div class="modal-mask" id="editorMask">
-  <div class="modal-card editor-modal">
-    <div class="modal-head"><span class="ttl" id="edTitle">新建路线</span><button class="x" id="edClose">✕</button></div>
-    <div class="modal-body">
-      <input class="ed-name" id="edName" placeholder="路线名称，如：青海小环线">
-      <div class="preset-row" id="presetRow">
-        <span class="pl">🎨 卡片色</span>
-        <div class="swatches" id="presetSwatches" title="选一个作为主页卡片主色（自动=按首日配色）"></div>
-        <input class="tag-input" id="presetTag" maxlength="8" placeholder="标签 如 ⛰️ 雪山">
-      </div>
-      <div class="ed-hint">地点可<b>整行拖拽</b>换位置或换天：拖到某行上/下半=插到它前/后并跟随该天，拖到「第 N 天」标题=移到该天末尾；<b>✎</b> 改名，<b>↑ ↓</b> 同天微调，<b>✕</b> 删除。</div>
-      <div class="ed-row">
-        <input class="ed-search" id="edSearch" placeholder="地名搜索 或 输入 GPS 经纬度">
-        <button class="ed-btn" id="edSearchBtn">搜索</button>
-      </div>
-      <div class="day-stepper">
-        <span>添加至第</span><button id="dayMinus" type="button">−</button>
-        <span class="n" id="dayNum">1</span><button id="dayPlus" type="button">＋</button>
-        <span>天</span>
-      </div>
-      <div class="search-res" id="edResults"></div>
-      <div class="ed-stops" id="edStops"></div>
-      <div class="ed-foot">
-        <button class="ed-btn ghost" id="edImport">导入备份</button>
-        <button class="ed-btn ghost" id="edExport">导出备份</button>
-        <button class="ed-btn" id="edSave">保存路线</button>
-      </div>
-    </div>
-  </div>
-</div>
+<input type="file" id="fileImport" accept=".json,application/json">
+<div class="toast" id="toast"></div>
 
 <!-- ========== 设置 ========== -->
 <div class="modal-mask" id="settingsMask">
@@ -625,7 +727,7 @@ var CACHE_KEY = "route-platform:v1:cache"; // 最近一次目录+路线数据快
 var store = loadStore();
 var activeRouteId = null;
 var currentCustomRoute = null; // 当前展示中的路线对象
-var pvList = [];               // 编辑器预览占位 meta（__pv，不入目录/缓存/仓库）
+// v6：pvList（编辑器预览占位）已移除，侧栏直接编辑无需预览层
 
 function $(id) { return document.getElementById(id); }
 
@@ -807,7 +909,7 @@ function renderGeneric(route) {
     lookup[String(i)] = { lat: eff[i][0], lng: eff[i][1], marker: marker };
     markers.push(marker);
     if (st.day !== lastDay) {
-      sidebar += '<div class="day-label" style="color:' + darkOnLight(color2) + ';"><span class="day-line" style="background:' + color2 + ';"></span>第' + st.day + "天</div>";
+      sidebar += '<div class="day-label" data-day="' + st.day + '" style="color:' + darkOnLight(color2) + ';"><span class="day-line" style="background:' + color2 + ';"></span>第' + st.day + "天</div>";
       lastDay = st.day;
     }
     sidebar += '<div class="wp-item" data-key="' + i + '"><span class="dot" style="background:' + color2 + ';color:' + fgOn(color2) + ';">' + (i + 1) + "</span>" +
@@ -879,12 +981,13 @@ function ensureRoutePolys(route, segLayers, markers) {
 }
 
 /* ---------- 覆盖 applyRoute / switchRoute（支持 nofit 与内置路线按需加载） ---------- */
-function applyRoute(obj, nofit) {
+// skipSide=true：仅渲染地图，不覆盖侧栏 wpList（v6 侧栏由 renderWpList 内联编辑器独占）
+function applyRoute(obj, nofit, skipSide) {
   if (currentGroup) map.removeLayer(currentGroup);
   currentGroup = obj.group;
   currentLookup = obj.lookup;
   currentCustomRoute = obj.route || null;
-  wpList.innerHTML = obj.sidebar;
+  if (!skipSide) wpList.innerHTML = obj.sidebar;
   if (!nofit) {
     map.fitBounds(obj.bounds, { padding: [30, 30], maxZoom: 8 });
     map.setZoom(map.getZoom() + (obj.adjust || 0));
@@ -892,11 +995,8 @@ function applyRoute(obj, nofit) {
   if (obj.route) ensureRoutePolys(obj.route, obj.segLayers || [], obj.markers || []);
 }
 function setActiveBtn(id) {
-  var btns = document.querySelectorAll(".route-switch .rs-btn");
-  for (var j = 0; j < btns.length; j++) {
-    if (btns[j].getAttribute("data-route") === id) btns[j].classList.add("active");
-    else btns[j].classList.remove("active");
-  }
+  // v6：路线列表 UI 从侧栏移除；当前路线名由 renderRouteHeader() 维护，此处 no-op 保留兼容调用
+  renderRouteHeader();
 }
 function switchRoute(id, opts) {
   opts = opts || {};
@@ -935,83 +1035,47 @@ function registerCustom(r) {
 }
 function unregisterCustom(id) { removeMeta(id); }
 
-/* ---------- 路线切换列表 UI（v5：每条路线同权，统一 ✏️ 编辑 / 📋 复制 / 🗑️ 删除） ---------- */
+/* ---------- 路线切换列表 UI（v6：路线列表已从侧栏移除；此处保留 no-op 供旧调用方继续调用） ---------- */
 function rebuildRouteList() {
-  var box = document.getElementById("routeSwitch");
-  box.innerHTML = "";
-  var tools = document.createElement("div");
-  tools.className = "rs-tools";
-  var b1 = document.createElement("button");
-  b1.textContent = "＋ 新建路线";
-  b1.addEventListener("click", openNewEditor);
-  var b2 = document.createElement("button");
-  b2.textContent = "⚙ 设置";
-  b2.addEventListener("click", function () { openSettings(); });
-  var b3 = document.createElement("button");
-  b3.textContent = "🔄 刷新";
-  b3.title = "从 GitHub 仓库拉取最新路线目录（需已配置 Token）";
-  b3.addEventListener("click", function () { doRefresh(); });
-  tools.appendChild(b1); tools.appendChild(b2); tools.appendChild(b3);
-  box.appendChild(tools);
-  ROUTE_META.forEach(function (m) {
-    if (String(m.id).indexOf("__pv") >= 0) return; // 预览占位不列出
-    var btn = document.createElement("button");
-    btn.className = "rs-btn";
-    btn.setAttribute("data-route", m.id);
-    if (m.id === activeRouteId) btn.classList.add("active");
-    var nm = document.createElement("span");
-    nm.className = "nm";
-    btn.appendChild(nm);
-    var p = routePresetOf(m.id);
-    if (p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length) {
-      var pdot = document.createElement("span");
-      pdot.className = "pdot";
-      pdot.style.background = DAY_PALETTE[p.c];
-      pdot.title = "预设主色";
-      btn.insertBefore(pdot, nm);
-    }
-    nm.textContent = (p && p.tag ? p.tag + " " : "") + m.name;
-    var ed = document.createElement("span");
-    ed.className = "op";
-    ed.setAttribute("data-act", "edit");
-    ed.title = "编辑";
-    ed.textContent = "✏️";
-    var dup = document.createElement("span");
-    dup.className = "op";
-    dup.setAttribute("data-act", "dup");
-    dup.title = "复制为新路线";
-    dup.textContent = "📋";
-    var del = document.createElement("span");
-    del.className = "op del";
-    del.setAttribute("data-act", "del");
-    del.title = "删除";
-    del.textContent = "🗑️";
-    btn.appendChild(ed);
-    btn.appendChild(dup);
-    btn.appendChild(del);
-    box.appendChild(btn);
-  });
-  var credit = document.createElement("div");
-  credit.className = "rs-credit";
-  credit.textContent = "路线保存在 GitHub 仓库 · 保存即写入各自数据文件";
-  box.appendChild(credit);
+  // v6：路线列表 UI 从侧栏移除（用户从主页点卡片进入 → 侧栏只显示当前路线）；本函数兼容旧调用方
+  renderRouteHeader();
 }
-document.getElementById("routeSwitch").addEventListener("click", function (ev) {
-  var t = ev.target;
-  var op = t.closest ? t.closest(".op") : null;
-  var btn = t.closest ? t.closest(".rs-btn") : null;
-  if (!btn) return;
-  var id = btn.getAttribute("data-route");
-  if (op) {
-    var act = op.getAttribute("data-act");
-    if (act === "edit") openEditFor(id);
-    else if (act === "dup") copyRoute(id);
-    else if (act === "del") deleteRouteAsk(id);
-    return;
+
+/* ---------- 路线头部 + 菜单（侧栏 route-head：显示当前路线名称 / 菜单按钮） ---------- */
+function renderRouteHeader() {
+  var nameEl = document.getElementById("routeName");
+  if (!edCtx.work) { nameEl.textContent = "未选择路线"; return; }
+  nameEl.textContent = edCtx.work.name && edCtx.work.name.trim() ? edCtx.work.name : (activeRouteId ? "未命名路线" : "新路线");
+}
+function toggleRouteMenu(force) {
+  var pop = document.getElementById("routeMenuPop");
+  var open = force === undefined ? !pop.classList.contains("open") : !!force;
+  pop.classList.toggle("open", open);
+  if (open) {
+    var home = document.getElementById("routeMenuHome");
+    var copy = document.getElementById("routeMenuCopy");
+    var del = document.getElementById("routeMenuDel");
+    home.style.display = "";
+    // 复制 / 删除需要当前路由已加载；新路线（activeRouteId === null）不可删除/复制
+    var ready = !!activeRouteId;
+    copy.style.display = ready ? "" : "none";
+    del.style.display = ready ? "" : "none";
   }
-  if (t.classList && !t.classList.contains("rs-btn")) return;
-  switchRoute(id);
+}
+document.getElementById("routeMenuBtn").addEventListener("click", function (ev) {
+  ev.stopPropagation();
+  if (!edCtx.work) return;
+  toggleRouteMenu();
 });
+document.addEventListener("click", function (ev) {
+  var pop = document.getElementById("routeMenuPop");
+  if (!pop.classList.contains("open")) return;
+  if (ev.target.closest("#routeMenuPop") || ev.target.closest("#routeMenuBtn")) return;
+  pop.classList.remove("open");
+});
+document.getElementById("routeMenuCopy").addEventListener("click", function () { toggleRouteMenu(false); inlineCopyRoute(); });
+document.getElementById("routeMenuDel").addEventListener("click", function () { toggleRouteMenu(false); inlineDeleteRoute(); });
+document.getElementById("routeMenuHome").addEventListener("click", function () { toggleRouteMenu(false); exitToHome(); });
 
 /* ---------- 删除（v5：删除 = 仓库删除路线文件 + 目录更新；需 Token） ---------- */
 var pendingDel = null;
@@ -1034,9 +1098,15 @@ function doDeleteRoute(id) {
     delete ROUTE_PACKS[id];
     catRemove(id);
     if (activeRouteId === id) {
-      var rest = ROUTE_META.filter(function (m) { return m.id !== id && String(m.id).indexOf("__pv") < 0; });
+      // v6：删除的是当前正在编辑的路线 → 清空编辑态回主页（画廊展示剩余路线），不再走 v5 switchRoute 兜底
       activeRouteId = null;
-      if (rest.length) switchRoute(rest[0].id, { nofit: false });
+      edCtx.work = null;
+      edCtx.dirty = false;
+      edCtx.preset = { c: null, tag: "" };
+      document.querySelector(".save-row").classList.remove("dirty");
+      showHome();
+      renderRouteHeader();
+      renderWpList();
     }
     return pushCatalog("route: delete " + nm).then(function () {
       rebuildMeta(); rebuildRouteList(); persistCache();
@@ -1045,39 +1115,51 @@ function doDeleteRoute(id) {
   });
 }
 
-/* ---------- 复制：预填一个新编辑器（副本保存时才写入仓库） ---------- */
+/* ---------- 复制：v6 由 inlineCopyRoute 提供（旧 copyRoute 弹窗逻辑已弃用，保留为 no-op 兼容旧调用） ---------- */
 function copyRoute(id) {
-  var doCopy = function () {
-    var r = ROUTE_PACKS[id];
-    if (!r || !r.stops) { toast("该路线数据尚未加载，无法复制"); return; }
-    var nm = (r.name || "路线") + " 副本";
-    openNewEditor();
-    edCtx.work.id = newId();
-    edCtx.work.name = nm;
-    edCtx.work.stops = r.stops.map(function (s) {
-      return { name: s.name, lat: Number(s.lat), lng: Number(s.lng), day: Math.max(1, parseInt(s.day, 10) || 1), tag: s.tag || "" };
-    });
-    edCtx.work.segs = {};
-    for (var k in r.segs) if (r.segs.hasOwnProperty(k)) edCtx.work.segs[k] = r.segs[k];
-    $("edName").value = nm;
-    presetFromRoute(r);
-    $("edTitle").textContent = "复制为副本";
-    buildPresets();
-    renderEdList();
-    refreshPreview(false);
-    toast("已复制，可在编辑器调整后点「保存路线」写入仓库");
-  };
-  if (!ROUTE_PACKS[id]) {
-    ensureRouteData(id).then(doCopy).catch(function (e) { toast("复制失败：" + (e && e.message ? e.message : "数据加载异常")); });
-    return;
-  }
-  doCopy();
+  if (typeof inlineCopyRoute === "function") inlineCopyRoute();
 }
 
 /* ============================================================
  * 编辑器
  * ============================================================ */
-var edCtx = { mode: "new", origId: null, work: null, backToId: null, pvId: null, pvFitted: false, preC: null, preTag: "" };
+var edCtx = { work: null, dirty: false, preset: { c: null, tag: "" } };
+
+/* ---------- 路线名称：点击标题进入内联改名（事件委托，自动应对后续 span 重建） ---------- */
+document.querySelector(".route-head").addEventListener("click", function (ev) {
+  var span = ev.target.closest("#routeName");
+  if (!span) return;
+  if (!edCtx.work) return;
+  var inp = document.createElement("input");
+  inp.className = "ed-name route-name-input";
+  inp.value = edCtx.work.name || "";
+  inp.maxLength = 60;
+  inp.placeholder = "路线名称…";
+  span.replaceWith(inp);
+  inp.focus();
+  try { inp.select(); } catch (e) {}
+  var fin = false;
+  function end(commit) {
+    if (fin) return;
+    fin = true;
+    var v = inp.value.trim();
+    if (commit && v && v !== edCtx.work.name) {
+      edCtx.work.name = v;
+      markDirty();
+    }
+    // input 顶替了 span#routeName：先按原结构还原命名元素（class="nm" + id），再统一刷新头部
+    var back = document.createElement("span");
+    back.id = "routeName";
+    back.className = "nm";
+    inp.replaceWith(back);
+    renderRouteHeader();
+  }
+  inp.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") { ev.preventDefault(); end(true); }
+    else if (ev.key === "Escape") { end(false); }
+  });
+  inp.addEventListener("blur", function () { end(true); });
+});
 
 /* ---------- 路线预设：卡片色 + 标签 ---------- */
 function presetValid(p) {
@@ -1086,32 +1168,15 @@ function presetValid(p) {
     typeof (p.tag || "") === "string";
 }
 function currentPreset() {
-  var has = edCtx.preC != null || !!edCtx.preTag;
-  return has ? { c: edCtx.preC, tag: edCtx.preTag || "" } : undefined;
+  var p = edCtx.preset || { c: null, tag: "" };
+  return (p.c != null || (p.tag && p.tag.trim())) ? { c: p.c, tag: (p.tag || "").trim() } : undefined;
 }
-function buildPresets() {
-  var box = $("presetSwatches");
-  var h = '<span class="swatch auto' + (edCtx.preC == null ? " sel" : "") + '" data-c="" title="自动（按首日配色）"></span>';
-  for (var i = 0; i < DAY_PALETTE.length; i++) {
-    h += '<span class="swatch' + (edCtx.preC === i ? " sel" : "") + '" data-c="' + i + '" style="background:' + DAY_PALETTE[i] + ';" title="' + DAY_PALETTE[i] + '"></span>';
-  }
-  box.innerHTML = h;
-  $("presetTag").value = edCtx.preTag || "";
-}
-$("presetSwatches").addEventListener("click", function (ev) {
-  var sw = ev.target.closest ? ev.target.closest(".swatch") : null;
-  if (!sw) return;
-  var c = sw.getAttribute("data-c");
-  edCtx.preC = c === "" ? null : parseInt(c, 10);
-  buildPresets();
-});
-$("presetTag").addEventListener("input", function () {
-  edCtx.preTag = this.value.trim();
-});
+// v6：路线预设 UI（卡片色 swatch + 标签输入）已从弹窗移除；此处保留 buildPresets 作为 no-op 以兼容旧调用
+function buildPresets() { /* v6 no-op：预设由路线首日配色自动决定 */ }
+// presetSwatches / presetTag DOM 已不存在，下方事件监听随 DOM 缺失自动失活
 function presetFromRoute(t) {
   var p = presetValid(t.preset) ? t.preset : null;
-  edCtx.preC = p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length ? p.c : null;
-  edCtx.preTag = p ? String(p.tag || "").slice(0, 8) : "";
+  edCtx.preset = { c: p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length ? p.c : null, tag: p ? String(p.tag || "").slice(0, 8) : "" };
 }
 function routePresetOf(id) {
   var pk = ROUTE_PACKS[id];
@@ -1120,64 +1185,44 @@ function routePresetOf(id) {
   return (c0 && presetValid(c0.preset)) ? c0.preset : null;
 }
 
-function pvRouteId() { return (edCtx.work ? edCtx.work.id : "pv") + "__pv"; }
-function pvPush() {
-  if (!edCtx.pvId) return;
-  for (var i = 0; i < pvList.length; i++) if (pvList[i].id === edCtx.pvId) { pvList.splice(i, 1); break; }
-  pvList.push({ id: edCtx.pvId, name: "__pv__", render: function () { return renderGeneric(edCtx.work); } });
-}
-function refreshPreview(nofit) {
-  if (!edCtx.work || !edCtx.work.stops.length) {
-    if (edCtx.pvId) { removeMeta(edCtx.pvId); edCtx.pvId = null; if (activeRouteId === edCtx.backToId || activeRouteId === null) switchRoute(edCtx.backToId || (ROUTE_META[0] ? ROUTE_META[0].id : null), { nofit: true }); }
-    return;
-  }
-  if (!edCtx.pvId) { edCtx.pvId = pvRouteId(); pvPush(); }
-  var shouldFit = !edCtx.pvFitted;
-  if (nofit === true) shouldFit = false;
-  switchRoute(edCtx.pvId, { nofit: !shouldFit });
-  if (shouldFit) edCtx.pvFitted = true;
-}
-function removePreview() {
-  if (edCtx.pvId) { removeMeta(edCtx.pvId); edCtx.pvId = null; }
-}
-function closeEditor() {
-  $("editorMask").classList.remove("open");
-  removePreview();
-  var back = edCtx.backToId || ROUTE_META[0].id;
-  if (activeRouteId === null || String(activeRouteId).indexOf("__pv") >= 0) switchRoute(back, { nofit: true });
-  edCtx.work = null;
-  rebuildRouteList(); // 同步左侧按钮列表，移除预览占位
-}
-function dayColor(d) { return DAY_PALETTE[((Math.max(1, d)) - 1) % DAY_PALETTE.length]; }
-function renderEdList() {
-  var box = $("edStops");
-  if (!edCtx.work.stops.length) { box.innerHTML = '<div class="ed-hint" style="text-align:center;margin-top:8px;">尚无地点 · 用上方搜索框或 GPS 坐标添加</div>'; return; }
+/* ---------- v6 内联编辑器：内联到侧栏 wpList 中（无弹窗） ---------- */
+// pvRouteId / pvPush / refreshPreview / removePreview 在 v5 弹窗编辑器下用于"预览"渲染，v6 改为侧栏直接编辑，不再需要
+function renderWpList() {
+  var box = $("wpList");
+  if (!edCtx.work) { box.innerHTML = '<div class="ed-hint" style="text-align:center;margin:14px 0;color:#999;">尚未进入路线 · 从主页点卡片进入，或点新建路线开始编辑</div>'; return; }
+  if (!edCtx.work.stops.length) { box.innerHTML = '<div class="ed-hint" style="text-align:center;margin:14px 0;color:#999;">尚无地点 · 用上方搜索框（地名或 GPS）添加</div>'; return; }
   var h = "", lastDay = -1;
   for (var i = 0; i < edCtx.work.stops.length; i++) {
     var s = edCtx.work.stops[i];
     var c = dayColor(s.day);
     if (s.day !== lastDay) {
-      h += '<div class="ed-day" data-day="' + s.day + '"><span class="ln" style="background:' + c + ';"></span>第' + s.day + "天</div>";
+      h += '<div class="day-label" data-day="' + s.day + '" style="color:' + darkOnLight(c) + ';"><span class="day-line" style="background:' + c + ';"></span>第' + s.day + "天</div>";
       lastDay = s.day;
     }
-    h += '<div class="ed-stop" data-i="' + i + '" draggable="true">' +
+    h += '<div class="wp-item" data-key="' + i + '" data-i="' + i + '" draggable="true">' +
       '<span class="dot" style="background:' + c + ';color:' + fgOn(c) + ';">' + (i + 1) + "</span>" +
-      '<span class="nm">' + esc(s.name) + "</span>" +
+      '<span class="nm">' + esc(s.name) + '</span>' +
       '<span class="ops">' +
       '<button data-op="rename" class="ren" title="改名">✎</button>' +
       '<button data-op="up" title="同天前移">↑</button>' +
       '<button data-op="down" title="同天后移">↓</button>' +
-      '<button data-op="prevDay" title="移到前一天">◀</button>' +
-      '<button data-op="nextDay" title="移到后一天">▶</button>' +
+      '<button data-op="prevDay" title="前一天">◀</button>' +
+      '<button data-op="nextDay" title="后一天">▶</button>' +
       '<button data-op="del" class="del" title="删除">✕</button>' +
       "</span></div>";
   }
   box.innerHTML = h;
 }
-$("edStops").addEventListener("click", function (ev) {
+// v5 renderEdList 别名（保留兼容旧调用方，但实际渲染走 renderWpList）
+function renderEdList() { renderWpList(); }
+function dayColor(d) { return DAY_PALETTE[((Math.max(1, d)) - 1) % DAY_PALETTE.length]; }
+$("wpList").addEventListener("click", function (ev) {
   var opBtn = ev.target.closest("button[data-op]");
-  if (!opBtn) return;
-  var row = opBtn.closest(".ed-stop");
+  if (!opBtn) return; // 非操作按钮 → 交给 wpList 主点击事件处理（飞往标记）
+  ev.stopPropagation(); // 阻止冒泡触发飞往
+  if (!edCtx.work) return;
+  var row = opBtn.closest(".wp-item");
+  if (!row) return;
   var i = parseInt(row.getAttribute("data-i"), 10);
   var stops = edCtx.work.stops;
   var op = opBtn.getAttribute("data-op");
@@ -1200,14 +1245,14 @@ $("edStops").addEventListener("click", function (ev) {
     stops[i].day += 1;
   }
   normalizeRoute(edCtx.work);
-  renderEdList();
-  refreshPreview(true);
+  applyEditToMap();
+  markDirty();
 });
 
 /* ---------- 地点行内改名 ---------- */
 function startRename(i) {
-  var box = $("edStops");
-  var row = box.querySelector('.ed-stop[data-i="' + i + '"]');
+  var box = $("wpList");
+  var row = box.querySelector('.wp-item[data-i="' + i + '"]');
   if (!row) return;
   var stops = edCtx.work.stops;
   var nm = row.querySelector(".nm");
@@ -1230,10 +1275,10 @@ function startRename(i) {
     if (commit && v && v !== stops[i].name) {
       stops[i].name = v;
       normalizeRoute(edCtx.work);
-      renderEdList();
-      refreshPreview(true);
+      applyEditToMap();
+      markDirty();
     } else {
-      renderEdList(); // 取消或空值：还原为原名称
+      renderWpList(); // 取消或空值：还原为原名称
     }
   }
   inp.addEventListener("keydown", function (ev) {
@@ -1246,7 +1291,7 @@ function startRename(i) {
 /* ---------- 地点整行拖拽重排（换位 / 换天） ---------- */
 var dragSrc = null, dragOverRow = null, dragOverDay = null;
 function clearDropMarks() {
-  var box = $("edStops");
+  var box = $("wpList");
   var marks = box.querySelectorAll(".dragging-src, .drop-above, .drop-below, .drop-target");
   for (var i = 0; i < marks.length; i++) marks[i].classList.remove("dragging-src", "drop-above", "drop-below", "drop-target");
 }
@@ -1254,13 +1299,14 @@ function moveStop(srcIdx, dstIdx, pos) {
   var stops = edCtx.work.stops;
   if (srcIdx === dstIdx) return;
   var obj = stops[srcIdx];
-  var dstDay = stops[dstIdx].day; // 拖到行：跟随目标行所属天
+  var dstDay = stops[dstIdx].day;
   stops.splice(srcIdx, 1);
   var t2 = dstIdx > srcIdx ? dstIdx - 1 : dstIdx;
   obj.day = dstDay;
   stops.splice(Math.min(pos === 0 ? t2 : t2 + 1, stops.length), 0, obj);
   normalizeRoute(edCtx.work);
-  renderEdList();
+  applyEditToMap();
+  markDirty();
 }
 function moveStopToDay(srcIdx, day) {
   var stops = edCtx.work.stops;
@@ -1270,15 +1316,16 @@ function moveStopToDay(srcIdx, day) {
   var e = -1, i;
   for (i = 0; i < stops.length; i++) if (stops[i].day === obj.day) e = i;
   var ins = stops.length;
-  if (e >= 0) ins = e + 1; // 该天已有地点：排到该天末尾
+  if (e >= 0) ins = e + 1;
   else { for (i = 0; i < stops.length; i++) if (stops[i].day > obj.day) { ins = i; break; } }
   stops.splice(ins, 0, obj);
   normalizeRoute(edCtx.work);
-  renderEdList();
+  applyEditToMap();
+  markDirty();
 }
-var edStopsBox = $("edStops");
+var edStopsBox = $("wpList"); // v6：拖拽/事件目标绑定到侧栏 wpList
 edStopsBox.addEventListener("dragstart", function (ev) {
-  var row = ev.target.closest ? ev.target.closest(".ed-stop") : null;
+  var row = ev.target.closest ? ev.target.closest(".wp-item") : null;
   if (!row || row.classList.contains("editing")) { ev.preventDefault(); return; }
   dragSrc = parseInt(row.getAttribute("data-i"), 10);
   if (isNaN(dragSrc)) { dragSrc = null; return; }
@@ -1290,14 +1337,14 @@ edStopsBox.addEventListener("dragover", function (ev) {
   ev.preventDefault();
   try { ev.dataTransfer.dropEffect = "move"; } catch (e) {}
   clearDropMarks();
-  var day = ev.target.closest ? ev.target.closest(".ed-day") : null;
+  var day = ev.target.closest ? ev.target.closest(".day-label") : null;
   if (day) {
     dragOverRow = null;
     dragOverDay = parseInt(day.getAttribute("data-day"), 10);
     day.classList.add("drop-target");
     return;
   }
-  var row = ev.target.closest ? ev.target.closest(".ed-stop") : null;
+  var row = ev.target.closest ? ev.target.closest(".wp-item") : null;
   if (row) {
     dragOverDay = null;
     dragOverRow = { i: parseInt(row.getAttribute("data-i"), 10), pos: 0 };
@@ -1314,7 +1361,8 @@ edStopsBox.addEventListener("drop", function (ev) {
   clearDropMarks();
   if (dayT != null) moveStopToDay(src, dayT);
   else if (rowT && rowT.i !== src) moveStop(src, rowT.i, rowT.pos);
-  refreshPreview(true);
+  applyEditToMap();
+  markDirty();
 });
 edStopsBox.addEventListener("dragend", function () {
   dragSrc = null; dragOverRow = null; dragOverDay = null;
@@ -1327,7 +1375,7 @@ var curDay = 1;
 function setDayNum(n) {
   curDay = Math.max(1, n);
   $("dayNum").textContent = curDay;
-  // 若搜索结果仍展开，同步刷新“加入第 N 天”按钮文案
+  // 若搜索结果仍展开，同步刷新"加入第 N 天"按钮文案
   var adds = document.querySelectorAll("#edResults .res-add");
   for (var i = 0; i < adds.length; i++) adds[i].textContent = "＋ 第" + curDay + "天";
 }
@@ -1336,95 +1384,146 @@ $("dayPlus").addEventListener("click", function () { setDayNum(curDay + 1); });
 
 function addStop(name, lat, lng) {
   if (!(isFinite(lat) && isFinite(lng))) return;
+  if (!edCtx.work) { toast("请先新建或进入一条路线"); return; }
   edCtx.work.stops.push({ name: name || ("P" + (edCtx.work.stops.length + 1)), lat: lat, lng: lng, day: curDay, tag: "" });
   normalizeRoute(edCtx.work);
   $("edResults").classList.remove("show");
-  renderEdList();
-  // 首点必定 fit；后续加点若落在当前视野之外则重新适配视口
-  var needFit = !edCtx.pvFitted;
-  if (!needFit && edCtx.pvId && map.getBounds && !map.getBounds().contains([lat, lng])) needFit = true;
-  if (needFit) edCtx.pvFitted = false; // 让 refreshPreview 重新 fitBounds
-  refreshPreview(false);
+  applyEditToMap();
+  markDirty();
 }
-function openNewEditor() {
-  removePreview(); // 清理可能残留的上一轮预览
-  edCtx.mode = "new";
-  edCtx.origId = null;
-  edCtx.backToId = activeRouteId;
+
+/* ---------- v6 实时同步：edCtx.work → 地图 + 侧栏 ---------- */
+function applyEditToMap() {
+  if (!edCtx.work) return;
+  if (typeof renderGeneric !== "function") return;
+  // v6：路线界面即编辑界面，每次数据变更均重建渲染。
+  // 地图用 renderGeneric；侧栏不写入 renderGeneric 的静态列表（无行内操作按钮/data-day），
+  // 而是始终由 renderWpList 重绘内联编辑器（✎改名 / ↑↓ / ◀▶换天 / ✕删除 / 拖拽换天都依赖它）。
+  var obj = renderGeneric(edCtx.work);
+  applyRoute(obj, true, true);
+  renderWpList();
+}
+
+/* ---------- v6 进入 / 退出 / 复制 / 删除 ---------- */
+function enterNewRoute() {
   edCtx.work = { id: newId(), name: "", stops: [], segs: {} };
-  edCtx.pvId = null;
-  edCtx.pvFitted = false;
-  edCtx.preC = null;
-  edCtx.preTag = "";
-  $("edTitle").textContent = "新建路线";
-  $("edName").value = "";
-  buildPresets();
+  edCtx.preset = { c: null, tag: "" };
+  activeRouteId = null;
+  hideHome();
   setDayNum(1);
-  renderEdList();
-  $("edResults").classList.remove("show");
+  markDirty(); // 新路线未入库即视为有改动
+  renderRouteHeader();
+  renderWpList();
+  applyEditToMap();
   $("edSearch").value = "";
-  $("editorMask").classList.add("open");
-  setTimeout(function () { $("edName").focus(); }, 60);
+  $("edResults").classList.remove("show");
 }
-function openEditFor(id) {
-  removePreview();
+function enterRoute(id) {
   ensureRouteData(id).then(function (t) {
     if (!t || !t.stops || !t.stops.length) { toast("路线数据不可用，无法编辑"); return; }
-    edCtx.mode = "edit";
-    edCtx.origId = id;
-    edCtx.backToId = activeRouteId;
     edCtx.work = {
       id: id, name: t.name,
-      stops: t.stops.map(function (s) { return { name: s.name, lat: s.lat, lng: s.lng, day: s.day, tag: s.tag }; }),
+      stops: t.stops.map(function (s) { return { name: s.name, lat: Number(s.lat), lng: Number(s.lng), day: s.day, tag: s.tag }; }),
       segs: {}
     };
-    // 缓存路径保留到工作副本，避免编辑时重复请求
     for (var key in t.segs) if (t.segs.hasOwnProperty(key)) edCtx.work.segs[key] = t.segs[key];
-    edCtx.pvId = null;
-    edCtx.pvFitted = false;
     presetFromRoute(t);
-    $("edTitle").textContent = "编辑路线";
-    $("edName").value = t.name;
-    buildPresets();
+    activeRouteId = id;
+    markClean(); // 进入已入库路线：无未保存修改
+    hideHome();
     var maxDay = 1;
     t.stops.forEach(function (s) { if (s.day > maxDay) maxDay = s.day; });
     setDayNum(maxDay);
-    renderEdList();
-    $("edResults").classList.remove("show");
+    renderRouteHeader();
+    renderWpList();
+    applyEditToMap();
     $("edSearch").value = "";
-    $("editorMask").classList.add("open");
-    setTimeout(function () { $("edName").focus(); }, 60);
-    refreshPreview(false);
-  }).catch(function (e) { toast("无法编辑：" + (e && e.message ? e.message : id)); });
+    $("edResults").classList.remove("show");
+  }).catch(function (e) { toast("无法进入路线：" + (e && e.message ? e.message : id)); });
 }
-$("edClose").addEventListener("click", closeEditor);
-$("editorMask").addEventListener("click", function (ev) { if (ev.target === this) closeEditor(); });
-$("edSave").addEventListener("click", function () {
-  var name = $("edName").value.trim();
-  if (!name) { toast("请先填写路线名称"); $("edName").focus(); return; }
+function exitToHome() {
+  if (edCtx.work && edCtx.dirty) {
+    if (!confirm("当前路线有未保存的修改，确定回到主页吗？")) return;
+  }
+  edCtx.work = null;
+  markClean();
+  activeRouteId = null;
+  $("edResults").classList.remove("show");
+  $("edSearch").value = "";
+  showHome();
+  renderRouteHeader();
+  renderWpList();
+  // 清空地图上的渲染（可选：回到主页时地图仍可见，避免突兀）
+}
+function inlineCopyRoute() {
+  if (!activeRouteId) { toast("新路线暂不可复制"); return; }
+  var r = ROUTE_PACKS[activeRouteId];
+  if (!r || !r.stops) { toast("该路线数据尚未加载，无法复制"); return; }
+  var nm = prompt("副本路线名称", (r.name || "路线") + " 副本");
+  if (nm === null) return; // 取消
+  edCtx.work = {
+    id: newId(),
+    name: (nm || (r.name + " 副本")).trim(),
+    stops: r.stops.map(function (s) { return { name: s.name, lat: Number(s.lat), lng: Number(s.lng), day: s.day, tag: s.tag || "" }; }),
+    segs: {}
+  };
+  for (var k in r.segs) if (r.segs.hasOwnProperty(k)) edCtx.work.segs[k] = r.segs[k];
+  presetFromRoute(r);
+  activeRouteId = null;
+  setDayNum(routeDays(edCtx.work));
+  markDirty(); // 副本未入库即视为有改动（save-row 亮起 dirty 提示）
+  renderRouteHeader();
+  renderWpList();
+  applyEditToMap();
+  toast("已复制为新路线，编辑后保存到 GitHub");
+}
+function inlineDeleteRoute() {
+  if (!activeRouteId) { toast("新路线未保存，无法删除"); return; }
+  var id = activeRouteId;
+  deleteRouteAsk(id); // 复用现有 deleteRouteAsk 双击确认机制
+}
+
+/* ---------- dirty 跟踪 + 保存按钮 ---------- */
+function markDirty() {
+  edCtx.dirty = true;
+  var row = document.querySelector(".save-row");
+  if (row) row.classList.add("dirty");
+}
+function markClean() {
+  edCtx.dirty = false;
+  var row = document.querySelector(".save-row");
+  if (row) row.classList.remove("dirty");
+}
+function saveInlineRoute() {
+  if (!edCtx.work) { toast("没有可保存的路线"); return; }
+  var name = (edCtx.work.name || "").trim();
+  if (!name) {
+    name = (prompt("请输入路线名称") || "").trim();
+    if (!name) { toast("路线名称不能为空"); return; }
+    edCtx.work.name = name;
+    renderRouteHeader();
+  }
   if (!edCtx.work.stops.length) { toast("至少添加一个地点"); return; }
   if (!ghEnabled()) { toast("保存前请先在 ⚙ 设置 配置 GitHub 仓库"); openSettings(); return; }
   if (!ghNeedToken()) { toast("保存路线到 GitHub 需要 Token，请在 ⚙ 设置 粘贴后重试"); openSettings(); return; }
-  edCtx.work.name = name;
   normalizeRoute(edCtx.work);
-  pruneSegs(edCtx.work); // 清掉与当前相邻顺序不匹配的旧路径缓存
+  pruneSegs(edCtx.work);
   var saving = { id: edCtx.work.id, name: name, stops: edCtx.work.stops, segs: edCtx.work.segs || {}, preset: currentPreset() };
-  var wasActive = (activeRouteId === edCtx.pvId) || (activeRouteId === edCtx.work.id);
-  var btn = $("edSave"), oldTxt = btn.textContent;
+  var btn = $("saveBtn"), oldTxt = btn.textContent;
   btn.disabled = true; btn.textContent = "保存中…";
   saveRouteToRepo(saving).then(function () {
     btn.disabled = false; btn.textContent = oldTxt;
-    removePreview();
-    $("editorMask").classList.remove("open");
-    edCtx.work = null;
-    rebuildRouteList();
-    switchRoute(saving.id, { nofit: wasActive });
+    activeRouteId = saving.id;
+    markClean();
+    renderRouteHeader();
+    renderWpList();
     toast("路线「" + name + "」已保存到 GitHub 仓库");
   }).catch(function (e) {
     btn.disabled = false; btn.textContent = oldTxt;
     toast("保存失败：" + (e && e.message ? e.message : "未知错误"));
   });
-});
+}
+$("saveBtn").addEventListener("click", saveInlineRoute);
 
 /* ---------- 搜索：坐标 / 本地点位 / 高德 ---------- */
 function toLL(x, y) {
@@ -1820,29 +1919,9 @@ $("ghTest").addEventListener("click", function () {
 $("ghRefresh").addEventListener("click", doRefresh);
 $("ghMigrate").addEventListener("click", function () { migrateLegacy(); });
 
-/* ---------- 导入 / 导出（v5：导出=仓库路线快照；导入=逐条写入仓库） ---------- */
-$("edExport").addEventListener("click", function () {
-  var jobs = (ROUTE_CATALOG || []).map(function (c) { return c.id; });
-  jobs.reduce(function (p, id) {
-    return p.then(function () {
-      if (ROUTE_PACKS[id]) return null;
-      return loadRouteData(id).catch(function () { return null; });
-    });
-  }, Promise.resolve()).then(function () {
-    var routes = jobs.map(function (id) { var pk = ROUTE_PACKS[id]; return pk ? routeObjForFile(pk) : null; }).filter(Boolean);
-    if (!routes.length) { toast("没有可导出的路线"); return; }
-    var data = { app: "route-platform", version: 2, exportedAt: new Date().toISOString(), routes: routes };
-    var blob = new Blob([JSON.stringify(data)], { type: "application/json" });
-    var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "线路规划平台备份-" + new Date().toISOString().slice(0, 10) + ".json";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
-    toast("已导出备份文件（" + routes.length + " 条路线）");
-  });
-});
-$("edImport").addEventListener("click", function () { $("fileImport").click(); });
+/* ---------- 导入 / 导出（v6：编辑器弹窗已移除，导出入口迁移到 ⚙ 设置面板未来再做） ---------- */
+// v6：原 edExport / edImport DOM 已移除，下方事件源改成 #fileImport，由「导入备份」入口触发
+//   （v5 弹窗导入仍保留，按钮放置在 ⚙ 设置面板未来版本；此处仅保留 fileImport change 监听）
 $("fileImport").addEventListener("change", function () {
   var f = this.files && this.files[0];
   this.value = "";
@@ -1877,6 +1956,7 @@ $("fileImport").addEventListener("change", function () {
 });
 
 /* ---------- 启动：并入离线缓存（只读副本）；已配置 Token 则自动从仓库刷新目录 ---------- */
+rebuildMeta(); // 依 catalog 生成画廊展示列表（applyCache 无缓存时会提前 return，故此处统一重建一次）
 applyCache();
 rebuildRouteList();
 // 不预载/默认渲染任何内置路线：首屏为主页画廊，点卡片时才按需加载 routes/*.js（见 switchRoute 懒加载分支）
@@ -1932,15 +2012,16 @@ $("homeMask").addEventListener("click", function (ev) {
   if (!card) return;
   var id = card.getAttribute("data-route");
   hideHome();
-  switchRoute(id);
+  enterRoute(id);
 });
-$("homeFab").addEventListener("click", showHome);
-$("homeNew").addEventListener("click", function () { hideHome(); openNewEditor(); });
-$("homeDupCx").addEventListener("click", function () { hideHome(); copyRoute("cx"); });
-$("homeDupYl").addEventListener("click", function () { hideHome(); copyRoute("yl"); });
+$("homeFab").addEventListener("click", function () { exitToHome(); });
+$("homeNew").addEventListener("click", function () { hideHome(); enterNewRoute(); });
+$("homeRefresh").addEventListener("click", function () { doRefresh(); });
 $("homeSettings").addEventListener("click", function () { hideHome(); openSettings(); });
-// 初始进入：展示主页画廊
+// 初始进入：展示主页画廊 + 侧栏显示"未选择路线"
 showHome();
+renderRouteHeader();
+renderWpList();
 
 // 已配置 Token：启动后自动从仓库刷新目录（仓库是唯一真源），刷新完重绘主页
 ghInit().then(function (r) {
