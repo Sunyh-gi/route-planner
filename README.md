@@ -73,7 +73,7 @@ routes/
 - **🏠 主页画廊**：打开平台先看到一张全屏主页，列出全部路线卡片；每张卡显示路线名 / 天数 / 点数 / 各天配色，无任何「内置」徽章。顶部三件套：＋ 新建路线 / ⚙ 设置 / 🔄 刷新
 - **路线界面**：进入后侧栏即编辑器——顶部当前路线名（点击可改名）+ 搜索栏（地名 / GPS）+ 第N天按钮（− / ＋）+ 「＋ 第N天」加站按钮 + 各天分组与地点详情 + 底部「保存」按钮（dirty 时高亮）。行内操作：✎ 改名、↑↓ 同天前移 / 后移、◀▶ 前一天 / 后一天、✕ 删除；整行可拖拽换位 / 换天（拖到某行上下半 = 插其前后并跟随该天，拖到「第 N 天」标题 = 移到该天末尾）
 - **⋯ 头部菜单**：📋 复制为新路线 / 🗑️ 删除路线（删除需二次确认并消耗一次仓库写入）/ ⌂ 回到主页
-- **加站方式**：输入地名（内置地点库 + 高德 Web 服务全国搜索）或直接粘贴 GPS 坐标（自动识别「纬度,经度 / 经度,纬度」两种顺序）
+- **加站方式（v6.1：地图旁液态玻璃卡片）**：搜索（地名 / GPS）结果行点击，或直接点地图空白 → 在该坐标放青色「＋」预览 marker，地图上该 marker **右侧**弹出液态玻璃半透明卡片「添加到第几天？」；卡片列出 1..maxDay+1 的 day chips（当前 stepper 选的天高亮），点某 chip 即把该点加入对应天；GPS 坐标与点击已有路线 marker 旁的预览点同理。卡片底部「点地图可换位置」可重新点击地图换坐标；「取消」移除预览点不加入
 - **按天编排**：每个地点归属具体某一天，地点按天自动排序，段路径颜色取自全局 30 色高对比色彩库 `DAY_PALETTE`（专为卫星底图优化）
 - **路径规划**：相邻地点通过 OSRM 公共接口浏览器端自动补全驾车路径（2 路并发、按坐标 key 缓存），失败时保留虚线占位；编辑时改了地点会触发对应段路径刷新
 - **数据持久化**：localStorage 仅保存设置（`route-platform:v1` 的 `amapKey`/`gh`）与离线快照缓存（`route-platform:v1:cache`，只在弱网 / 离线时做兜底，**不是真源**）；真源始终在 GitHub 仓库
@@ -142,13 +142,13 @@ routes/
 - `_smoke.js`：双阶段冒烟（puppeteer-core + 系统 Edge，`file://` 直开场景）
   - **阶段 A**（12 项，无 Token 只读）：主页画廊两张卡无徽章 / 目录已注册 / 主页三件套（新建 / 设置 / 刷新） / 懒加载 cx 11 点 / 侧栏有保存/搜索、无旧 rs-tools / 本地搜索 + 第N天按钮文案 / 加站 12 点 / 两天 / dirty / 菜单三件套（复制 / 删除 / 主页） / 无 Token 保存拦截 / 无 Token 删除拦截 / 回到主页侧栏重置
   - **阶段 B**（11 项，mock fetch api.github.com）：注入仓库配置 / 保存 PUT 路线文件 + catalog / 侧栏 dirty 清 / 改名带 sha 覆盖 / DELETE + 推目录回 cx,yl / 复制预填 dirty=true / 远端刷新拉取新路线 / 旧路线迁移入库 + 清空本地 / 主页 4 卡 + 截屏
-  - 全部断言：**23 / 23 通过**，控制台 0 报错
+  - 全部断言：**24 / 24 通过**，控制台 0 报错
   - 阶段 B 在浏览器内拦截 `api.github.com` 与 OSRM/高德外呼，**完全不接触真实网络**，可重复回归
   - 阶段 A 也对 OSRM/高德做了 `Promise.reject` 短路，避免沙箱环境真实网络挂起拖垮 headless 渲染进程
 
 ## 技术要点
 
-- 30 色 `DAY_PALETTE` 为全局唯一色彩真源（600/700 宝石色，卫星底图清晰不刺眼）；图钉/序号文字按底色亮度自适应（`fgOn`/`darkOnLight`）
+- 30 色 `DAY_PALETTE` 为全局唯一色彩真源：**色轮柔和蓝 (h=214°) → 柔和紫 (h=286°) 连贯平滑过渡**，饱和 S≈0.48、明度 L 沿正弦在 0.56–0.63 之间起伏，两端略深中段略浅，玻璃底色上既清晰不刺眼又具备 30 色渐变层次；图钉/序号文字按底色亮度自适应（`fgOn`/`darkOnLight`）
 - HTML 为壳（~110 KB），内置路线数据全部外置到 `routes/*.js`；点击卡片经 `loadRouteData()` 动态 `<script>` 注入加载（file:// 与 http 双通）
 - 川西历史坐标采集自 GCJ-02 图源，已在生成 `routes/cx.js` 时预转 WGS-84；伊犁 / OSM / OSRM 原生 WGS-84
 - 通用路线数据模型：`{id, name, stops:[{name,lat,lng,day,tag}], segs:{segKey:{d,m,poly[,p]}}, preset?}`；`p: foot/cycling` 段画虚线并换 🚶/🚲 图标
@@ -157,5 +157,6 @@ routes/
 - v6 顶部 ⋯ 菜单：复制 / 删除 / 主页三个动作；复制与删除仅当 `activeRouteId` 非空时启用
 - v6 行内改名输入 → 恢复 span 时必须重建 `<span id="routeName" class="nm">` 再 `inp.replaceWith(span)` 再 `renderRouteHeader()`；否则 `renderRouteHeader()` 找不到被顶替的原 span，抛空指针并导致路线名永久丢失
 - v6 修复（由 `_smoke.js` 阶段 A 暴露）：v5 遗留的 `routeSwitch.appendChild` 块在 v6 DOM 下抛 `Cannot read properties of null` 且中断同一 script 后续 top-level 执行（飞往点击委托根本没绑上）。修法：删掉整段 rs-btn 生成代码，启动时显式 `rebuildMeta()` 让画廊正常出卡
+- v6.1 地图旁液态玻璃加站卡片：搜索 / GPS / 点图均统一走 `openDayCard()`（半透明青色「＋」预览 marker + Leaflet popup 内嵌液态玻璃 `.day-card`，含 1..maxDay+1 day chips）；预览点 divIcon 自定义 `popupAnchor: [28, -20]` 让 popup tip 朝向 marker 右侧中段，卡片自然落在点的右边；`.map-dark` 切换暗玻璃变体（卫星 / NatGeo 等深色底图），由 `baselayerchange` 同步 toggle `#map.map-dark` 与 `.info-panel.sat-active`
 - 编辑器保存 / 删除均通过统一的 `saveRouteToRepo` / `doDeleteRoute` 函数；中途抛错会被 catch 并 toast 失败原因，编辑器保持打开便于排查
 - v5 修复（由 `_smoke.js` 阶段 B 暴露）：`rebuildRouteList` 在带预设（颜色 / 标签）的路线上原先调用 `btn.insertBefore(pdot, nm)` 时 `nm` 还未插入 `btn`，会触发 `The node before which the new node is to be inserted is not a child of this node`，导致保存后侧栏列表构建失败、回退显示「保存失败」。修复方式：先 `btn.appendChild(nm)` 再 `btn.insertBefore(pdot, nm)`。
