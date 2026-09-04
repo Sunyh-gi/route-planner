@@ -599,15 +599,8 @@ var DAY_PALETTE = [
   "#c65c65", // 29
   "#c55959"  // 30  柔红
 ];
-// FNV-1a 哈希 → mulberry32 PRNG → Fisher-Yates 洗牌
+// FNV-1a 哈希
 function _fnv1a(s) { var h = 2166136261 >>> 0; for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h >>> 0; }
-function _shuffledIndices(seedStr) {
-  var h = _fnv1a(String(seedStr || "_default"));
-  function rng() { h = (h + 0x6D2B79F5) | 0; var t = h; t = Math.imul(t ^ (t >>> 15), 1 | t); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
-  var arr = new Array(DAY_PALETTE.length); for (var i = 0; i < arr.length; i++) arr[i] = i;
-  for (var i = arr.length - 1; i > 0; i--) { var j = Math.floor(rng() * (i + 1)); var t = arr[i]; arr[i] = arr[j]; arr[j] = t; }
-  return arr;
-}
 var _dayShuffleCache = {};
 // FNV-1a 哈希 → 「间隔步长」洗牌（v6.4）
 // 选与 30 互质且 ≥ ⌈30/N⌉ 的最小步长（gcd=1 保证 mod 30 是置换、相邻索引差最大）
