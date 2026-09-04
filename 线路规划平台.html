@@ -236,16 +236,13 @@ input[type="file"] { display: none; }
   position: relative; overflow: hidden;
 }
 .home-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(30,50,90,0.16); }
-.home-card .band { position: absolute; top: 0; left: 0; right: 0; height: 4px; }
-.home-card .nm { font-size: 15px; font-weight: 700; color: #223; margin: 6px 0 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home-card .meta { font-size: 11.5px; color: #8a95a8; margin-bottom: 8px; }
+.home-card .nm { font-size: 15px; font-weight: 700; color: #223; margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-card .meta { font-size: 12px; color: #6f7a8d; margin: 0; font-weight: 500; }
 .home-card .badge {
   display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 999px;
   background: rgba(80,85,95,0.10); color: #555; font-weight: 600; margin-right: 6px;
 }
 .home-card .badge.cloud { background: rgba(80,140,120,0.12); color: #3c7a62; }
-.home-card .days { display: flex; gap: 3px; margin-top: 6px; }
-.home-card .days i { width: 9px; height: 9px; border-radius: 3px; display: inline-block; }
 .home-empty { text-align: center; color: #8a95a8; font-size: 13px; padding: 40px 0; }
 .home-foot { margin-top: 26px; font-size: 11px; color: #9aa4b5; text-align: center; line-height: 1.7; }
 /* 回到主页悬浮钮 */
@@ -2261,20 +2258,17 @@ applyEditMode(); // v6.4：初始按 edCtx.editMode=false（视图模式）设�
 
 /* ========== 主页（路线库画廊） ========== */
 function routeCardMeta(id) {
-  // 所有路线同一来源：目录登记；优先取已加载数据算实际天数/点数，未加载用目录元信息（卡片先展示，点开才拉数据）
+  // 所有路线同一来源：目录登记；优先取已加载数据算实际天数，未加载用目录元信息（卡片先展示，点开才拉数据）
   var cat = catGet(id);
   if (!cat) return null;
   var pk = ROUTE_PACKS[id];
-  var days = cat.days || 1, n = cat.n || 0;
+  var days = cat.days || 1;
   if (pk && pk.stops && pk.stops.length) {
-    n = pk.stops.length;
     var mx = 1;
     pk.stops.forEach(function (s) { if ((s.day || 1) > mx) mx = s.day; });
     days = mx;
   }
-  var p = (pk && presetValid(pk.preset)) ? pk.preset : null;
-  var color = (p && typeof p.c === "number" && p.c >= 0 && p.c < DAY_PALETTE.length) ? DAY_PALETTE[p.c] : (cat.color || DAY_PALETTE[0]);
-  return { name: cat.name, days: days, n: n, color: color, tag: (p && p.tag) ? String(p.tag) : "" };
+  return { name: cat.name, days: days };
 }
 function renderHome() {
   var grid = $("homeGrid");
@@ -2283,14 +2277,11 @@ function renderHome() {
     if (String(m.id).indexOf("__pv") >= 0) return; // 预览占位不展示
     var meta = routeCardMeta(m.id);
     if (!meta) return;
-    var dots = "";
-    var nDays = Math.min(meta.days, 12);
-    for (var d = 0; d < nDays; d++) dots += '<i style="background:' + dayColor(d + 1, m.id) + ';"></i>';
+    // 行程时长：X 天 X 晚（中文行程标准写法，nights = days - 1）
+    var nights = Math.max(0, meta.days - 1);
     html += '<div class="home-card" data-route="' + m.id + '">' +
-      '<div class="band" style="background:' + meta.color + ';"></div>' +
-      '<div class="nm">' + (meta.tag ? '<span class="ptag">' + esc(meta.tag) + "</span>" : "") + esc(meta.name) + "</div>" +
-      '<div class="meta">' + meta.days + " 天 · " + meta.n + " 个地点</div>" +
-      (dots ? '<div class="days">' + dots + "</div>" : "") +
+      '<div class="nm">' + esc(meta.name) + "</div>" +
+      '<div class="meta">' + meta.days + " 天 " + nights + " 晚</div>" +
       "</div>";
   });
   if (!html) html = '<div class="home-empty">暂无可进入的路线。点上方「＋ 新建路线」创建，保存后写入 GitHub 仓库。</div>';
