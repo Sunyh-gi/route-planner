@@ -1,6 +1,6 @@
 /* ============================================================
- * 冒烟测试：线路规划平台 v6（侧栏内联编辑器，无弹窗；新建/设置/刷新全部在首页）
- * 阶段 A：无 Token 只读回归
+ * 冒烟测试：线路规划平台 v6.4（视图/编辑模式 + 新菜单 + 调色板种子洗牌）
+ * 阶段 A：无 Token 只读回归（默认视图模式；点 ⋯ → 编辑路线进入编辑模式后验证搜索/卡片/加站）
  * 阶段 B：mock fetch 模拟 GitHub 仓库写入
  * 用法：node _smoke.js
  * ============================================================ */
@@ -18,7 +18,6 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
-  // 页面原生 confirm()（如 dirty 状态回主页）统一接受，避免对话框阻塞/干扰后续 evaluate
   page.on("dialog", d => d.accept().catch(() => {}));
   const errors = [];
   page.on("pageerror", e => errors.push("PAGEERROR: " + e.message));
@@ -33,8 +32,6 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   await page.goto(URL, { waitUntil: "load", timeout: 60000 });
   await wait(2500);
   await ev(() => { window.__uh = []; window.addEventListener("unhandledrejection", e => window.__uh.push(String((e.reason && e.reason.message) || e.reason))); });
-  // 阶段 A 也 stub OSRM/高德网络（本阶段仅做只读 UI 回归）：让加站/渲染触发的路径规划请求立即失败，
-  // 避免真实网络挂起拖垮 headless 渲染进程（曾导致 tab 崩溃 / detached frame）
   await ev(() => {
     if (window.__osrmStubbed) return;
     const origFetch = window.fetch.bind(window);
@@ -64,20 +61,50 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   ok(home.routeName === "未选择路线", "侧栏路线名=未选择路线");
   ok(home.tools.length === 3 && /新建路线/.test(home.tools[0]) && /设置/.test(home.tools[1]) && /刷新/.test(home.tools[2]), "首页工具 3 件套 → " + home.tools.join("|"));
 
-  // A2. 点川西卡 → 侧栏载入并显示路线名 + wpList 11 点
+  // A2. 点川西卡 → 进入视图模式（默认隐藏搜索/保存/编辑按钮）
   await ev(() => document.querySelector('.home-card[data-route="cx"]').click());
   await page.waitForFunction(() => document.querySelectorAll("#wpList .wp-item").length === 11, { timeout: 10000 }).catch(() => {});
   const cx = await ev(() => ({
     name: document.getElementById("routeName").textContent,
     wp: document.querySelectorAll("#wpList .wp-item").length,
     stops: ROUTE_PACKS.cx ? ROUTE_PACKS.cx.stops.length : -1,
-    hasSave: !!document.getElementById("saveBtn"),
+    hasSaveBtn: !!document.getElementById("saveBtn"),
+    hasSearch: !!document.getElementById("edSearch"),
+    hasSearchGo: !!document.getElementById("edSearchBtn"),
     dirty: document.querySelector(".save-row").classList.contains("dirty"),
-    searchVisible: document.getElementById("edSearch") !== null,
+    editing: document.querySelector(".info-panel").classList.contains("editing"),
+    editPillHidden: document.getElementById("editPill").hidden,
+    searchRowVisible: getComputedStyle(document.querySelector(".route-edit-row")).display !== "none",
+    saveRowVisible: getComputedStyle(document.querySelector(".save-row")).display !== "none",
+    opsButtons: document.querySelectorAll("#wpList .wp-item .ops button").length,
+    draggables: [...document.querySelectorAll('#wpList .wp-item')].filter(e => e.getAttribute("draggable") === "true").length,
+    noDayStepper: !document.querySelector(".day-stepper"),
     noTools: document.querySelectorAll(".rs-tools").length === 0
   }));
   ok(cx.name === "川西路线" && cx.wp === 11 && cx.stops === 11, "点川西卡 → 侧栏 11 点 -> " + JSON.stringify(cx));
-  ok(cx.hasSave && !cx.dirty && cx.searchVisible && cx.noTools, "侧栏有保存/搜索、无旧 rs-tools -> " + JSON.stringify(cx));
+  ok(cx.hasSaveBtn && cx.hasSearch && cx.hasSearchGo && !cx.dirty && !cx.editing && cx.editPillHidden && !cx.searchRowVisible && !cx.saveRowVisible && cx.opsButtons === 0 && cx.draggables === 0 && cx.noDayStepper && cx.noTools, "默认视图模式：隐藏搜索/保存/编辑按钮/拖拽、无 day-stepper -> " + JSON.stringify(cx));
+
+  // A2.5. 点 ⋯ → 编辑路线 → 进入编辑模式（搜索行/保存行/编辑按钮/拖拽全部恢复）
+  await ev(() => document.getElementById("routeMenuBtn").click());
+  await wait(150);
+  const m1 = await ev(() => ({
+    open: document.getElementById("routeMenuPop").classList.contains("open"),
+    items: [...document.querySelectorAll("#routeMenuPop button")].map(b => b.textContent.trim()),
+    editTxt: document.getElementById("routeMenuEdit").textContent.trim(),
+    delVisible: getComputedStyle(document.getElementById("routeMenuDel")).display !== "none"
+  }));
+  ok(m1.open && m1.items.length === 3 && m1.items.join("|") === "编辑路线|删除路线|回到主页" && !/[\u{1F000}-\u{1FFFF}]/u.test(m1.items.join("")) && m1.editTxt === "编辑路线" && m1.delVisible, "菜单弹层含 编辑路线/删除路线/回到主页 无图标 -> " + JSON.stringify(m1));
+  await ev(() => document.getElementById("routeMenuEdit").click());
+  await wait(200);
+  const ed = await ev(() => ({
+    editing: document.querySelector(".info-panel").classList.contains("editing"),
+    editPillHidden: document.getElementById("editPill").hidden,
+    searchRowVisible: getComputedStyle(document.querySelector(".route-edit-row")).display !== "none",
+    saveRowVisible: getComputedStyle(document.querySelector(".save-row")).display !== "none",
+    opsButtons: document.querySelectorAll("#wpList .wp-item .ops button").length,
+    draggables: [...document.querySelectorAll('#wpList .wp-item')].filter(e => e.getAttribute("draggable") === "true").length
+  }));
+  ok(ed.editing && !ed.editPillHidden && ed.searchRowVisible && ed.saveRowVisible && ed.opsButtons === 66 && ed.draggables === 11, "点 编辑路线 → 编辑模式：搜索/保存/6×11=66 ops/11 draggable -> " + JSON.stringify(ed));
 
   // A3. 搜索 → 地图预览 + 液态玻璃卡片选天加入（v6：结果行内无加站按钮，改为地图旁卡片）
   await ev(() => { setDayNum(2); });
@@ -86,11 +113,10 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   await wait(400);
   const res0 = await ev(() => ({
     results: document.querySelectorAll("#edResults .res-item").length,
-    hasBtn: document.querySelectorAll("#edResults button").length, // 行内不应再有加站按钮
+    hasBtn: document.querySelectorAll("#edResults button").length,
     addTxt: document.querySelector("#edResults .res-add") ? document.querySelector("#edResults .res-add").textContent : ""
   }));
   ok(res0.results >= 1 && res0.hasBtn === 0 && /预览/.test(res0.addTxt), "搜索命中且行内无加站按钮(仅预览) -> " + JSON.stringify(res0));
-  // 点结果行 → 地图上预览点（＋青色 marker）+ 点右侧玻璃卡片（第2天高亮，因 stepper=2）
   await ev(() => document.querySelector("#edResults .res-item").click());
   await wait(700);
   const card = await ev(() => ({
@@ -101,7 +127,6 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     chips: document.querySelectorAll(".daypop-inner .dc-day").length
   }));
   ok(card.pop && /新都桥/.test(card.title) && card.cur2 && card.pv && card.chips >= 2, "预览点+玻璃卡片(第2天高亮) -> " + JSON.stringify(card));
-  // 点卡片「第 2 天」chip → 加入
   await ev(() => { var b = document.querySelector('.daypop-inner .dc-day[data-day="2"]'); if (b) b.click(); });
   await wait(400);
   const after = await ev(() => ({
@@ -110,24 +135,40 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     dirty: document.querySelector(".save-row").classList.contains("dirty"),
     lastStopName: edCtx.work.stops[edCtx.work.stops.length - 1].name,
     lastDay: edCtx.work.stops[edCtx.work.stops.length - 1].day,
-    popGone: !document.querySelector(".map-daypop")
+    popGone: !document.querySelector(".map-daypop"),
+    // 关键：相邻天的颜色必须不同（按 routeId 种子洗牌后相邻日对比鲜明）
+    colorDay1: getComputedStyle(document.querySelector('.wp-item[data-day-key]') || document.querySelector('.wp-item')).color || "",
+    day1Color: (function(){ var s = edCtx.work.stops[0]; return dayColor(s.day, edCtx.work.id); })(),
+    day2Color: (function(){ var s = edCtx.work.stops.find(function(x){return x.day===2;}); return dayColor(s.day, edCtx.work.id); })()
   }));
   ok(after.wp === 12 && after.days.join(",") === "1,2" && after.dirty && after.lastDay === 2 && after.popGone, "卡片点第2天 → 12点/两天/dirty/卡片关闭 -> " + JSON.stringify(after));
+  ok(after.day1Color !== after.day2Color, "调色板：相邻天颜色显著不同（按 routeId 种子洗牌）-> day1=" + after.day1Color + " day2=" + after.day2Color);
 
-  // A4. 菜单按钮（⋯）能展开 复制 / 删除 / 回主页
+  // A4. 菜单再展开一次：现在应显示「完成编辑」(因为在编辑模式)
   await ev(() => document.getElementById("routeMenuBtn").click());
   await wait(150);
-  const menu = await ev(() => ({
-    open: document.getElementById("routeMenuPop").classList.contains("open"),
-    items: [...document.querySelectorAll("#routeMenuPop button")].map(b => b.textContent.trim()),
-    copyVisible: getComputedStyle(document.getElementById("routeMenuCopy")).display !== "none",
-    delVisible: getComputedStyle(document.getElementById("routeMenuDel")).display !== "none"
-  }));
-  ok(menu.open && menu.items.length === 3 && menu.copyVisible && menu.delVisible, "菜单弹层含 复制/删除/主页 -> " + JSON.stringify(menu));
-  await ev(() => document.getElementById("routeMenuBtn").click()); // 关
+  const m2 = await ev(() => ({ editTxt: document.getElementById("routeMenuEdit").textContent.trim(), open: document.getElementById("routeMenuPop").classList.contains("open") }));
+  ok(m2.open && m2.editTxt === "完成编辑", "编辑模式下菜单第一项文案=完成编辑 -> " + JSON.stringify(m2));
+  // 关闭菜单
+  await ev(() => document.getElementById("routeMenuBtn").click());
   await wait(100);
 
-  // A5. 无 Token 保存：点击 #saveBtn → 拦截 + 引导设置
+  // A5. 查看模式 → 切回视图模式 → 搜索行/保存行/编辑按钮再次隐藏；再切回编辑模式以保存
+  await ev(() => document.getElementById("routeMenuBtn").click());
+  await wait(120);
+  await ev(() => document.getElementById("routeMenuEdit").click());
+  await wait(200);
+  const back = await ev(() => ({ editing: document.querySelector(".info-panel").classList.contains("editing"), saveRowVisible: getComputedStyle(document.querySelector(".save-row")).display !== "none" }));
+  ok(!back.editing && !back.saveRowVisible, "完成编辑 → 视图模式：editing=false saveRow hidden -> " + JSON.stringify(back));
+  // 再进编辑模式准备做保存拦截测试
+  await ev(() => document.getElementById("routeMenuBtn").click());
+  await wait(120);
+  await ev(() => document.getElementById("routeMenuEdit").click());
+  await wait(200);
+
+  // A6. 无 Token 保存：点击 #saveBtn（已为液态玻璃 + 仅「保存」文本）→ 拦截 + 引导设置
+  const saveText = await ev(() => document.getElementById("saveBtn").textContent.trim());
+  ok(saveText === "保存", "保存按钮仅「保存」二字 -> '" + saveText + "'");
   await ev(() => document.getElementById("saveBtn").click());
   await wait(300);
   const blk = await ev(() => ({
@@ -142,7 +183,7 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   await ev(() => document.getElementById("settingsClose").click());
   await wait(150);
 
-  // A6. 无 Token 删除：菜单 → 🗑️ → 二次点击 → 拦截
+  // A7. 无 Token 删除：菜单 → 删除路线 → 二次确认 → 拦截
   await ev(() => { document.getElementById("routeMenuBtn").click(); });
   await wait(120);
   await ev(() => { deleteRouteAsk("cx"); deleteRouteAsk("cx"); });
@@ -154,18 +195,17 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   }));
   ok(/Token/.test(delBlk.toast) && delBlk.catN === 2 && delBlk.hasCx, "无 Token 删除被拦截、目录不变 -> " + JSON.stringify(delBlk));
 
-  // A7. 回到主页：菜单 → 回到主页（菜单项与绑定已由 A4/[9] 覆盖；此处直接触发 exitToHome，
-  //     与点击 routeMenuHome 语义等价，避开 headless 对隐藏按钮点击 + confirm 的偶发 tab 崩溃）
+  // A8. 回到主页
   await ev(() => { document.getElementById("routeMenuBtn").click(); });
   await wait(120);
   await ev(() => exitToHome());
   await wait(200);
-  const back = await ev(() => ({
+  const back2 = await ev(() => ({
     homeShown: getComputedStyle(document.getElementById("homeMask")).display !== "none",
     name: document.getElementById("routeName").textContent,
     wpHint: document.querySelectorAll("#wpList .ed-hint").length > 0
   }));
-  ok(back.homeShown && back.name === "未选择路线" && back.wpHint, "回到主页：homeMask 显示 + 侧栏重置为未选 -> " + JSON.stringify(back));
+  ok(back2.homeShown && back2.name === "未选择路线" && back2.wpHint, "回到主页：homeMask 显示 + 侧栏重置为未选 -> " + JSON.stringify(back2));
 
   /* ================= 阶段 B：mock fetch 仓库写入 ================= */
   console.log("\n== 阶段 B：mock fetch 仓库写入（零真实网络）==");
@@ -175,7 +215,7 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     window.__ghLog = [];
     window.__ghFiles = {};
     window.__ghSeed = function (p, text) { window.__ghFiles[p] = { text: text, sha: "s" + Object.keys(window.__ghFiles).length }; };
-    window.__ghSeed("routes/catalog.js", catalogFileText()); // 远端初始目录 = 当前(川西+伊犁)
+    window.__ghSeed("routes/catalog.js", catalogFileText());
     const orig = window.fetch.bind(window);
     window.fetch = function (url, opt) {
       const u = String(url); opt = opt || {};
@@ -210,9 +250,11 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     return { en: ghEnabled(), tok: ghNeedToken() };
   }).then(r => { ok(r.en && r.tok, "注入仓库配置 + Token"); });
 
-  // B2. 新建路线 → 搜索加 2 站 → #saveBtn → PUT 路线文件 + catalog
+  // B2. 新建路线（自动编辑模式）→ 搜索加 2 站 → #saveBtn → PUT 路线文件 + catalog
   await ev(() => enterNewRoute());
   await wait(200);
+  const editAfterNew = await ev(() => ({ editing: document.querySelector(".info-panel").classList.contains("editing"), saveVisible: getComputedStyle(document.querySelector(".save-row")).display !== "none" }));
+  ok(editAfterNew.editing && editAfterNew.saveVisible, "新建路线直接进入编辑模式——搜索/保存可见 -> " + JSON.stringify(editAfterNew));
   await ev(() => {
     setDayNum(1); addStop("云端起点", 30.0, 102.0);
     setDayNum(2); addStop("云端终点", 30.2, 102.2);
@@ -230,7 +272,6 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     let rJson = null;
     if (rPut) {
       const t = rPut.text;
-      // 新格式：window.ROUTE_PACKS["<id>"]={JSON};})();  → 定位 '"]=' 与结尾 ';})();'
       const a = t.indexOf('"]=');
       const b = t.indexOf(";})();");
       try { if (a >= 0 && b > a) rJson = JSON.parse(t.slice(a + 3, b)); } catch (e) {}
@@ -259,6 +300,13 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   const id = b2.id;
   await ev((rid) => { enterRoute(rid); }, id);
   await page.waitForFunction((rid) => document.querySelectorAll("#wpList .wp-item").length === 2 && (ROUTE_CATALOG || []).some(c => c.id === rid), { timeout: 8000 }, id).catch(() => {});
+  await wait(200);
+  const viewAfterEnter = await ev(() => ({ editing: document.querySelector(".info-panel").classList.contains("editing"), saveVisible: getComputedStyle(document.querySelector(".save-row")).display !== "none" }));
+  ok(!viewAfterEnter.editing && !viewAfterEnter.saveVisible, "enterRoute 入视图模式 → 搜索/保存隐藏 -> " + JSON.stringify(viewAfterEnter));
+  // 切到编辑模式后改 + 保存
+  await ev(() => { document.getElementById("routeMenuBtn").click(); });
+  await wait(120);
+  await ev(() => document.getElementById("routeMenuEdit").click());
   await wait(200);
   await ev(() => {
     var sp = document.getElementById("routeName");
@@ -290,7 +338,7 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   ok(b3.hadSha, "编辑保存带 sha 覆盖（先读后写）");
   ok(b3.catTxt.indexOf("云端测试线·改") >= 0 && b3.catTxt.indexOf('"name":"云端测试线"') < 0 && b3.name === "云端测试线·改" && b3.pkName === "云端测试线·改" && b3.nm === "云端测试线·改", "改名后目录/数据/侧栏均同步、无重复条目 -> " + JSON.stringify(b3));
 
-  // B4. 删除：菜单 → 🗑️ → 二次确认 → DELETE + catalog 更新
+  // B4. 删除：菜单 → 删除路线 → 二次确认 → DELETE + catalog 更新
   await ev(() => { document.getElementById("routeMenuBtn").click(); });
   await wait(120);
   await ev((rid) => { document.getElementById("routeMenuDel").click(); deleteRouteAsk(rid); }, id);
@@ -303,24 +351,22 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   }, id);
   ok(b4.delMsg === "route: delete 云端测试线·改" && b4.fileGone && b4.cat === "cx,yl" && !b4.hasPk && /已删除/.test(b4.toast), "删除后仓库文件移除、目录回 2 条 -> " + b4.cat);
 
-  // B5. 复制：菜单 → 复制为新路线（侧栏 inline 编辑器预填副本）
+  // B5. 复制：v6.4 菜单不再含「复制」，直接调 inlineCopyRoute 验证函数本身仍可用
   await ev(() => enterRoute("yl"));
   await page.waitForFunction(() => (ROUTE_PACKS.yl && document.querySelectorAll("#wpList .wp-item").length === 21), { timeout: 8000 }).catch(() => {});
   await wait(300);
-  // 覆盖 prompt 走"确定"分支
-  await ev(() => { window.prompt = function () { return "伊犁副本"; }; document.getElementById("routeMenuBtn").click(); });
-  await wait(120);
-  await ev(() => document.getElementById("routeMenuCopy").click());
+  await ev(() => { window.prompt = function () { return "伊犁副本"; }; inlineCopyRoute(); });
   await wait(400);
   const b5 = await ev(() => ({
     name: document.getElementById("routeName").textContent,
     wp: document.querySelectorAll("#wpList .wp-item").length,
     dirty: document.querySelector(".save-row").classList.contains("dirty"),
-    activeId: activeRouteId
+    activeId: activeRouteId,
+    editing: document.querySelector(".info-panel").classList.contains("editing")
   }));
-  ok(b5.name === "伊犁副本" && b5.wp === 21 && b5.dirty && b5.activeId === null, "📋 复制伊犁预填 21 点到内联编辑器（未入库） -> " + JSON.stringify(b5));
+  ok(b5.name === "伊犁副本" && b5.wp === 21 && b5.dirty && b5.activeId === null && b5.editing, "复制伊犁预填 21 点到内联编辑器（编辑模式开） -> " + JSON.stringify(b5));
 
-  // B6. 远端刷新：模拟远端 catalog 多一条未随站点发布的路线
+  // B6. 远端刷新
   await ev(() => {
     window.__ghSeed("routes/rem.js", routeFileText({ id: "rem", name: "远端拉取线", stops: [{ name: "远程A", lat: 31.0, lng: 103.0, day: 1, tag: "" }], segs: {} }));
     const cur = ROUTE_CATALOG.map(function (c) { return { id: c.id, name: c.name, file: c.file, days: c.days, n: c.n, color: c.color }; });
@@ -333,7 +379,7 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   const b6 = await ev(() => ({ cat: ROUTE_CATALOG.map(c => c.id).join(","), remStops: ROUTE_PACKS.rem ? ROUTE_PACKS.rem.stops.length : -1, toast: document.getElementById("toast").textContent }));
   ok(b6.cat.indexOf("rem") >= 0 && b6.remStops === 1 && /刷新完成/.test(b6.toast), "远端刷新拉取新路线 rem -> " + JSON.stringify(b6));
 
-  // B7. 迁移旧路线：localStorage 遗留 -> 逐条 PUT + catalog 更新 + 清空旧库
+  // B7. 迁移旧路线
   await ev(() => {
     store.routes = [{ id: "legacy-smoke", name: "旧版遗留线", stops: [{ name: "旧点A", lat: 30.1, lng: 102.1, day: 1, tag: "" }, { name: "旧点B", lat: 30.2, lng: 102.2, day: 2, tag: "" }], segs: {}, preset: { c: 2, tag: "旧" } }];
     saveStore();
@@ -349,7 +395,7 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   });
   ok(b7.lMsg === "route: migrate 旧版遗留线" && b7.catHasLegacy && b7.catN === 4 && b7.legacyN === 0 && /迁移完成/.test(b7.toast), "旧路线迁移入库并清空本地 -> cat=" + b7.catN);
 
-  // B8. 主页画廊 4 卡（含 新路线/标签/旧版遗留），截屏
+  // B8. 主页画廊 4 卡
   await ev(() => exitToHome());
   await wait(400);
   const cards = await ev(() => [...document.querySelectorAll(".home-card")].map(c => c.querySelector(".nm").textContent.trim()));
