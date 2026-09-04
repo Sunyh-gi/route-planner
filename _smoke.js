@@ -79,26 +79,40 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   ok(cx.name === "川西路线" && cx.wp === 11 && cx.stops === 11, "点川西卡 → 侧栏 11 点 -> " + JSON.stringify(cx));
   ok(cx.hasSave && !cx.dirty && cx.searchVisible && cx.noTools, "侧栏有保存/搜索、无旧 rs-tools -> " + JSON.stringify(cx));
 
-  // A3. 搜索 + 加站（验证侧栏搜索 / 第N天按钮 / dirty 标记）
+  // A3. 搜索 → 地图预览 + 液态玻璃卡片选天加入（v6：结果行内无加站按钮，改为地图旁卡片）
   await ev(() => { setDayNum(2); });
   await page.type("#edSearch", "新都桥");
   await ev(() => doSearch());
   await wait(400);
   const res0 = await ev(() => ({
     results: document.querySelectorAll("#edResults .res-item").length,
+    hasBtn: document.querySelectorAll("#edResults button").length, // 行内不应再有加站按钮
     addTxt: document.querySelector("#edResults .res-add") ? document.querySelector("#edResults .res-add").textContent : ""
   }));
-  ok(res0.results >= 1 && /第2天/.test(res0.addTxt), "本地搜索命中 + 文案\"第2天\" -> " + JSON.stringify(res0));
-  await ev(() => document.querySelector("#edResults .res-add").click());
-  await wait(300);
+  ok(res0.results >= 1 && res0.hasBtn === 0 && /预览/.test(res0.addTxt), "搜索命中且行内无加站按钮(仅预览) -> " + JSON.stringify(res0));
+  // 点结果行 → 地图上预览点（＋青色 marker）+ 点右侧玻璃卡片（第2天高亮，因 stepper=2）
+  await ev(() => document.querySelector("#edResults .res-item").click());
+  await wait(700);
+  const card = await ev(() => ({
+    pop: !!document.querySelector(".map-daypop .day-card"),
+    title: document.querySelector(".daypop-inner .dc-title") ? document.querySelector(".daypop-inner .dc-title").textContent : "",
+    cur2: (document.querySelector('.daypop-inner .dc-day[data-day="2"]') || {}).classList ? document.querySelector('.daypop-inner .dc-day[data-day="2"]').classList.contains("cur") : false,
+    pv: [...document.querySelectorAll(".wp-marker svg text")].some(t => t.textContent === "＋"),
+    chips: document.querySelectorAll(".daypop-inner .dc-day").length
+  }));
+  ok(card.pop && /新都桥/.test(card.title) && card.cur2 && card.pv && card.chips >= 2, "预览点+玻璃卡片(第2天高亮) -> " + JSON.stringify(card));
+  // 点卡片「第 2 天」chip → 加入
+  await ev(() => { var b = document.querySelector('.daypop-inner .dc-day[data-day="2"]'); if (b) b.click(); });
+  await wait(400);
   const after = await ev(() => ({
     wp: document.querySelectorAll("#wpList .wp-item").length,
     days: [...document.querySelectorAll("#wpList .day-label")].map(l => l.getAttribute("data-day")),
     dirty: document.querySelector(".save-row").classList.contains("dirty"),
     lastStopName: edCtx.work.stops[edCtx.work.stops.length - 1].name,
-    lastDay: edCtx.work.stops[edCtx.work.stops.length - 1].day
+    lastDay: edCtx.work.stops[edCtx.work.stops.length - 1].day,
+    popGone: !document.querySelector(".map-daypop")
   }));
-  ok(after.wp === 12 && after.days.join(",") === "1,2" && after.dirty, "加站 1 点后 12 点 / 两天 / dirty -> " + JSON.stringify(after));
+  ok(after.wp === 12 && after.days.join(",") === "1,2" && after.dirty && after.lastDay === 2 && after.popGone, "卡片点第2天 → 12点/两天/dirty/卡片关闭 -> " + JSON.stringify(after));
 
   // A4. 菜单按钮（⋯）能展开 复制 / 删除 / 回主页
   await ev(() => document.getElementById("routeMenuBtn").click());
