@@ -97,8 +97,8 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .rs-tools { display: flex; gap: 5px; margin: 0 0 8px 0; }
 .rs-tools button {
   flex: 1; padding: 6px 4px; border-radius: 10px;
-  border: 1px dashed rgba(44,62,107,0.45); background: rgba(255,255,255,0.4);
-  color: #2C3E6B; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
+  border: 1px dashed rgba(80,85,95,0.45); background: rgba(255,255,255,0.4);
+  color: #555; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
 }
 .rs-tools button:hover { background: rgba(255,255,255,0.85); }
 .info-panel.sat-active .rs-tools button { color: #fff; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.12); }
@@ -116,29 +116,29 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .modal-head .x:hover { background: rgba(0,0,0,0.06); color: #333; }
 .modal-body { padding: 12px 16px 16px; overflow-y: auto; }
 .ed-name { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.16); font-size: 13.5px; margin-bottom: 10px; outline: none; }
-.ed-name:focus { border-color: #2C3E6B; }
+.ed-name:focus { border-color: #555; }
 .ed-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .ed-search { flex: 1; min-width: 120px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.16); font-size: 12.5px; box-sizing: border-box; outline: none; }
-.ed-search:focus { border-color: #2C3E6B; }
+.ed-search:focus { border-color: #555; }
 .ed-btn { border: none; background: #2C3E6B; color: #fff; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
 .ed-btn:hover { opacity: 0.9; }
-.ed-btn.ghost { background: rgba(44,62,107,0.1); color: #2C3E6B; }
+.ed-btn.ghost { background: rgba(80,85,95,0.12); color: #555; }
 .ed-btn.gray { background: #eceef2; color: #555; }
 .search-res { border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 8px; max-height: 168px; overflow-y: auto; display: none; background: #fff; }
 .search-res.show { display: block; }
 .res-item { display: flex; align-items: center; gap: 8px; padding: 6px 9px; cursor: pointer; font-size: 12.5px; border-bottom: 1px solid rgba(0,0,0,0.05); }
 .res-item:last-child { border-bottom: none; }
-.res-item:hover { background: rgba(44,62,107,0.08); }
+.res-item:hover { background: rgba(80,85,95,0.10); }
 .res-item .rn { flex: 1; min-width: 0; }
 .res-item .rn .a { color: #999; font-size: 10.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .res-item .latlng { color: #bbb; font-size: 10px; flex: none; }
-.res-add { flex: none; background: #2C3E6B; color: #fff; border: none; border-radius: 8px; font-size: 11.5px; padding: 5px 9px; cursor: pointer; font-weight: 600; }
+.res-add { flex: none; background: rgba(80,85,95,0.18); color: #555; border: 1px solid rgba(80,85,95,0.25); border-radius: 999px; font-size: 11px; padding: 3px 9px; cursor: pointer; font-weight: 600; }
 .res-empty { padding: 9px; font-size: 12px; color: #999; text-align: center; }
 .ed-hint { font-size: 11px; color: #999; margin: 0 0 8px; line-height: 1.6; }
 .day-stepper { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: #444; margin-bottom: 2px; }
-.day-stepper .n { font-weight: 800; min-width: 20px; text-align: center; font-size: 14px; color: #2C3E6B; }
-.day-stepper button { width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.2); background: #fff; cursor: pointer; line-height: 1; font-size: 14px; color: #2C3E6B; }
-.day-stepper button:hover { background: rgba(44,62,107,0.08); }
+.day-stepper .n { font-weight: 800; min-width: 20px; text-align: center; font-size: 14px; color: #555; }
+.day-stepper button { width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.2); background: #fff; cursor: pointer; line-height: 1; font-size: 14px; color: #555; }
+.day-stepper button:hover { background: rgba(80,85,95,0.10); }
 .ed-stops { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
 .ed-day { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; margin: 9px 0 3px; color: #444; }
 .ed-day .ln { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
@@ -150,21 +150,21 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .ed-stop .ops button { border: none; background: transparent; cursor: pointer; color: #888; font-size: 14px; padding: 1px 3px; line-height: 1; border-radius: 5px; }
 .ed-stop .ops button:hover { background: rgba(0,0,0,0.08); color: #222; }
 .ed-stop .ops button.del:hover { color: #c0392b; background: rgba(192,57,43,0.1); }
-.ed-stop .ops button.ren:hover { color: #2C3E6B; background: rgba(44,62,107,0.1); }
+.ed-stop .ops button.ren:hover { color: #555; background: rgba(80,85,95,0.12); }
 /* 行内改名 */
 .ed-stop .nm-input {
-  flex: 1; min-width: 0; border: 1px solid #2C3E6B; border-radius: 6px;
+  flex: 1; min-width: 0; border: 1px solid #555; border-radius: 6px;
   padding: 1px 6px; font-size: 12.5px; outline: none; background: #fff; color: #222; box-sizing: border-box;
 }
-.ed-stop.editing { background: rgba(44,62,107,0.09); }
+.ed-stop.editing { background: rgba(80,85,95,0.10); }
 .ed-stop.editing .ops { display: none; }
 /* 拖拽重排 */
 .ed-stop { cursor: grab; }
 .ed-stop:active { cursor: grabbing; }
 .ed-stop.dragging-src { opacity: 0.38; }
-.ed-stop.drop-above { box-shadow: 0 -2px 0 0 #2C3E6B inset; }
-.ed-stop.drop-below { box-shadow: 0 2px 0 0 #2C3E6B inset; }
-.ed-day.drop-target { outline: 1px dashed rgba(44,62,107,0.55); outline-offset: 2px; border-radius: 6px; }
+.ed-stop.drop-above { box-shadow: 0 -2px 0 0 #555 inset; }
+.ed-stop.drop-below { box-shadow: 0 2px 0 0 #555 inset; }
+.ed-day.drop-target { outline: 1px dashed rgba(80,85,95,0.55); outline-offset: 2px; border-radius: 6px; }
 /* 路线预设（卡片色 / 标签） */
 .preset-row { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; flex-wrap: wrap; }
 .preset-row .pl { font-size: 11px; color: #888; font-weight: 700; flex: none; }
@@ -172,7 +172,7 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .swatches::-webkit-scrollbar { display: none; }
 .swatch { width: 19px; height: 19px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; flex: none; box-sizing: border-box; transition: transform .12s; }
 .swatch:hover { transform: scale(1.18); }
-.swatch.sel { border-color: #2C3E6B; box-shadow: 0 0 0 2px #fff inset; }
+.swatch.sel { border-color: #555; box-shadow: 0 0 0 2px #fff inset; }
 .swatch.auto {
   border: 1.5px dashed #aab2c0; background:
     linear-gradient(135deg, #fff 46%, #dde3ec 46%, #dde3ec 54%, #fff 54%);
@@ -181,27 +181,27 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   flex: 0 1 130px; min-width: 96px; padding: 4px 8px; border: 1px solid rgba(0,0,0,0.16);
   border-radius: 8px; font-size: 12px; outline: none; box-sizing: border-box;
 }
-.tag-input:focus { border-color: #2C3E6B; }
+.tag-input:focus { border-color: #555; }
 /* 侧栏 / 主页卡片中的路线预设标识 */
 .route-switch .rs-btn .pdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .home-card .nm .ptag { margin-right: 4px; }
 .ed-foot { display: flex; gap: 8px; margin-top: 14px; }
 .ed-foot .ed-btn { flex: 1; }
 .ed-help { font-size: 11.5px; color: #777; margin-bottom: 10px; line-height: 1.6; }
-.ed-help b { color: #2C3E6B; }
+.ed-help b { color: #555; }
 /* 设置面板精简版 */
 .set-label {
-  font-size: 12.5px; font-weight: 700; color: #2C3E6B;
+  font-size: 12.5px; font-weight: 700; color: #444;
   display: flex; align-items: baseline; gap: 8px; margin: 0 0 7px 2px;
 }
 .set-label .hint { font-weight: 400; font-size: 10px; color: #a5adbc; }
 .set-label .repo {
   margin-left: auto; font-size: 10.5px; font-weight: 600; color: #7b8aa5;
-  background: rgba(44,62,107,0.07); padding: 2px 8px; border-radius: 999px;
+  background: rgba(80,85,95,0.08); padding: 2px 8px; border-radius: 999px;
   cursor: pointer; user-select: none;
 }
-.set-label .repo b { color: #2C3E6B; margin-left: 3px; }
-.set-label .repo:hover { background: rgba(44,62,107,0.14); }
+.set-label .repo b { color: #555; margin-left: 3px; }
+.set-label .repo:hover { background: rgba(80,85,95,0.16); }
 .set-btns { display: flex; gap: 6px; margin: 8px 0 0; }
 .set-btns .ed-btn { flex: none; padding: 7px 13px; font-size: 12px; border-radius: 9px; }
 .set-btns .ed-btn + .ed-btn { margin-left: 2px; }
@@ -225,9 +225,9 @@ input[type="file"] { display: none; }
 .home-tools button {
   border: none; border-radius: 10px; padding: 8px 14px; cursor: pointer;
   font-size: 12.5px; font-weight: 600; background: rgba(255,255,255,0.75);
-  color: #2C3E6B; border: 1px solid rgba(44,62,107,0.16); transition: all .15s;
+  color: #555; border: 1px solid rgba(80,85,95,0.18); transition: all .15s;
 }
-.home-tools button:hover { background: #2C3E6B; color: #fff; }
+.home-tools button:hover { background: rgba(80,85,95,0.88); color: #fff; }
 .home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
 .home-card {
   background: rgba(255,255,255,0.82); border-radius: 16px; padding: 14px 15px 12px;
@@ -241,7 +241,7 @@ input[type="file"] { display: none; }
 .home-card .meta { font-size: 11.5px; color: #8a95a8; margin-bottom: 8px; }
 .home-card .badge {
   display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 999px;
-  background: rgba(44,62,107,0.08); color: #2C3E6B; font-weight: 600; margin-right: 6px;
+  background: rgba(80,85,95,0.10); color: #555; font-weight: 600; margin-right: 6px;
 }
 .home-card .badge.cloud { background: rgba(80,140,120,0.12); color: #3c7a62; }
 .home-card .days { display: flex; gap: 3px; margin-top: 6px; }
@@ -251,12 +251,12 @@ input[type="file"] { display: none; }
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 1500;
-  background: rgba(255,255,255,0.9); border: 1px solid rgba(44,62,107,0.2);
-  color: #2C3E6B; border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  background: rgba(255,255,255,0.9); border: 1px solid rgba(80,85,95,0.22);
+  color: #555; border-radius: 999px; padding: 8px 16px; cursor: pointer;
   font-size: 13px; font-weight: 700; box-shadow: 0 4px 14px rgba(20,30,60,0.18); display: none;
   font-family: inherit;
 }
-#homeFab:hover { background: #2C3E6B; color: #fff; }
+#homeFab:hover { background: rgba(80,85,95,0.88); color: #fff; }
 
 /* ========== 路线界面 · 内联编辑器（侧栏） ========== */
 .info-panel .route-head {
@@ -266,7 +266,7 @@ input[type="file"] { display: none; }
 }
 .info-panel .route-head .nm {
   flex: 1; min-width: 0;
-  font-size: 16px; font-weight: 800; color: #2C3E6B; letter-spacing: 0.4px;
+  font-size: 16px; font-weight: 800; color: #444; letter-spacing: 0.4px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .info-panel .route-head .menu {
@@ -281,20 +281,93 @@ input[type="file"] { display: none; }
 
 /* 搜索 + 天数 stepper：紧凑一行 */
 .info-panel .route-edit-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.info-panel .route-edit-row .ed-search { flex: 1; min-width: 0; padding: 6px 9px; font-size: 12.5px; }
+/* 液态玻璃搜索框（v6：内联 SVG 放大镜作为视觉占位，placeholder 留空让放大镜成为唯一内容） */
+.info-panel .ed-search-wrap { position: relative; flex: 1; min-width: 0; display: flex; align-items: center; }
+.info-panel .ed-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; pointer-events: none; color: rgba(80,80,90,0.55); display: inline-flex; align-items: center; justify-content: center; }
+.info-panel .ed-search-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.info-panel .route-edit-row .ed-search { flex: 1; min-width: 0; width: 100%; padding: 6px 9px 6px 28px; font-size: 12.5px;
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.72);
+  border-radius: 11px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 6px rgba(0,0,0,0.06);
+  color: rgba(0,0,0,0.70);
+  transition: border-color .15s, box-shadow .15s;
+}
+.info-panel .route-edit-row .ed-search::placeholder { color: transparent; }
+.info-panel .route-edit-row .ed-search:focus { outline: none; border-color: rgba(80,85,95,0.55); box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 10px rgba(80,85,95,0.18); }
+.info-panel.sat-active .route-edit-row .ed-search { background: rgba(20,30,50,0.32); border-color: rgba(255,255,255,0.22); box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.25); color: rgba(255,255,255,0.92); }
+.info-panel.sat-active .ed-search-icon { color: rgba(255,255,255,0.55); }
 .info-panel .route-edit-row .ed-btn { padding: 6px 12px; font-size: 12px; }
 .info-panel .day-stepper { margin: 0 0 8px; font-size: 12px; }
 .info-panel .day-stepper .n { font-size: 13px; }
 .info-panel .day-stepper button { width: 22px; height: 22px; font-size: 13px; }
 
+/* ===== 地图旁「添加到第 N 天」液态玻璃卡片（v6：搜索/点图后预览点右侧弹出） ===== */
+.map-daypop .leaflet-popup-content-wrapper { background: transparent; box-shadow: none; border-radius: 16px; padding: 0; }
+.map-daypop .leaflet-popup-content { margin: 0; width: auto !important; }
+.map-daypop .leaflet-popup-tip {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.10);
+}
+.day-card {
+  min-width: 172px; max-width: 240px;
+  padding: 11px 12px 9px;
+  border-radius: 16px;
+  font-size: 12px; line-height: 1.35;
+  background: rgba(255,255,255,0.58);
+  backdrop-filter: blur(20px) saturate(170%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid rgba(255,255,255,0.68);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.62), 0 10px 26px rgba(0,0,0,0.14);
+  color: rgba(30,35,50,0.92);
+}
+.day-card .dc-title { font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day-card .dc-sub { color: rgba(60,65,80,0.62); font-size: 11px; margin: 1px 0 8px; }
+.day-card .dc-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.day-card .dc-day {
+  border: 1px solid rgba(255,255,255,0.75);
+  background: rgba(255,255,255,0.42);
+  color: rgba(30,35,50,0.86);
+  border-radius: 999px; padding: 3px 10px; font-size: 11.5px; cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: background .15s, transform .1s;
+}
+.day-card .dc-day:hover { background: rgba(255,255,255,0.8); transform: translateY(-1px); }
+.day-card .dc-day.cur { background: rgba(80,85,95,0.88); border-color: rgba(80,85,95,0.95); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 2px 6px rgba(0,0,0,0.18); }
+.day-card .dc-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.day-card .dc-cancel { border: none; background: none; color: rgba(60,65,80,0.55); cursor: pointer; font-size: 11px; padding: 2px 4px; }
+.day-card .dc-cancel:hover { color: rgba(60,65,80,0.9); }
+.day-card .dc-tip { font-size: 10.5px; color: rgba(60,65,80,0.45); }
+/* 卫星等深色底图：暗色液态玻璃（#map.map-dark） */
+.map-dark .map-daypop .leaflet-popup-tip { background: rgba(16,26,46,0.55); border-color: rgba(255,255,255,0.2); }
+.map-dark .day-card {
+  background: rgba(16,26,46,0.52);
+  border-color: rgba(255,255,255,0.20);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 10px 26px rgba(0,0,0,0.38);
+  color: rgba(255,255,255,0.95);
+}
+.map-dark .day-card .dc-sub { color: rgba(255,255,255,0.58); }
+.map-dark .day-card .dc-day { border-color: rgba(255,255,255,0.24); background: rgba(255,255,255,0.10); color: rgba(255,255,255,0.92); }
+.map-dark .day-card .dc-day:hover { background: rgba(255,255,255,0.22); }
+.map-dark .day-card .dc-day.cur { background: rgba(230,232,238,0.92); border-color: rgba(230,232,238,0.95); color: rgba(40,45,55,0.95); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 6px rgba(0,0,0,0.32); }
+.map-dark .day-card .dc-cancel { color: rgba(255,255,255,0.55); }
+.map-dark .day-card .dc-cancel:hover { color: rgba(255,255,255,0.9); }
+.map-dark .day-card .dc-tip { color: rgba(255,255,255,0.45); }
+
 .info-panel .search-res { margin-bottom: 8px; max-height: 132px; }
-.info-panel .search-res .res-item { padding: 5px 8px; font-size: 12px; }
+.info-panel .search-res .res-item { padding: 5px 8px; font-size: 12px; cursor: pointer; }
+.info-panel .search-res .res-item:hover { background: rgba(80,85,95,0.10); }
 .info-panel .search-res .res-add { padding: 4px 8px; font-size: 11px; }
 .info-panel.sat-active .search-res { background: rgba(20,30,50,0.88); color: #fff; border-color: rgba(255,255,255,0.18); }
 .info-panel.sat-active .search-res .res-item { color: #fff; border-bottom-color: rgba(255,255,255,0.1); }
 .info-panel.sat-active .search-res .res-item:hover { background: rgba(255,255,255,0.15); }
 .info-panel.sat-active .search-res .res-item .a { color: rgba(255,255,255,0.65); }
-.info-panel.sat-active .search-res .res-add { background: #fff; color: #2C3E6B; }
+.info-panel.sat-active .search-res .res-add { background: rgba(255,255,255,0.85); color: #555; border-color: rgba(255,255,255,0.5); }
 
 /* 各天及地点（侧栏 wpList 同时承担阅读 + 编辑） */
 .wp-list { gap: 0; }
@@ -314,17 +387,17 @@ input[type="file"] { display: none; }
 }
 .wp-item .ops button:hover { background: rgba(0,0,0,0.1); color: #222; }
 .wp-item .ops button.del:hover { color: #c0392b; background: rgba(192,57,43,0.12); }
-.wp-item .ops button.ren:hover { color: #2C3E6B; background: rgba(44,62,107,0.15); }
-.wp-item.editing { background: rgba(44,62,107,0.1); }
+.wp-item .ops button.ren:hover { color: #555; background: rgba(80,85,95,0.15); }
+.wp-item.editing { background: rgba(80,85,95,0.10); }
 .wp-item.editing .ops { display: none; }
 .wp-item .nm-input {
-  flex: 1; min-width: 0; border: 1px solid #2C3E6B; border-radius: 6px;
+  flex: 1; min-width: 0; border: 1px solid #555; border-radius: 6px;
   padding: 1px 5px; font-size: 12px; outline: none; background: #fff; color: #222; box-sizing: border-box;
 }
 .wp-item.dragging-src { opacity: 0.4; }
-.wp-item.drop-above { box-shadow: 0 -2px 0 0 #2C3E6B inset; }
-.wp-item.drop-below { box-shadow: 0 2px 0 0 #2C3E6B inset; }
-.wp-list .day-label.drop-target { outline: 1px dashed rgba(44,62,107,0.55); outline-offset: 2px; border-radius: 6px; }
+.wp-item.drop-above { box-shadow: 0 -2px 0 0 #555 inset; }
+.wp-item.drop-below { box-shadow: 0 2px 0 0 #555 inset; }
+.wp-list .day-label.drop-target { outline: 1px dashed rgba(80,85,95,0.55); outline-offset: 2px; border-radius: 6px; }
 .info-panel.sat-active .wp-item .ops button { color: rgba(255,255,255,0.85); }
 .info-panel.sat-active .wp-item .ops button:hover { background: rgba(255,255,255,0.2); color: #fff; }
 .info-panel.sat-active .wp-item.editing { background: rgba(255,255,255,0.15); }
@@ -368,7 +441,7 @@ input[type="file"] { display: none; }
   border-bottom: 1px solid rgba(0,0,0,0.05); font-family: inherit;
 }
 .route-menu-pop button:last-child { border-bottom: none; }
-.route-menu-pop button:hover { background: rgba(44,62,107,0.1); color: #2C3E6B; }
+.route-menu-pop button:hover { background: rgba(80,85,95,0.12); color: #444; }
 .route-menu-pop button.del { color: #c0392b; }
 .route-menu-pop button.del:hover { background: rgba(192,57,43,0.12); }
 
@@ -406,7 +479,10 @@ input[type="file"] { display: none; }
     <span class="menu" id="routeMenuBtn" title="更多">⋯</span>
   </div>
   <div class="route-edit-row">
-    <input class="ed-search" id="edSearch" placeholder="地名 或 GPS 经纬度">
+    <div class="ed-search-wrap">
+      <span class="ed-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.7" y1="15.7" x2="20.5" y2="20.5"/></svg></span>
+      <input class="ed-search" id="edSearch" placeholder=" ">
+    </div>
     <button class="ed-btn" id="edSearchBtn">搜索</button>
   </div>
   <div class="day-stepper">
@@ -439,43 +515,42 @@ input[type="file"] { display: none; }
 
 
 <script>
-// ===== 路线日色彩库（30 色 · 莫兰迪灰调系）=====
+// ===== 路线日色彩库（30 色 · 色轮柔和蓝 → 柔和紫 平滑过渡）=====
 // 供全平台按"天"取色：第 N 天路线颜色 = DAY_PALETTE[N-1]（N≤30）。
-// 伊犁环线现占用前 8 色（与其原 8 日配色完全一致，保持历史观感）；
-// 第 9 色起为预留色，新增路线可直接挑选或按 DAY_PALETTE.slice(0, 天数) 依次取用。
-// 全局路线配色真源（30 色）：中高饱和「宝石色」档（600/700 为主，无荧光亮色）
-// 相比莫兰迪在卫星底图上对比不足、相比 500 系又过于刺眼；亮色自动配深色图钉文字（见 pinSvg）
+// iOS 26 液态玻璃统一调色板：色轮上 h=214°(柔蓝) → h=286°(柔紫) 顺时针 72° 弧段；
+// 饱和 S≈0.48，明度 L 沿 0.56→0.63→0.56 正弦起伏（中间略浅两端略深），保持"柔和"且 30 色整体连
+// 贯可辨。fgOn() 按背景亮度自动选文字色。
 var DAY_PALETTE = [
-  "#DC2626", // 1  红
-  "#2563EB", // 2  蓝
-  "#16A34A", // 3  绿
-  "#EA580C", // 4  橙
-  "#7C3AED", // 5  紫
-  "#0D9488", // 6  青绿
-  "#CA8A04", // 7  芥末黄
-  "#DB2777", // 8  粉
-  "#0891B2", // 9  青蓝
-  "#B45309", // 10 赭橙
-  "#4F46E5", // 11 靛蓝
-  "#65A30D", // 12 黄绿
-  "#BE123C", // 13 玫瑰红
-  "#0284C7", // 14 湛蓝
-  "#9333EA", // 15 亮紫
-  "#15803D", // 16 深绿
-  "#C2410C", // 17 深橙
-  "#0F766E", // 18 深青
-  "#4D7C0F", // 19 橄榄
-  "#6D28D9", // 20 深紫
-  "#B91C1C", // 21 朱红
-  "#115E59", // 22 黛青
-  "#A16207", // 23 深芥末
-  "#1D4ED8", // 24 深蓝
-  "#047857", // 25 翡翠
-  "#BE185D", // 26 深粉
-  "#5B21B6", // 27 葡萄紫
-  "#0E7490", // 28 深青蓝
-  "#9A3412", // 29 栗橙
-  "#9F1239"  // 30 酒红
+  "#5988c5", //  1  柔蓝
+  "#5c85c6", //  2
+  "#5f83c7", //  3
+  "#6181c8", //  4
+  "#647fc9", //  5
+  "#677dc9", //  6
+  "#697bca", //  7
+  "#6b79cb", //  8
+  "#6d77cc", //  9
+  "#6f75cc", // 10
+  "#7072cd", // 11 蓝紫
+  "#7371cd", // 12
+  "#7872ce", // 13
+  "#7d73ce", // 14
+  "#8173ce", // 15
+  "#8473ce", // 16
+  "#8873ce", // 17
+  "#8b72ce", // 18
+  "#8e71cd", // 19
+  "#9170cd", // 20 紫
+  "#946fcc", // 21
+  "#966dcc", // 22
+  "#996bcb", // 23
+  "#9b69ca", // 24
+  "#9e67c9", // 25
+  "#a064c9", // 26
+  "#a361c8", // 27
+  "#a65fc7", // 28
+  "#a95cc6", // 29
+  "#ac59c5"  // 30 柔紫
 ];
 
 // ========== 通用工具 ==========
@@ -537,11 +612,16 @@ var baseLayers = {
 var overlayLayers = { "卫星标注": tdtLabelLayer };
 L.control.layers(baseLayers, overlayLayers, { position: "topright", collapsed: true }).addTo(map);
 
-// 切到卫星图层时，左侧面板文字切换为白色
+// 切到深色底图（卫星 / NatGeo）时：左侧面板文字转白 + 地图容器标记 map-dark（液态玻璃卡片切暗色）
+var DARK_BASE = null;
+function mapDarkNow() { return DARK_BASE === "dark"; }
 map.on("baselayerchange", function(e) {
   var panel = document.querySelector(".info-panel");
-  if (e.layer === satLayer) panel.classList.add("sat-active");
-  else panel.classList.remove("sat-active");
+  var dark = (e.layer === satLayer || e.layer === natgeoLayer);
+  DARK_BASE = dark ? "dark" : "light";
+  var m = document.getElementById("map");
+  if (dark) { panel.classList.add("sat-active"); if (m) m.classList.add("map-dark"); }
+  else { panel.classList.remove("sat-active"); if (m) m.classList.remove("map-dark"); }
 });
 
 // ========== 图钉 SVG ==========
@@ -1375,21 +1455,28 @@ var curDay = 1;
 function setDayNum(n) {
   curDay = Math.max(1, n);
   $("dayNum").textContent = curDay;
-  // 若搜索结果仍展开，同步刷新"加入第 N 天"按钮文案
-  var adds = document.querySelectorAll("#edResults .res-add");
-  for (var i = 0; i < adds.length; i++) adds[i].textContent = "＋ 第" + curDay + "天";
+  // 若地图旁「添加到第 N 天」液态玻璃卡片正开着，同步高亮当前天 chip
+  var box = document.querySelector(".daypop-inner");
+  if (box) {
+    var cur = box.querySelector(".dc-day.cur");
+    if (cur) cur.classList.remove("cur");
+    var hit = box.querySelector('.dc-day[data-day="' + curDay + '"]');
+    if (hit) hit.classList.add("cur");
+  }
 }
 $("dayMinus").addEventListener("click", function () { setDayNum(curDay - 1); });
 $("dayPlus").addEventListener("click", function () { setDayNum(curDay + 1); });
 
-function addStop(name, lat, lng) {
+function addStop(name, lat, lng, dayOpt) {
   if (!(isFinite(lat) && isFinite(lng))) return;
   if (!edCtx.work) { toast("请先新建或进入一条路线"); return; }
-  edCtx.work.stops.push({ name: name || ("P" + (edCtx.work.stops.length + 1)), lat: lat, lng: lng, day: curDay, tag: "" });
+  var day = (typeof dayOpt === "number" && isFinite(dayOpt)) ? Math.max(1, Math.round(dayOpt)) : curDay;
+  edCtx.work.stops.push({ name: name || ("P" + (edCtx.work.stops.length + 1)), lat: lat, lng: lng, day: day, tag: "" });
   normalizeRoute(edCtx.work);
   $("edResults").classList.remove("show");
   applyEditToMap();
   markDirty();
+  setDayNum(day); // stepper 与卡片同步到刚加入的天
 }
 
 /* ---------- v6 实时同步：edCtx.work → 地图 + 侧栏 ---------- */
@@ -1403,6 +1490,94 @@ function applyEditToMap() {
   applyRoute(obj, true, true);
   renderWpList();
 }
+
+/* ============================================================
+ * v6 「添加到第 N 天」液态玻璃卡片：
+ * 搜索结果 / GPS / 点击地图 → 地图上出现预览点（＋青色），点右侧弹出玻璃卡片选天，点某天即加入
+ * ============================================================ */
+var pvSeq = 0;           // 预览 marker 唯一 id
+var pvMarker = null;     // 当前预览 marker（Leaflet）
+var pvLatLng = null;     // 预览点坐标 {lat,lng}
+var pvName = "";         // 预览点名称
+function clearPreview() {
+  if (pvMarker) { try { map.removeLayer(pvMarker); } catch (e) {} pvMarker = null; }
+  pvLatLng = null; pvName = "";
+}
+function maxRouteDay() {
+  var mx = 1;
+  (edCtx.work && edCtx.work.stops ? edCtx.work.stops : []).forEach(function (s) { if ((s.day || 1) > mx) mx = s.day; });
+  return mx;
+}
+// 打开预览点 + 右侧玻璃卡片；p = {name, lat, lng}
+function openDayCard(p) {
+  if (!edCtx.work) { toast("请先新建或进入一条路线"); return; }
+  if (!(p && isFinite(p.lat) && isFinite(p.lng))) return;
+  clearPreview();
+  pvSeq++;
+  var lat = p.lat, lng = p.lng;
+  pvName = (p.name && String(p.name).trim()) ? String(p.name).trim() : (lat.toFixed(4) + ", " + lng.toFixed(4));
+  var uid = "pv" + pvSeq;
+  // 预览点：半透明青色「＋」，自定义 popupAnchor 让玻璃卡片落在点右侧
+  var preIcon = L.divIcon({
+    className: "wp-marker wp-marker-pre",
+    html: pinSvg("＋", "#0EA5A0", 15, uid),
+    iconSize: [28, 40],
+    iconAnchor: [14, 38],
+    popupAnchor: [28, -20]   // tip → 预览点右侧中段，玻璃卡片自然落在点的右边
+  });
+  pvMarker = L.marker([lat, lng], { icon: preIcon, zIndexOffset: 800, keyboard: false }).addTo(map);
+  pvLatLng = { lat: lat, lng: lng };
+  map.flyTo([lat, lng], Math.max(map.getZoom(), 10), { duration: 0.55 });
+  // 可加入的天：1..当前最高天+1（与 stepper 当前值取并集；防止 chips 过多，最多到 12+1）
+  var mx = Math.max(maxRouteDay(), curDay) + 1;
+  if (mx > 13) mx = 13;
+  var chips = "";
+  for (var d = 1; d <= mx; d++) {
+    chips += '<button type="button" class="dc-day' + (d === curDay ? " cur" : "") + '" data-day="' + d + '">第 ' + d + " 天</button>";
+  }
+  var html = '<div class="daypop-inner"><div class="day-card">' +
+    '<div class="dc-title">' + esc(pvName) + '</div>' +
+    '<div class="dc-sub">添加到第几天？</div>' +
+    '<div class="dc-chips">' + chips + '</div>' +
+    '<div class="dc-foot"><button type="button" class="dc-cancel">取消</button>' +
+    '<span class="dc-tip">点地图可换位置</span></div>' +
+    "</div></div>";
+  L.popup({ className: "map-daypop", closeButton: false, autoClose: false, offset: L.point(16, -10), maxWidth: 280 })
+    .setLatLng([lat, lng])
+    .setContent(html)
+    .openOn(map);
+  var inner = document.querySelector(".daypop-inner");
+  if (inner) bindDayCard(inner);
+  hideRes();
+  $("edSearch").value = "";
+  // 点地图任意处可移动预览点（换位置），点已有路线点/控件不触发
+}
+function commitDay(day) {
+  if (!pvLatLng) return;
+  var lat = pvLatLng.lat, lng = pvLatLng.lng, name = pvName;
+  clearPreview();
+  try { map.closePopup(); } catch (e) {}
+  addStop(name, lat, lng, day);
+  toast("已把「" + name + "」加入第 " + day + " 天");
+}
+function bindDayCard(box) {
+  var chips = box.querySelectorAll(".dc-day");
+  for (var i = 0; i < chips.length; i++) {
+    chips[i].addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      commitDay(parseInt(this.getAttribute("data-day"), 10));
+    });
+  }
+  var cancel = box.querySelector(".dc-cancel");
+  if (cancel) cancel.addEventListener("click", function (ev) { ev.stopPropagation(); clearPreview(); try { map.closePopup(); } catch (e) {} });
+}
+// 地图点击：预览点可移动；点已有 marker / popup / 控件不响应
+map.on("click", function (ev) {
+  if (!edCtx.work) return;
+  var t = ev.originalEvent && ev.originalEvent.target;
+  if (t && t.closest && (t.closest(".leaflet-interactive") || t.closest(".leaflet-popup") || t.closest(".leaflet-control") || t.closest(".wp-marker"))) return;
+  openDayCard({ name: "", lat: ev.latlng.lat, lng: ev.latlng.lng });
+});
 
 /* ---------- v6 进入 / 退出 / 复制 / 删除 ---------- */
 function enterNewRoute() {
@@ -1552,17 +1727,21 @@ function showRes(html) {
   box.classList.add("show");
 }
 function hideRes() { $("edResults").classList.remove("show"); }
+// 搜索结果行：点击整行 → 地图预览点 + 「添加到第 N 天」玻璃卡片（不再放行内加站按钮）
 function resAddHtml(p) {
-  return '<div class="res-item" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + esc(p.name) + '">' +
+  return '<div class="res-item" data-lat="' + p.lat + '" data-lng="' + p.lng + '" data-name="' + esc(p.name) + '" title="在地图上预览并添加">' +
     '<div class="rn"><div>' + esc(p.name) + '</div><div class="a">' + esc(p.addr || "") + "</div></div>" +
     '<span class="latlng">' + p.lat.toFixed(4) + ", " + p.lng.toFixed(4) + "</span>" +
-    '<button class="res-add">＋ 第' + curDay + "天</button></div>";
+    '<span class="res-add">＋ 预览</span></div>';
 }
 $("edResults").addEventListener("click", function (ev) {
-  var add = ev.target.closest(".res-add");
-  if (!add) return;
-  var item = add.closest(".res-item");
-  addStop(item.getAttribute("data-name"), parseFloat(item.getAttribute("data-lat")), parseFloat(item.getAttribute("data-lng")));
+  var item = ev.target.closest ? ev.target.closest(".res-item") : null;
+  if (!item) return;
+  openDayCard({
+    name: item.getAttribute("data-name"),
+    lat: parseFloat(item.getAttribute("data-lat")),
+    lng: parseFloat(item.getAttribute("data-lng"))
+  });
 });
 var searchSeq = 0, localShown = false;
 function amapSearch(q, isText, seq) {
@@ -1616,9 +1795,8 @@ function doSearch() {
   if (!q) return;
   var c = parseCoord(q);
   if (c) {
-    addStop(c.name || "GPS 点", c.lat, c.lng);
-    $("edSearch").value = "";
-    hideRes();
+    // GPS：不直接入库，先在地图上预览并弹出「添加到第 N 天」卡片
+    openDayCard({ name: c.name, lat: c.lat, lng: c.lng });
     return;
   }
   var seq = ++searchSeq;
