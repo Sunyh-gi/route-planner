@@ -1,8 +1,7 @@
 /* ============================================================
- * 冒烟测试：线路规划平台 v5（仓库文件为真源）
- * 阶段 A：无 Token 只读回归（file://，画廊/懒加载/编辑器可用，保存与删除被拦截）
- * 阶段 B：页面内 mock fetch 模拟 GitHub 仓库（保存/编辑/删除/远端刷新/旧路线迁移），
- *         校验 PUT/DELETE 载荷与 catalog 重建，完全不接触真实网络
+ * 冒烟测试：线路规划平台 v6（侧栏内联编辑器，无弹窗；新建/设置/刷新全部在首页）
+ * 阶段 A：无 Token 只读回归
+ * 阶段 B：mock fetch 模拟 GitHub 仓库写入
  * 用法：node _smoke.js
  * ============================================================ */
 const puppeteer = require("C:/Users/Mickey/.workbuddy/binaries/node/workspace/node_modules/puppeteer-core");
@@ -19,6 +18,8 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 900 });
+  // 页面原生 confirm()（如 dirty 状态回主页）统一接受，避免对话框阻塞/干扰后续 evaluate
+  page.on("dialog", d => d.accept().catch(() => {}));
   const errors = [];
   page.on("pageerror", e => errors.push("PAGEERROR: " + e.message));
   page.on("console", m => { if (m.type() === "error") errors.push("CONSOLE: " + m.text()); });
@@ -32,86 +33,125 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   await page.goto(URL, { waitUntil: "load", timeout: 60000 });
   await wait(2500);
   await ev(() => { window.__uh = []; window.addEventListener("unhandledrejection", e => window.__uh.push(String((e.reason && e.reason.message) || e.reason))); });
+  // 阶段 A 也 stub OSRM/高德网络（本阶段仅做只读 UI 回归）：让加站/渲染触发的路径规划请求立即失败，
+  // 避免真实网络挂起拖垮 headless 渲染进程（曾导致 tab 崩溃 / detached frame）
+  await ev(() => {
+    if (window.__osrmStubbed) return;
+    const origFetch = window.fetch.bind(window);
+    window.fetch = function (url, opt) {
+      const u = String(url);
+      if (/router\.project-osrm\.org|restapi\.amap\.com/.test(u)) return Promise.reject(new Error("osrm stub offline"));
+      return origFetch(u, opt);
+    };
+    window.__osrmStubbed = true;
+  });
 
   /* ================= 阶段 A：无 Token 只读 ================= */
   console.log("\n== 阶段 A：无 Token 只读回归 ==");
 
-  // A1. 主页画廊：cx/yl 两卡、无徽章、目录已注册、数据未预载
+  // A1. 主页画廊：2 卡无徽章 + 侧栏显示"未选择路线" + 目录已注册
   const home = await ev(() => ({
     shown: getComputedStyle(document.getElementById("homeMask")).display !== "none",
     cards: [...document.querySelectorAll(".home-card")].map(e => e.getAttribute("data-route")),
     badges: document.querySelectorAll(".home-card .badge").length,
     cat: ROUTE_CATALOG.map(c => c.id).join(","),
     packs: Object.keys(ROUTE_PACKS).length,
-    rendered: !!(window.currentGroup && currentGroup.getLayers().length)
+    routeName: document.getElementById("routeName").textContent,
+    tools: [...document.querySelectorAll(".home-tools button")].map(b => b.textContent.trim())
   }));
   ok(home.shown && home.cards.join(",") === "cx,yl" && home.badges === 0, "画廊 2 卡无徽章 -> " + home.cards.join(","));
-  ok(home.cat === "cx,yl" && home.packs === 0 && !home.rendered, "目录已注册且数据未预载 -> " + JSON.stringify(home));
+  ok(home.cat === "cx,yl" && home.packs === 0, "目录已注册且数据未预载 -> " + JSON.stringify(home));
+  ok(home.routeName === "未选择路线", "侧栏路线名=未选择路线");
+  ok(home.tools.length === 3 && /新建路线/.test(home.tools[0]) && /设置/.test(home.tools[1]) && /刷新/.test(home.tools[2]), "首页工具 3 件套 → " + home.tools.join("|"));
 
-  // A2. 侧栏：工具区 + 每条路线统一 ✏️📋🗑️
-  const sb = await ev(() => ({
-    tools: [...document.querySelectorAll(".rs-tools button")].map(b => b.textContent.trim()),
-    rows: [...document.querySelectorAll(".route-switch .rs-btn")].map(b => ({
-      id: b.getAttribute("data-route"),
-      ops: [...b.querySelectorAll(".op")].map(o => o.getAttribute("data-act")).join(",")
-    })),
-    credit: document.querySelector(".rs-credit").textContent
-  }));
-  ok(sb.tools.length === 3 && /新建路线|设置|刷新/.test(sb.tools.join("|")), "侧栏工具区齐全 -> " + sb.tools.join("|"));
-  ok(sb.rows.length === 2 && sb.rows.every(r => r.ops === "edit,dup,del"), "每条路线统一操作 -> " + JSON.stringify(sb.rows.map(r => r.id + ":" + r.ops)));
-  ok(/GitHub/.test(sb.credit), "侧栏注明仓库真源");
-
-  // A3. 点川西卡 -> 懒加载 routes/cx.js 渲染 11 点
+  // A2. 点川西卡 → 侧栏载入并显示路线名 + wpList 11 点
   await ev(() => document.querySelector('.home-card[data-route="cx"]').click());
   await page.waitForFunction(() => document.querySelectorAll("#wpList .wp-item").length === 11, { timeout: 10000 }).catch(() => {});
-  const cx = await ev(() => ({ wp: document.querySelectorAll("#wpList .wp-item").length, stops: ROUTE_PACKS.cx ? ROUTE_PACKS.cx.stops.length : -1 }));
-  ok(cx.wp === 11 && cx.stops === 11, "点川西卡渲染 11 点 -> " + JSON.stringify(cx));
+  const cx = await ev(() => ({
+    name: document.getElementById("routeName").textContent,
+    wp: document.querySelectorAll("#wpList .wp-item").length,
+    stops: ROUTE_PACKS.cx ? ROUTE_PACKS.cx.stops.length : -1,
+    hasSave: !!document.getElementById("saveBtn"),
+    dirty: document.querySelector(".save-row").classList.contains("dirty"),
+    searchVisible: document.getElementById("edSearch") !== null,
+    noTools: document.querySelectorAll(".rs-tools").length === 0
+  }));
+  ok(cx.name === "川西路线" && cx.wp === 11 && cx.stops === 11, "点川西卡 → 侧栏 11 点 -> " + JSON.stringify(cx));
+  ok(cx.hasSave && !cx.dirty && cx.searchVisible && cx.noTools, "侧栏有保存/搜索、无旧 rs-tools -> " + JSON.stringify(cx));
 
-  // A4. ✏️ 编辑川西：弹窗内 11 点
-  await ev(() => document.querySelector('.route-switch .rs-btn[data-route="cx"] .op[data-act="edit"]').click());
-  await page.waitForFunction(() => document.getElementById("editorMask").classList.contains("open"), { timeout: 5000 }).catch(() => {});
-  await wait(300);
-  const edCx = await ev(() => ({ open: document.getElementById("editorMask").classList.contains("open"), rows: document.querySelectorAll("#edStops .ed-stop").length, ttl: document.getElementById("edTitle").textContent }));
-  ok(edCx.open && edCx.rows === 11 && /编辑/.test(edCx.ttl), "✏️ 川西 → 编辑弹窗 11 点 -> " + JSON.stringify(edCx));
-  await ev(() => closeEditor());
-  await wait(250);
-
-  // A5. 📋 复制伊犁（数据未加载，触发 ensureRouteData 懒加载）
-  await ev(() => document.querySelector('.route-switch .rs-btn[data-route="yl"] .op[data-act="dup"]').click());
-  await page.waitForFunction(() => document.getElementById("editorMask").classList.contains("open") && document.querySelectorAll("#edStops .ed-stop").length === 21, { timeout: 10000 }).catch(() => {});
-  const dupYl = await ev(() => ({ rows: document.querySelectorAll("#edStops .ed-stop").length, nm: document.getElementById("edName").value, loaded: !!ROUTE_PACKS.yl }));
-  ok(dupYl.rows === 21 && dupYl.loaded && /副本/.test(dupYl.nm), "📋 复制伊犁懒加载 21 点 -> " + JSON.stringify(dupYl));
-  await ev(() => closeEditor());
-  await wait(250);
-
-  // A6. 新建 + 加站，无 Token 保存被拦截（编辑器保持打开，不写任何本地路线）
-  await ev(() => openNewEditor());
-  await wait(250);
-  await page.type("#edSearch", "44.49427, 81.15873");
+  // A3. 搜索 + 加站（验证侧栏搜索 / 第N天按钮 / dirty 标记）
+  await ev(() => { setDayNum(2); });
+  await page.type("#edSearch", "新都桥");
   await ev(() => doSearch());
   await wait(400);
-  const n1 = await ev(() => document.querySelectorAll("#edStops .ed-stop").length);
-  ok(n1 === 1, "GPS 加站 1 点");
-  await page.type("#edName", "只读不保存线");
-  await ev(() => document.getElementById("edSave").click());
-  await wait(400);
+  const res0 = await ev(() => ({
+    results: document.querySelectorAll("#edResults .res-item").length,
+    addTxt: document.querySelector("#edResults .res-add") ? document.querySelector("#edResults .res-add").textContent : ""
+  }));
+  ok(res0.results >= 1 && /第2天/.test(res0.addTxt), "本地搜索命中 + 文案\"第2天\" -> " + JSON.stringify(res0));
+  await ev(() => document.querySelector("#edResults .res-add").click());
+  await wait(300);
+  const after = await ev(() => ({
+    wp: document.querySelectorAll("#wpList .wp-item").length,
+    days: [...document.querySelectorAll("#wpList .day-label")].map(l => l.getAttribute("data-day")),
+    dirty: document.querySelector(".save-row").classList.contains("dirty"),
+    lastStopName: edCtx.work.stops[edCtx.work.stops.length - 1].name,
+    lastDay: edCtx.work.stops[edCtx.work.stops.length - 1].day
+  }));
+  ok(after.wp === 12 && after.days.join(",") === "1,2" && after.dirty, "加站 1 点后 12 点 / 两天 / dirty -> " + JSON.stringify(after));
+
+  // A4. 菜单按钮（⋯）能展开 复制 / 删除 / 回主页
+  await ev(() => document.getElementById("routeMenuBtn").click());
+  await wait(150);
+  const menu = await ev(() => ({
+    open: document.getElementById("routeMenuPop").classList.contains("open"),
+    items: [...document.querySelectorAll("#routeMenuPop button")].map(b => b.textContent.trim()),
+    copyVisible: getComputedStyle(document.getElementById("routeMenuCopy")).display !== "none",
+    delVisible: getComputedStyle(document.getElementById("routeMenuDel")).display !== "none"
+  }));
+  ok(menu.open && menu.items.length === 3 && menu.copyVisible && menu.delVisible, "菜单弹层含 复制/删除/主页 -> " + JSON.stringify(menu));
+  await ev(() => document.getElementById("routeMenuBtn").click()); // 关
+  await wait(100);
+
+  // A5. 无 Token 保存：点击 #saveBtn → 拦截 + 引导设置
+  await ev(() => document.getElementById("saveBtn").click());
+  await wait(300);
   const blk = await ev(() => ({
     toast: document.getElementById("toast").textContent,
-    edOpen: document.getElementById("editorMask").classList.contains("open"),
     setOpen: document.getElementById("settingsMask").classList.contains("open"),
     storeN: (JSON.parse(localStorage.getItem("route-platform:v1") || "{}").routes || []).length,
-    catN: ROUTE_CATALOG.length
+    catN: ROUTE_CATALOG.length,
+    wpStill: document.querySelectorAll("#wpList .wp-item").length
   }));
-  ok(blk.edOpen && /Token/.test(blk.toast) && blk.setOpen && blk.storeN === 0 && blk.catN === 2,
+  ok(/Token/.test(blk.toast) && blk.setOpen && blk.storeN === 0 && blk.catN === 2 && blk.wpStill === 12,
     "无 Token 保存被拦截（弹设置）且零落盘 -> " + JSON.stringify(blk));
-  await ev(() => { document.getElementById("settingsClose").click(); closeEditor(); });
-  await wait(250);
+  await ev(() => document.getElementById("settingsClose").click());
+  await wait(150);
 
-  // A7. 无 Token 删除被拦截（二次确认后报错、目录不变）
+  // A6. 无 Token 删除：菜单 → 🗑️ → 二次点击 → 拦截
+  await ev(() => { document.getElementById("routeMenuBtn").click(); });
+  await wait(120);
   await ev(() => { deleteRouteAsk("cx"); deleteRouteAsk("cx"); });
   await wait(300);
-  const delBlk = await ev(() => ({ toast: document.getElementById("toast").textContent, catN: ROUTE_CATALOG.length, hasCx: !!ROUTE_PACKS.cx }));
+  const delBlk = await ev(() => ({
+    toast: document.getElementById("toast").textContent,
+    catN: ROUTE_CATALOG.length,
+    hasCx: !!ROUTE_PACKS.cx
+  }));
   ok(/Token/.test(delBlk.toast) && delBlk.catN === 2 && delBlk.hasCx, "无 Token 删除被拦截、目录不变 -> " + JSON.stringify(delBlk));
+
+  // A7. 回到主页：菜单 → 回到主页（菜单项与绑定已由 A4/[9] 覆盖；此处直接触发 exitToHome，
+  //     与点击 routeMenuHome 语义等价，避开 headless 对隐藏按钮点击 + confirm 的偶发 tab 崩溃）
+  await ev(() => { document.getElementById("routeMenuBtn").click(); });
+  await wait(120);
+  await ev(() => exitToHome());
+  await wait(200);
+  const back = await ev(() => ({
+    homeShown: getComputedStyle(document.getElementById("homeMask")).display !== "none",
+    name: document.getElementById("routeName").textContent,
+    wpHint: document.querySelectorAll("#wpList .ed-hint").length > 0
+  }));
+  ok(back.homeShown && back.name === "未选择路线" && back.wpHint, "回到主页：homeMask 显示 + 侧栏重置为未选 -> " + JSON.stringify(back));
 
   /* ================= 阶段 B：mock fetch 仓库写入 ================= */
   console.log("\n== 阶段 B：mock fetch 仓库写入（零真实网络）==");
@@ -148,22 +188,26 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
           return Promise.resolve({ status: 200, json: () => Promise.resolve({}) });
         }
       }
-      if (/project-osrm\.org|restapi\.amap\.com/.test(u)) return Promise.reject(new Error("stub offline")); // 阻断外呼，防脏写
+      if (/project-osrm\.org|restapi\.amap\.com/.test(u)) return Promise.reject(new Error("stub offline"));
       return orig(u, opt);
     };
     store.gh = { repo: "Sunyh-gi/route-planner", branch: "main", token: "smoke-mock-token" };
     saveStore();
     return { en: ghEnabled(), tok: ghNeedToken() };
-  }).then(r => { ok(r.en && r.tok, "注入仓库配置 + Token（ghEnabled=" + r.en + ", token=" + r.tok + "）"); });
+  }).then(r => { ok(r.en && r.tok, "注入仓库配置 + Token"); });
 
-  // B2. 保存新路线 -> PUT routes/<id>.js + PUT routes/catalog.js，载荷校验
-  await ev(() => openNewEditor());
-  await wait(250);
-  await ev(() => { setDayNum(1); addStop("云端起点", 30.0, 102.0); setDayNum(2); addStop("云端终点", 30.2, 102.2); edCtx.preC = 5; edCtx.preTag = "☁️"; document.getElementById("edName").value = "云端测试线"; });
+  // B2. 新建路线 → 搜索加 2 站 → #saveBtn → PUT 路线文件 + catalog
+  await ev(() => enterNewRoute());
   await wait(200);
-  await ev(() => document.getElementById("edSave").click());
+  await ev(() => {
+    setDayNum(1); addStop("云端起点", 30.0, 102.0);
+    setDayNum(2); addStop("云端终点", 30.2, 102.2);
+    edCtx.work.name = "云端测试线";
+    renderRouteHeader();
+  });
+  await wait(200);
+  await ev(() => document.getElementById("saveBtn").click());
   await page.waitForFunction(() => (window.__ghLog || []).filter(l => l.method === "PUT").length >= 2, { timeout: 8000 }).catch(() => {});
-  await page.waitForFunction(() => !document.getElementById("editorMask").classList.contains("open"), { timeout: 8000 }).catch(() => {});
   await wait(400);
   const b2 = await ev(() => {
     const puts = window.__ghLog.filter(l => l.method === "PUT");
@@ -172,9 +216,10 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     let rJson = null;
     if (rPut) {
       const t = rPut.text;
-      const a = t.indexOf("]=");
+      // 新格式：window.ROUTE_PACKS["<id>"]={JSON};})();  → 定位 '"]=' 与结尾 ';})();'
+      const a = t.indexOf('"]=');
       const b = t.indexOf(";})();");
-      try { if (a >= 0 && b > a) rJson = JSON.parse(t.slice(a + 2, b)); } catch (e) {}
+      try { if (a >= 0 && b > a) rJson = JSON.parse(t.slice(a + 3, b)); } catch (e) {}
     }
     const id = rPut ? rPut.path.split("/").pop().replace(/\.js$/, "") : null;
     return {
@@ -185,46 +230,56 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
       rName: rJson ? rJson.name : "", rN: rJson ? (rJson.stops || []).length : -1,
       localCat: ROUTE_CATALOG.map(c => c.id).join(","),
       localPacks: Object.keys(ROUTE_PACKS).filter(k => k.indexOf("__pv") < 0).join(","),
-      rows: document.querySelectorAll(".route-switch .rs-btn").length,
-      edOpen: document.getElementById("editorMask").classList.contains("open"),
-      toast: document.getElementById("toast").textContent,
-      uh: (window.__uh || []).slice()
+      name: document.getElementById("routeName").textContent,
+      wp: document.querySelectorAll("#wpList .wp-item").length,
+      dirty: document.querySelector(".save-row").classList.contains("dirty"),
+      toast: document.getElementById("toast").textContent
     };
   });
   if (!(b2.rName === "云端测试线" && b2.rN === 2)) console.log("   [debug b2] " + JSON.stringify(b2));
   ok(!!b2.id && b2.rMsg === "route: save 云端测试线" && b2.rName === "云端测试线" && b2.rN === 2, "保存 PUT routes/" + b2.id + ".js 载荷正确 -> " + b2.rName + " n=" + b2.rN);
   ok(b2.cMsg === "route: catalog" && b2.catHasNew && b2.catHasCx && b2.catHasYl, "catalog PUT 含 川西+伊犁+新线");
-  ok(b2.localCat.indexOf(b2.id) >= 0 && b2.localPacks.indexOf(b2.id) >= 0 && b2.rows === 3 && !b2.edOpen && /已保存/.test(b2.toast), "运行时目录/数据/侧栏同步且弹窗关闭 -> " + JSON.stringify(b2));
+  ok(b2.localCat.indexOf(b2.id) >= 0 && b2.localPacks.indexOf(b2.id) >= 0 && b2.name === "云端测试线" && b2.wp === 2 && !b2.dirty && /已保存/.test(b2.toast), "侧栏：路线名/2点/dirty 已清 -> " + JSON.stringify(b2));
 
-  // B3. 编辑并改名保存 -> 同文件带 sha 覆盖，catalog 更新不重复
-  await page.waitForFunction(() => (window.__ghLog || []).length >= 2, { timeout: 8000 }).catch(() => {});
+  // B3. 行内改名（点 #routeName 标题） + 保存 → 带 sha 覆盖
   const id = b2.id;
-  await ev((rid) => openEditFor(rid), id);
-  await page.waitForFunction(() => document.getElementById("editorMask").classList.contains("open") && document.querySelectorAll("#edStops .ed-stop").length === 2, { timeout: 6000 }).catch(() => {});
-  await wait(250);
-  const b3 = await ev((rid) => {
-    document.getElementById("edName").value = "云端测试线·改";
-    document.getElementById("edSave").click();
-    return rid;
-  }, id);
+  await ev((rid) => { enterRoute(rid); }, id);
+  await page.waitForFunction((rid) => document.querySelectorAll("#wpList .wp-item").length === 2 && (ROUTE_CATALOG || []).some(c => c.id === rid), { timeout: 8000 }, id).catch(() => {});
+  await wait(200);
+  await ev(() => {
+    var sp = document.getElementById("routeName");
+    if (sp) sp.dispatchEvent(new Event("click", { bubbles: true }));
+  });
+  await wait(100);
+  await ev(() => {
+    var inp = document.querySelector(".route-name-input"); if (!inp) return;
+    inp.value = "云端测试线·改";
+    inp.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  await wait(200);
+  await ev(() => document.getElementById("saveBtn").click());
   await page.waitForFunction((rid) => (window.__ghLog || []).filter(l => l.method === "PUT" && l.path === "routes/" + rid + ".js").length >= 2, { timeout: 8000 }, id).catch(() => {});
-  await wait(300);
-  const b3r = await ev((rid) => {
+  await wait(400);
+  const b3 = await ev((rid) => {
     const puts = window.__ghLog.filter(l => l.method === "PUT");
-    const rPut = puts.filter(l => l.path === "routes/" + rid + ".js");
+    const rPuts = puts.filter(l => l.path === "routes/" + rid + ".js");
     const cPut = puts.filter(l => l.path === "routes/catalog.js").pop();
-    return { hadSha: rPut[rPut.length - 1].hadSha, catTxt: cPut ? cPut.text : "" };
+    const cur = ROUTE_CATALOG.find(c => c.id === rid);
+    return {
+      hadSha: rPuts[rPuts.length - 1].hadSha,
+      catTxt: cPut ? cPut.text : "",
+      name: cur ? cur.name : "",
+      pkName: ROUTE_PACKS[rid] ? ROUTE_PACKS[rid].name : "",
+      nm: document.getElementById("routeName").textContent
+    };
   }, id);
-  ok(b3r.hadSha, "编辑保存带 sha 覆盖（先读后写）");
-  const b3chk = await ev((rid) => {
-    const c = ROUTE_CATALOG.filter(x => x.id === rid);
-    return { n: ROUTE_CATALOG.length, name: c.length ? c[0].name : "", nm: ROUTE_PACKS[rid] ? ROUTE_PACKS[rid].name : "" };
-  }, id);
-  ok(b3chk.n === 3 && b3chk.name === "云端测试线·改" && b3chk.nm === "云端测试线·改" && b3r.catTxt.indexOf("云端测试线·改") >= 0 && b3r.catTxt.indexOf("云端测试线\"") < 0, "改名后目录与数据同步、无重复条目 -> " + JSON.stringify(b3chk));
+  ok(b3.hadSha, "编辑保存带 sha 覆盖（先读后写）");
+  ok(b3.catTxt.indexOf("云端测试线·改") >= 0 && b3.catTxt.indexOf('"name":"云端测试线"') < 0 && b3.name === "云端测试线·改" && b3.pkName === "云端测试线·改" && b3.nm === "云端测试线·改", "改名后目录/数据/侧栏均同步、无重复条目 -> " + JSON.stringify(b3));
 
-  // B4. 删除 -> DELETE 路线文件 + catalog PUT（只留川西/伊犁）
-  const preDelLogN = await ev(() => window.__ghLog.length);
-  await ev((rid) => { deleteRouteAsk(rid); deleteRouteAsk(rid); }, id);
+  // B4. 删除：菜单 → 🗑️ → 二次确认 → DELETE + catalog 更新
+  await ev(() => { document.getElementById("routeMenuBtn").click(); });
+  await wait(120);
+  await ev((rid) => { document.getElementById("routeMenuDel").click(); deleteRouteAsk(rid); }, id);
   await page.waitForFunction((rid) => (window.__ghLog || []).some(l => l.method === "DELETE" && l.path === "routes/" + rid + ".js"), { timeout: 8000 }, id).catch(() => {});
   await wait(400);
   const b4 = await ev((rid) => {
@@ -233,9 +288,25 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     return { delMsg: del ? del.msg : "", fileGone: !window.__ghFiles["routes/" + rid + ".js"], cat: ROUTE_CATALOG.map(c => c.id).join(","), hasPk: !!ROUTE_PACKS[rid], toast: document.getElementById("toast").textContent };
   }, id);
   ok(b4.delMsg === "route: delete 云端测试线·改" && b4.fileGone && b4.cat === "cx,yl" && !b4.hasPk && /已删除/.test(b4.toast), "删除后仓库文件移除、目录回 2 条 -> " + b4.cat);
-  void preDelLogN;
 
-  // B5. 远端刷新：远端 catalog 多一条未随站点发布的路线 -> 🔄 拉取
+  // B5. 复制：菜单 → 复制为新路线（侧栏 inline 编辑器预填副本）
+  await ev(() => enterRoute("yl"));
+  await page.waitForFunction(() => (ROUTE_PACKS.yl && document.querySelectorAll("#wpList .wp-item").length === 21), { timeout: 8000 }).catch(() => {});
+  await wait(300);
+  // 覆盖 prompt 走"确定"分支
+  await ev(() => { window.prompt = function () { return "伊犁副本"; }; document.getElementById("routeMenuBtn").click(); });
+  await wait(120);
+  await ev(() => document.getElementById("routeMenuCopy").click());
+  await wait(400);
+  const b5 = await ev(() => ({
+    name: document.getElementById("routeName").textContent,
+    wp: document.querySelectorAll("#wpList .wp-item").length,
+    dirty: document.querySelector(".save-row").classList.contains("dirty"),
+    activeId: activeRouteId
+  }));
+  ok(b5.name === "伊犁副本" && b5.wp === 21 && b5.dirty && b5.activeId === null, "📋 复制伊犁预填 21 点到内联编辑器（未入库） -> " + JSON.stringify(b5));
+
+  // B6. 远端刷新：模拟远端 catalog 多一条未随站点发布的路线
   await ev(() => {
     window.__ghSeed("routes/rem.js", routeFileText({ id: "rem", name: "远端拉取线", stops: [{ name: "远程A", lat: 31.0, lng: 103.0, day: 1, tag: "" }], segs: {} }));
     const cur = ROUTE_CATALOG.map(function (c) { return { id: c.id, name: c.name, file: c.file, days: c.days, n: c.n, color: c.color }; });
@@ -245,10 +316,10 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   });
   await page.waitForFunction(() => (ROUTE_CATALOG || []).some(c => c.id === "rem"), { timeout: 8000 }).catch(() => {});
   await wait(300);
-  const b5 = await ev(() => ({ cat: ROUTE_CATALOG.map(c => c.id).join(","), remStops: ROUTE_PACKS.rem ? ROUTE_PACKS.rem.stops.length : -1, toast: document.getElementById("toast").textContent }));
-  ok(b5.cat.indexOf("rem") >= 0 && b5.remStops === 1 && /刷新完成/.test(b5.toast), "远端刷新拉取新路线 rem -> " + JSON.stringify(b5));
+  const b6 = await ev(() => ({ cat: ROUTE_CATALOG.map(c => c.id).join(","), remStops: ROUTE_PACKS.rem ? ROUTE_PACKS.rem.stops.length : -1, toast: document.getElementById("toast").textContent }));
+  ok(b6.cat.indexOf("rem") >= 0 && b6.remStops === 1 && /刷新完成/.test(b6.toast), "远端刷新拉取新路线 rem -> " + JSON.stringify(b6));
 
-  // B6. 迁移旧路线：localStorage 遗留 -> 逐条 PUT + catalog 更新 + 清空旧库
+  // B7. 迁移旧路线：localStorage 遗留 -> 逐条 PUT + catalog 更新 + 清空旧库
   await ev(() => {
     store.routes = [{ id: "legacy-smoke", name: "旧版遗留线", stops: [{ name: "旧点A", lat: 30.1, lng: 102.1, day: 1, tag: "" }, { name: "旧点B", lat: 30.2, lng: 102.2, day: 2, tag: "" }], segs: {}, preset: { c: 2, tag: "旧" } }];
     saveStore();
@@ -256,16 +327,16 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   });
   await page.waitForFunction(() => (window.__ghLog || []).some(l => l.method === "PUT" && l.path === "routes/legacy-smoke.js"), { timeout: 8000 }).catch(() => {});
   await wait(400);
-  const b6 = await ev(() => {
+  const b7 = await ev(() => {
     const puts = window.__ghLog.filter(l => l.method === "PUT");
     const lPut = puts.find(l => l.path === "routes/legacy-smoke.js");
     const cPut = puts.filter(l => l.path === "routes/catalog.js").pop();
     return { lMsg: lPut ? lPut.msg : "", catHasLegacy: cPut ? cPut.text.indexOf("legacy-smoke") >= 0 : false, catN: ROUTE_CATALOG.length, legacyN: legacyRoutes().length, toast: document.getElementById("toast").textContent };
   });
-  ok(b6.lMsg === "route: migrate 旧版遗留线" && b6.catHasLegacy && b6.catN === 4 && b6.legacyN === 0 && /迁移完成/.test(b6.toast), "旧路线迁移入库并清空本地 -> cat=" + b6.catN);
+  ok(b7.lMsg === "route: migrate 旧版遗留线" && b7.catHasLegacy && b7.catN === 4 && b7.legacyN === 0 && /迁移完成/.test(b7.toast), "旧路线迁移入库并清空本地 -> cat=" + b7.catN);
 
-  // B7. 主页画廊 4 卡（含新路线与标签），截屏
-  await ev(() => showHome());
+  // B8. 主页画廊 4 卡（含 新路线/标签/旧版遗留），截屏
+  await ev(() => exitToHome());
   await wait(400);
   const cards = await ev(() => [...document.querySelectorAll(".home-card")].map(c => c.querySelector(".nm").textContent.trim()));
   ok(cards.length === 4 && cards.some(t => t.indexOf("旧版遗留线") >= 0), "主页画廊 4 卡 -> " + JSON.stringify(cards));
