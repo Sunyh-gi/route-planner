@@ -466,6 +466,17 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   await wait(300);
   const c9 = await ev(() => ({ hash: location.hash, home: getComputedStyle(document.getElementById("homeMask")).display !== "none", name: document.getElementById("routeName").textContent }));
   ok(c9.hash === "#/r/cx" && !c9.home && c9.name === "川西路线", "F5 刷新 #/r/cx → 恢复路线视图 -> " + JSON.stringify(c9));
+
+  // C10. 自动取景：打开路线后视口应包含全部地点且已放大（v6.5.3 fitRouteView）
+  await page.waitForFunction(() => { try { var b = map.getBounds(); var st = window.ROUTE_PACKS && ROUTE_PACKS.cx && ROUTE_PACKS.cx.stops || []; return st.length > 0 && st.every(s => b.contains([s.lat, s.lng])); } catch (e) { return false; } }, { timeout: 10000 }).catch(() => {});
+  const c10 = await ev(() => {
+    var b = map.getBounds();
+    var st = (window.ROUTE_PACKS && ROUTE_PACKS.cx && ROUTE_PACKS.cx.stops) || [];
+    var all = st.length > 0 && st.every(s => b.contains([s.lat, s.lng]));
+    var vp = map.getSize();
+    return { zoom: Math.round(map.getZoom() * 10) / 10, all: all, n: st.length, marginLeft: Math.round(b.getWest() === -Infinity ? -1 : 0) >= 0, vp: { x: vp.x, y: vp.y } };
+  });
+  ok(c10.all === true && c10.n === 11 && c10.zoom > 4, "自动取景：11 点全部在视口内 & zoom=" + c10.zoom + "（>4 说明已放大） -> " + JSON.stringify(c10));
   await page.screenshot({ path: path.join(__dirname, "_shot_hash.png") });
 
   /* ================= 汇总 ================= */
