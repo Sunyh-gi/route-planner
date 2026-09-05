@@ -1613,6 +1613,8 @@ function applyEditToMap() {
 }
 // v6.5.3 打开路线自动取景：路线整体居中 + 四周留白。
 // 只在「打开」场景调用一次（进入已有路线 / 复制副本）；编辑过程（加站 / 拖拽 / 换天）不打断用户视角。
+// 左侧半透明玻璃面板（约 220px 宽）占据视觉重心：取景后中心再右移约 7.5% 视口宽（zoom 不变），
+// 使路线在“扣除面板的可见区”内视觉居中，避免路线左缘被面板遮挡显得拥挤。
 function fitRouteView() {
   var w = edCtx.work;
   if (!w || !w.stops || !w.stops.length) return;
@@ -1625,8 +1627,15 @@ function fitRouteView() {
   }
   if (!b.isValid()) return;
   var vp = map.getSize();
-  // 每边留白约 12% 宽 / 15% 高：路线位于画面中心，四周留白不贴边（左侧半透明玻璃面板可透视，不影响观感）
-  map.fitBounds(b, { padding: L.point(Math.round(vp.x * 0.12), Math.round(vp.y * 0.15)), maxZoom: 8 });
+  var pad = L.point(Math.round(vp.x * 0.12), Math.round(vp.y * 0.15));
+  // 一次性 setView：先按 padding 算出 zoom，再把 bounds 中心像素右移补偿左面板（避免 fitBounds + setView 动画冲突）
+  var z = map.getBoundsZoom(b, false, pad);
+  if (z > 8) z = 8;
+  var shift = Math.round(vp.x * 0.075); // 视觉补偿：左面板 ~220px → 路线在可见区（扣除面板）居中
+  var center = b.getCenter();
+  var px = map.project(center, z);
+  var newCenter = map.unproject(L.point(px.x + shift, px.y), z);
+  map.setView(newCenter, z, { animate: true });
 }
 
 /* ============================================================
