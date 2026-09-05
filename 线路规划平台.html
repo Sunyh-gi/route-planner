@@ -2409,6 +2409,11 @@ showHome();
 renderRouteHeader();
 renderWpList();
 
+// v6.5.2 补丁：首次加载（F5 刷新 / 从地址栏粘贴带 hash 的链接）不会触发 hashchange，
+// 需主动按初始 hash 恢复视图：主页 #/、新建 #/n、路线 #/r/<id>、设置附加 /s
+var _bootSt = parseHashState();
+if (_bootSt.page !== "home" || _bootSt.settings) applyHashLocation();
+
 // 已配置 Token：启动后自动从仓库刷新目录（仓库是唯一真源），刷新完重绘主页
 ghInit().then(function (r) {
   if (r && !r.error && $("homeMask").style.display !== "none") renderHome();
