@@ -1289,6 +1289,7 @@ function doDeleteRoute(id) {
       showHome();
       renderRouteHeader();
       renderWpList();
+      syncHash("#/"); // v6.5.2：删除当前路线后回到主页（浏览器历史同步）
     }
     return pushCatalog("route: delete " + nm).then(function () {
       rebuildMeta(); rebuildRouteList(); persistCache();
@@ -1696,6 +1697,7 @@ function enterNewRoute() {
   applyEditToMap();
   $("edSearch").value = "";
   $("edResults").classList.remove("show");
+  syncHash("#/n"); // v6.5.2：浏览器历史可返回
 }
 function enterRoute(id) {
   ensureRouteData(id).then(function (t) {
@@ -1723,11 +1725,12 @@ function enterRoute(id) {
     applyEditToMap();
     $("edSearch").value = "";
     $("edResults").classList.remove("show");
+    syncHash("#/r/" + id); // v6.5.2：浏览器历史可返回（进入的是已存在路线）
   }).catch(function (e) { toast("无法进入路线：" + (e && e.message ? e.message : id)); });
 }
 function exitToHome() {
   if (edCtx.work && edCtx.dirty) {
-    if (!confirm("当前路线有未保存的修改，确定回到主页吗？")) return;
+    if (!confirm("当前路线有未保存的修改，确定回到主页吗？")) return false;
   }
   // v6.4：离开当前路线前清理掉残留的预览点 / 地图旁「添加到第几天」卡片，避免切换到下一条路线时还在显示
   try { clearPreview(); } catch (e) {}
@@ -1742,6 +1745,8 @@ function exitToHome() {
   showHome();
   renderRouteHeader();
   renderWpList();
+  syncHash("#/"); // v6.5.2：浏览器历史可返回
+  return true;
   // 清空地图上的渲染（可选：回到主页时地图仍可见，避免突兀）
 }
 function inlineCopyRoute() {
@@ -1767,6 +1772,7 @@ function inlineCopyRoute() {
   renderWpList();
   applyEditToMap();
   toast("已复制为新路线，编辑后保存到 GitHub");
+  syncHash("#/n"); // v6.5.2：副本是新路线（未入库）
 }
 function inlineDeleteRoute() {
   if (!activeRouteId) { toast("新路线未保存，无法删除"); return; }
@@ -1809,6 +1815,8 @@ function saveInlineRoute() {
     renderRouteHeader();
     renderWpList();
     toast("路线「" + name + "」已保存到 GitHub 仓库");
+    // v6.5.2：保存成功 → 从「新建 #/n」归位到「该路线 #/r/<id>」，浏览器返回可正确回主页
+    if (parseHashState().page === "new") syncHash("#/r/" + saving.id);
   }).catch(function (e) {
     btn.disabled = false; btn.textContent = oldTxt;
     toast("保存失败：" + (e && e.message ? e.message : "未知错误"));
@@ -1945,14 +1953,18 @@ function openSettings() {
   var r = $("ghRepoLabel");
   if (r) r.innerHTML = esc(g.repo || GH_DEFAULT_REPO) + " <b>✎</b>";
   $("settingsMask").classList.add("open");
+  // v6.5.2：设置作为"当前页 + /s"入历史，浏览器返回可退出设置
+  var st = parseHashState();
+  st.settings = true;
+  syncHash(hashForState(st));
   setTimeout(function () { $("amapKeyInput").focus(); }, 60);
 }
-$("settingsClose").addEventListener("click", function () { $("settingsMask").classList.remove("open"); });
-$("settingsMask").addEventListener("click", function (ev) { if (ev.target === this) $("settingsMask").classList.remove("open"); });
+$("settingsClose").addEventListener("click", function () { closeSettings(); });
+$("settingsMask").addEventListener("click", function (ev) { if (ev.target === this) closeSettings(); });
 $("amapSave").addEventListener("click", function () {
   store.amapKey = $("amapKeyInput").value.trim();
   saveStore();
-  $("settingsMask").classList.remove("open");
+  closeSettings();
   toast(store.amapKey ? "高德 Key 已保存" : "已清除高德 Key");
 });
 $("amapTest").addEventListener("click", function () {
@@ -2296,6 +2308,90 @@ function hideHome() {
   $("homeMask").style.display = "none";
   $("homeFab").style.display = "";
 }
+/* ============================================================
+ * v6.5.2 浏览器历史 / 返回键支持（hash 路由）
+ * 状态模型：#/ 主页 · #/n 新建 · #/r/<id> 进入路线 · 各页面附加 /s 表示设置弹层
+ * 规则：
+ *   - UI 切换（点卡片/新建/设置/保存成功等）经 syncHash() 写入 history（带 _skipNextHash 防自触发）
+ *   - 浏览器前进/后退 / 手改地址 触发 hashchange → applyHashLocation() 恢复对应视图
+ *   - 离开含未保存修改的路线时弹 confirm（复用 exitToHome 语义），取消则 location.replace 还原 hash
+ *   - 设置是覆盖在"当前页"之上的弹层：home 之上 #/s，路线之上 #/r/<id>/s；关闭即回到基础页
+ * ============================================================ */
+var _skipNextHash = false;
+function syncHash(h) {
+  h = h || "#/";
+  if (location.hash === h) return;
+  _skipNextHash = true;
+  try { location.hash = h; } catch (e) {}
+}
+function parseHashState() {
+  var raw = (location.hash || "").replace(/^#\/?/, "");
+  var parts = raw ? raw.split("/") : [];
+  var st = { page: "home", id: null, settings: false };
+  if (parts.length && parts[parts.length - 1] === "s") { st.settings = true; parts.pop(); }
+  if (!parts.length || parts[0] === "") { /* home */ }
+  else if (parts[0] === "n") { st.page = "new"; }
+  else if (parts[0] === "r" && parts[1]) { st.page = "route"; st.id = parts[1]; }
+  return st;
+}
+function hashForState(st) {
+  var b = (st.page === "route" && st.id) ? ("#/r/" + st.id) : (st.page === "new" ? "#/n" : "#/");
+  return st.settings ? (b === "#/" ? "#/s" : b + "/s") : b;
+}
+function currentState() {
+  var settings = $("settingsMask").classList.contains("open");
+  var page = "home", id = null;
+  if (getComputedStyle($("homeMask")).display === "none") {
+    if (edCtx.work && edCtx.work.id) {
+      if (activeRouteId) { page = "route"; id = activeRouteId; }
+      else page = "new";
+    } else page = "home"; // 无路线的空闲地图 → 目标仍按主页处理
+  }
+  return { page: page, id: id, settings: settings };
+}
+function revertHash(cur) {
+  // 用户取消离开（保留未保存修改）：用 replace 不新增历史项，把地址还原回当前页
+  _skipNextHash = true;
+  try { location.replace(hashForState(cur)); } catch (e) {}
+}
+function closeSettings() {
+  var st = parseHashState();
+  if (!$("settingsMask").classList.contains("open")) { /* 未开仍把 hash 归位 */ }
+  else $("settingsMask").classList.remove("open");
+  st.settings = false;
+  syncHash(hashForState(st));
+}
+function applyHashLocation() {
+  var st = parseHashState();
+  var cur = currentState();
+  // 1) 页面切换（home / new / route）
+  if (st.page === "route" && st.id) {
+    if (cur.page !== "route" || cur.id !== st.id) {
+      if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，切换后将丢失，确定吗？")) { revertHash(cur); return; }
+      enterRoute(st.id); // enterRoute 内部 async 完成后 syncHash('#/r/<id>')
+    }
+  } else if (st.page === "new") {
+    if (cur.page !== "new") {
+      if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，新建将丢弃，确定吗？")) { revertHash(cur); return; }
+      enterNewRoute();
+    }
+  } else { // home
+    if (cur.page !== "home") {
+      if (!exitToHome()) { revertHash(cur); return; } // exitToHome 内部已 confirm
+    }
+  }
+  // 2) 设置弹层开关
+  var cur2 = currentState();
+  if (st.settings && !cur2.settings) openSettings();
+  else if (!st.settings && cur2.settings) {
+    $("settingsMask").classList.remove("open");
+  }
+}
+window.addEventListener("hashchange", function () {
+  if (_skipNextHash) { _skipNextHash = false; return; }
+  applyHashLocation();
+});
+
 $("homeMask").addEventListener("click", function (ev) {
   var card = ev.target.closest ? ev.target.closest(".home-card") : null;
   if (!card) return;
@@ -2306,7 +2402,8 @@ $("homeMask").addEventListener("click", function (ev) {
 $("homeFab").addEventListener("click", function () { exitToHome(); });
 $("homeNew").addEventListener("click", function () { hideHome(); enterNewRoute(); });
 $("homeRefresh").addEventListener("click", function () { doRefresh(); });
-$("homeSettings").addEventListener("click", function () { hideHome(); openSettings(); });
+// v6.5.2：设置改为直接覆盖在主页之上（z-index 3000 > homeMask 2400），不再 hideHome
+$("homeSettings").addEventListener("click", function () { openSettings(); });
 // 初始进入：展示主页画廊 + 侧栏显示"未选择路线"
 showHome();
 renderRouteHeader();
