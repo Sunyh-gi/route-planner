@@ -1611,6 +1611,23 @@ function applyEditToMap() {
   applyRoute(obj, true, true);
   renderWpList();
 }
+// v6.5.3 打开路线自动取景：路线整体居中 + 四周留白。
+// 只在「打开」场景调用一次（进入已有路线 / 复制副本）；编辑过程（加站 / 拖拽 / 换天）不打断用户视角。
+function fitRouteView() {
+  var w = edCtx.work;
+  if (!w || !w.stops || !w.stops.length) return;
+  var b = L.latLngBounds([]);
+  w.stops.forEach(function (s) { b.extend([s.lat, s.lng]); });
+  var segs = w.segs || {};
+  for (var k in segs) if (segs.hasOwnProperty(k) && segs[k] && segs[k].poly) {
+    var pl = segs[k].poly;
+    for (var i = 0; i < pl.length; i++) b.extend([pl[i][0], pl[i][1]]);
+  }
+  if (!b.isValid()) return;
+  var vp = map.getSize();
+  // 每边留白约 12% 宽 / 15% 高：路线位于画面中心，四周留白不贴边（左侧半透明玻璃面板可透视，不影响观感）
+  map.fitBounds(b, { padding: L.point(Math.round(vp.x * 0.12), Math.round(vp.y * 0.15)), maxZoom: 8 });
+}
 
 /* ============================================================
  * v6 「添加到第 N 天」液态玻璃卡片：
@@ -1742,6 +1759,7 @@ function enterRoute(id) {
     renderRouteHeader();
     renderWpList();
     applyEditToMap();
+    fitRouteView(); // v6.5.3 打开路线：自动取景居中 + 留白
     $("edSearch").value = "";
     $("edResults").classList.remove("show");
     syncHash("#/r/" + id); // v6.5.2：浏览器历史可返回（进入的是已存在路线）
@@ -1790,6 +1808,7 @@ function inlineCopyRoute() {
   renderRouteHeader();
   renderWpList();
   applyEditToMap();
+  fitRouteView(); // v6.5.3 打开副本：自动取景居中 + 留白
   toast("已复制为新路线，编辑后保存到 GitHub");
   syncHash("#/n"); // v6.5.2：副本是新路线（未入库）
 }
