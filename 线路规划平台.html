@@ -211,40 +211,98 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .toast.show { opacity: 1; }
 input[type="file"] { display: none; }
 
-/* ========== 主页（路线库画廊） ========== */
+/* ========== 主页（四季画廊 · 液态玻璃） ========== */
+/* 背景：壁纸打底不可滑动（滚动只发生在卡片层）；顶部→中部清晰，中→底白色渐变 + 磨砂，底部约 50% 半透明 */
 #homeMask {
-  position: fixed; inset: 0; z-index: 2400;
-  background: linear-gradient(150deg, #eef1f6 0%, #dde4ee 55%, #ccd6e4 100%);
-  overflow-y: auto;
+  position: fixed; inset: 0; z-index: 2400; overflow: hidden;
+  background: linear-gradient(180deg, #dfe9f4 0%, #eef2f7 100%);
 }
-#homeMask .home-inner { max-width: 960px; margin: 0 auto; padding: 40px 22px 60px; }
-.home-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
-.home-head h1 { margin: 0; font-size: 26px; font-weight: 800; color: #2C3E6B; letter-spacing: 1px; }
-.home-head .sub { font-size: 12.5px; color: #8a95a8; }
-.home-tools { display: flex; gap: 8px; margin: 14px 0 22px; flex-wrap: wrap; }
+.home-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.home-frost {
+  position: absolute; left: 0; right: 0; top: 40%; bottom: 0;
+  backdrop-filter: blur(12px) saturate(140%); -webkit-backdrop-filter: blur(12px) saturate(140%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.85) 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.85) 100%);
+  pointer-events: none;
+}
+.home-veil {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.03) 34%, rgba(255,255,255,.18) 60%, rgba(255,255,255,.42) 100%);
+}
+.home-head {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 26px 34px 0;
+}
+.home-title h1 {
+  margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 6px; color: #fff;
+  text-shadow: 0 2px 18px rgba(30,60,110,.45), 0 1px 2px rgba(30,60,110,.35);
+}
+.home-title .sub {
+  display: block; margin-top: 6px; font-size: 10.5px; letter-spacing: 3.5px;
+  color: rgba(255,255,255,.85); text-shadow: 0 1px 8px rgba(30,60,110,.5);
+}
+.home-tools { display: flex; gap: 8px; }
 .home-tools button {
-  border: none; border-radius: 10px; padding: 8px 14px; cursor: pointer;
-  font-size: 12.5px; font-weight: 600; background: rgba(255,255,255,0.75);
-  color: #555; border: 1px solid rgba(80,85,95,0.18); transition: all .15s;
+  border: 1px solid rgba(255,255,255,.45); border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600; color: #fff; letter-spacing: .5px;
+  background: rgba(255,255,255,.14);
+  backdrop-filter: blur(14px) saturate(150%); -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: 0 4px 18px rgba(30,60,110,.12); transition: background .18s, transform .18s;
 }
-.home-tools button:hover { background: rgba(80,85,95,0.88); color: #fff; }
-.home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.home-tools button:hover { background: rgba(255,255,255,.28); transform: translateY(-1px); }
+/* 卡片滚动层：滚轮滚动时卡片上移；元素顶到达页面中线（容器顶）时渐隐完成 */
+.home-scroll {
+  position: absolute; left: 0; right: 0; top: 48%; bottom: 0; z-index: 4;
+  overflow-y: auto; padding: 10px 34px 40px; scrollbar-width: none;
+}
+.home-scroll::-webkit-scrollbar { display: none; }
+.season { margin: 0 0 34px; }
+.season-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; color: #26324a; }
+.season-head .ico { font-size: 17px; }
+.season-head .nm { font-size: 19px; font-weight: 700; letter-spacing: 2px; }
+.season-head .nm i {
+  font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: 2.5px;
+  color: rgba(38,50,74,.55); margin-left: 8px; text-transform: uppercase;
+}
+.season-head .cnt {
+  font-size: 10.5px; font-weight: 600; color: rgba(38,50,74,.6);
+  border: 1px solid rgba(38,50,74,.22); border-radius: 999px; padding: 1px 9px;
+  background: rgba(255,255,255,.25);
+}
+.season-cards { display: flex; flex-wrap: wrap; gap: 16px; }
 .home-card {
-  background: rgba(255,255,255,0.82); border-radius: 16px; padding: 14px 15px 12px;
-  cursor: pointer; border: 1px solid rgba(255,255,255,0.6);
-  box-shadow: 0 2px 10px rgba(30,50,90,0.06); transition: transform .15s, box-shadow .15s;
+  width: 330px; box-sizing: border-box;
+  background: rgba(255,255,255,.16); border-radius: 22px; padding: 18px 20px 15px;
+  cursor: pointer; border: 1px solid rgba(255,255,255,.45);
+  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: 0 8px 28px rgba(30,60,110,.10), inset 0 1px 0 rgba(255,255,255,.35);
+  transition: transform .18s, box-shadow .18s, background .18s;
   position: relative; overflow: hidden;
 }
-.home-card:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(30,50,90,0.16); }
-.home-card .nm { font-size: 15px; font-weight: 700; color: #223; margin: 0 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home-card .meta { font-size: 12px; color: #6f7a8d; margin: 0; font-weight: 500; }
-.home-card .badge {
-  display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 999px;
-  background: rgba(80,85,95,0.10); color: #555; font-weight: 600; margin-right: 6px;
+.home-card:hover { transform: translateY(-4px); background: rgba(255,255,255,.26); box-shadow: 0 14px 36px rgba(30,60,110,.16), inset 0 1px 0 rgba(255,255,255,.4); }
+.home-card .nm { font-size: 16px; font-weight: 700; color: #22304a; margin: 0 0 5px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-card .meta { font-size: 12px; color: rgba(34,48,74,.66); margin: 0; font-weight: 600; letter-spacing: .5px; }
+.season-empty {
+  width: 330px; box-sizing: border-box; border-radius: 22px; padding: 18px 20px;
+  border: 1px dashed rgba(38,50,74,.28); color: rgba(38,50,74,.5);
+  font-size: 12.5px; letter-spacing: 1px; background: rgba(255,255,255,.10);
+  text-align: center;
 }
-.home-card .badge.cloud { background: rgba(80,140,120,0.12); color: #3c7a62; }
-.home-empty { text-align: center; color: #8a95a8; font-size: 13px; padding: 40px 0; }
-.home-foot { margin-top: 26px; font-size: 11px; color: #9aa4b5; text-align: center; line-height: 1.7; }
+.home-empty { text-align: center; color: rgba(38,50,74,.6); font-size: 13px; padding: 40px 0; }
+.home-foot { margin: 10px 0 6px; font-size: 11px; color: rgba(38,50,74,.45); text-align: center; line-height: 1.7; letter-spacing: .5px; }
+/* 滚轮上移 → 卡片行经容器顶部（视口中部偏上）渐隐（滚动驱动动画；不支持的浏览器自动跳过，卡片保持可见） */
+@supports (animation-timeline: view()) {
+  .home-scroll .season {
+    animation: homeFade linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 75%;
+  }
+}
+@keyframes homeFade {
+  0%, 70% { opacity: 1; filter: blur(0); transform: translateY(0); }
+  100% { opacity: 0; filter: blur(5px); transform: translateY(-14px); }
+}
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 1500;
@@ -498,21 +556,23 @@ input[type="file"] { display: none; }
 
 <!-- ========== 主页（路线库画廊） ========== -->
 <div id="homeMask">
-  <div class="home-inner">
-    <div class="home-head">
-      <h1>🧭 我的路线库</h1>
-      <span class="sub">每条路线 = 仓库里的一个数据文件 · 点卡片进入地图；新建/修改保存后自动写入 GitHub</span>
+  <img class="home-bg" src="assets/home-bg.jpg" alt="">
+  <div class="home-frost"></div>
+  <div class="home-veil"></div>
+  <div class="home-head">
+    <div class="home-title">
+      <h1>四季路线</h1>
+      <span class="sub">SPRING · SUMMER · AUTUMN · WINTER</span>
     </div>
     <div class="home-tools">
-      <button id="homeNew">＋ 新建路线</button>
-      <button id="homeSettings">⚙ 设置（高德 Key / GitHub 同步）</button>
+      <button id="homeNew">＋ 新建</button>
+      <button id="homeSettings">⚙ 设置</button>
       <button id="homeRefresh">🔄 刷新</button>
     </div>
-    <div class="home-grid" id="homeGrid"></div>
-    <div class="home-foot">
-      每条路线在 GitHub 仓库中都有自己的数据文件：川西 / 伊犁随站点提供，你新建/修改的路线保存后写入各自文件并推回仓库，任何设备打开即见。<br>
-      保存 / 删除需要先在 ⚙ 设置 配置 GitHub Token；未配置时仅可浏览与编辑预览。
-    </div>
+  </div>
+  <div class="home-scroll">
+    <div id="homeGrid"></div>
+    <div class="home-foot">每条路线在 GitHub 仓库都有独立数据文件 · 保存 / 删除需在 ⚙ 设置配置 Token · 未配置时可浏览与预览</div>
   </div>
 </div>
 <button id="homeFab">⌂ 主页</button>
@@ -791,10 +851,10 @@ function catUpsert(c) {
   var i = catIndexOf(c.id);
   if (i >= 0) {
     var old = ROUTE_CATALOG[i];
-    ROUTE_CATALOG[i] = { id: c.id, name: c.name || old.name, file: c.file || old.file || "", days: c.days || old.days || 1, n: c.n || old.n || 0, color: c.color || old.color || "" };
+    ROUTE_CATALOG[i] = { id: c.id, name: c.name || old.name, file: c.file || old.file || "", days: c.days || old.days || 1, n: c.n || old.n || 0, color: c.color || old.color || "", season: c.season || old.season || "" };
     return ROUTE_CATALOG[i];
   }
-  ROUTE_CATALOG.push({ id: c.id, name: c.name, file: c.file || "routes/" + c.id + ".js", days: c.days || 1, n: c.n || 0, color: c.color || "" });
+  ROUTE_CATALOG.push({ id: c.id, name: c.name, file: c.file || "routes/" + c.id + ".js", days: c.days || 1, n: c.n || 0, color: c.color || "", season: c.season || "" });
   return ROUTE_CATALOG[ROUTE_CATALOG.length - 1];
 }
 function routeDays(r) { var mx = 1; (r.stops || []).forEach(function (s) { if ((s.day || 1) > mx) mx = s.day; }); return mx; }
@@ -2329,23 +2389,46 @@ function routeCardMeta(id) {
     pk.stops.forEach(function (s) { if ((s.day || 1) > mx) mx = s.day; });
     days = mx;
   }
-  return { name: cat.name, days: days };
+  return { name: cat.name, days: days, season: cat.season || "" };
 }
+/* v6.6 四季画廊：春夏秋冬四个板块从上到下；路线归属读 catalog 条目的 season 字段（未登记 → 春，待后续规划） */
+var SEASON_ORDER = [
+  { key: "spring", name: "春", en: "Spring", ico: "🌸" },
+  { key: "summer", name: "夏", en: "Summer", ico: "☀️" },
+  { key: "autumn", name: "秋", en: "Autumn", ico: "🍂" },
+  { key: "winter", name: "冬", en: "Winter", ico: "❄️" }
+];
 function renderHome() {
   var grid = $("homeGrid");
-  var html = "";
+  var groups = {};
+  SEASON_ORDER.forEach(function (s) { groups[s.key] = []; });
+  var any = false;
   ROUTE_META.forEach(function (m) {
     if (String(m.id).indexOf("__pv") >= 0) return; // 预览占位不展示
     var meta = routeCardMeta(m.id);
     if (!meta) return;
+    any = true;
+    var sk = groups[meta.season] ? meta.season : "spring";
     // 行程时长：X 天 X 晚（中文行程标准写法，nights = days - 1）
     var nights = Math.max(0, meta.days - 1);
-    html += '<div class="home-card" data-route="' + m.id + '">' +
+    groups[sk].push('<div class="home-card" data-route="' + m.id + '">' +
       '<div class="nm">' + esc(meta.name) + "</div>" +
       '<div class="meta">' + meta.days + " 天 " + nights + " 晚</div>" +
-      "</div>";
+      "</div>");
   });
-  if (!html) html = '<div class="home-empty">暂无可进入的路线。点上方「＋ 新建路线」创建，保存后写入 GitHub 仓库。</div>';
+  if (!any) {
+    grid.innerHTML = '<div class="home-empty">暂无可进入的路线。点右上「＋ 新建」创建，保存后写入 GitHub 仓库。</div>';
+    return;
+  }
+  var html = SEASON_ORDER.map(function (s) {
+    var cards = groups[s.key];
+    var body = cards.length ? cards.join("") : '<div class="season-empty">静待规划</div>';
+    return '<section class="season">' +
+      '<div class="season-head"><span class="ico">' + s.ico + '</span>' +
+      '<span class="nm">' + s.name + '<i>' + s.en + '</i></span>' +
+      '<span class="cnt">' + cards.length + ' 条</span></div>' +
+      '<div class="season-cards">' + body + "</div></section>";
+  }).join("");
   grid.innerHTML = html;
 }
 function showHome() {
