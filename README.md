@@ -82,7 +82,7 @@ routes/
 - **数据持久化**：localStorage 仅保存设置（`route-platform:v1` 的 `amapKey`/`gh`）与离线快照缓存（`route-platform:v1:cache`，只在弱网 / 离线时做兜底，**不是真源**）；真源始终在 GitHub 仓库
 - **导入**：编辑面板「导入备份」（`fileImport` 触发）打包全部路线为 JSON 后逐条 `PUT` 进仓库（需 Token）
 - **☁ GitHub 真源**（v5 必选）：在 ⚙ 设置 填 GitHub Token + 仓库 owner/repo，保存 / 删除 / 导入 / 远端刷新 / 迁移旧路线 全部走 Contents API 写入仓库；启动自动刷新，弱网靠本地缓存兜底
-- **底图**：标准 / 地形 / 卫星 / OpenStreetMap / National Geographic 五套底图 + 天地图中文注记叠加层（卫星模式下面板文字自动变白）
+- **底图**：标准 / 地形 / 卫星 / OpenStreetMap / National Geographic 五套底图 + 天地图中文注记叠加层（卫星模式下面板文字自动变白）。天地图 key 为浏览器端（按 Referer 域名白名单校验）：若当前域名未加入白名单，勾选「卫星标注」会瓦片 403，**v6.5.3 起平台自动检测并 toast 提示 + 关闭注记层**，把域名加进天地图控制台白名单后重新勾选即可恢复
 
 ## 使用
 
