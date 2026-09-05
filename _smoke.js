@@ -402,6 +402,72 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   ok(cards.length === 4 && cards.some(t => t.indexOf("旧版遗留线") >= 0), "主页画廊 4 卡 -> " + JSON.stringify(cards));
   await page.screenshot({ path: path.join(__dirname, "_shot_platform.png") });
 
+  /* ================= 阶段 C：hash 路由（浏览器前进/后退 + F5 恢复） ================= */
+  console.log("\n== 阶段 C：hash 路由（浏览器前进/后退 + F5 恢复）==");
+
+  // C0. 全新加载主页作为确定性历史起点；清掉 mock token，防止 reload 后 ghInit 打真实网络
+  await page.goto(URL, { waitUntil: "load", timeout: 60000 });
+  await wait(1500);
+  await ev(() => { if (window.store) { store.gh = {}; saveStore(); } });
+  const waitName = n => page.waitForFunction(nm => document.getElementById("routeName") && document.getElementById("routeName").textContent === nm, { timeout: 15000 }, n).catch(() => {});
+
+  // C1. 主页点川西卡 → hash=#/r/cx 且进入路线视图（homeMask 隐藏）
+  await ev(() => document.querySelector('.home-card[data-route="cx"]').click());
+  await waitName("川西路线");
+  await wait(300);
+  const c1 = await ev(() => ({ hash: location.hash, home: getComputedStyle(document.getElementById("homeMask")).display !== "none", name: document.getElementById("routeName").textContent }));
+  ok(c1.hash === "#/r/cx" && !c1.home && c1.name === "川西路线", "点卡片 → hash=#/r/cx 进入路线视图 -> " + JSON.stringify(c1));
+
+  // C2. 浏览器后退 → 回主页 #/
+  await page.goBack().catch(() => {});
+  await wait(800);
+  const c2 = await ev(() => ({ hash: location.hash, home: getComputedStyle(document.getElementById("homeMask")).display !== "none", name: document.getElementById("routeName").textContent }));
+  ok(c2.hash === "#/" && c2.home && c2.name === "未选择路线", "浏览器后退 → 回主页 #/ -> " + JSON.stringify(c2));
+
+  // C3. 主页点 ⚙ 设置 → #/s 且设置层 open（叠加在主页之上）
+  await ev(() => document.getElementById("homeSettings").click());
+  await wait(400);
+  const c3 = await ev(() => ({ hash: location.hash, open: document.getElementById("settingsMask").classList.contains("open"), home: getComputedStyle(document.getElementById("homeMask")).display !== "none" }));
+  ok(c3.hash === "#/s" && c3.open && c3.home, "主页设置 → hash=#/s 叠加打开 -> " + JSON.stringify(c3));
+
+  // C4. 浏览器后退 → 设置关闭回主页 #/
+  await page.goBack().catch(() => {});
+  await wait(400);
+  const c4 = await ev(() => ({ hash: location.hash, open: document.getElementById("settingsMask").classList.contains("open") }));
+  ok(c4.hash === "#/" && !c4.open, "后退 → 关设置回 #/ -> " + JSON.stringify(c4));
+
+  // C5. 浏览器前进 → 设置重新打开 #/s
+  await page.goForward().catch(() => {});
+  await wait(400);
+  const c5 = await ev(() => ({ hash: location.hash, open: document.getElementById("settingsMask").classList.contains("open") }));
+  ok(c5.hash === "#/s" && c5.open, "前进 → 设置重开 #/s -> " + JSON.stringify(c5));
+
+  // C6. 点设置关闭按钮 → 回 #/
+  await ev(() => document.getElementById("settingsClose").click());
+  await wait(300);
+  const c6 = await ev(() => ({ hash: location.hash, open: document.getElementById("settingsMask").classList.contains("open") }));
+  ok(c6.hash === "#/" && !c6.open, "关闭设置 → #/ -> " + JSON.stringify(c6));
+
+  // C7. 手改 hash 到 #/n（等价地址栏直达新建）→ hashchange → 新建编辑模式
+  await ev(() => { location.hash = "#/n"; });
+  await page.waitForFunction(() => location.hash === "#/n" && getComputedStyle(document.getElementById("homeMask")).display === "none", { timeout: 8000 }).catch(() => {});
+  const c7 = await ev(() => ({ hash: location.hash, home: getComputedStyle(document.getElementById("homeMask")).display !== "none", editing: !!(window.edCtx && edCtx.editMode) }));
+  ok(c7.hash === "#/n" && !c7.home && c7.editing === true, "手改 #/n → 新建直接编辑模式 -> " + JSON.stringify(c7));
+
+  // C8. 手改 hash 回 #/ → 回主页（新建 dirty → confirm 自动 accept）
+  await ev(() => { location.hash = "#/"; });
+  await wait(600);
+  const c8 = await ev(() => ({ hash: location.hash, home: getComputedStyle(document.getElementById("homeMask")).display !== "none" }));
+  ok(c8.hash === "#/" && c8.home, "手改 #/ → 回主页 -> " + JSON.stringify(c8));
+
+  // C9. F5 刷新恢复：带 hash 直接加载（等价停在路线页按刷新），boots 补丁应恢复 cx 视图
+  await page.goto(URL + "#/r/cx", { waitUntil: "load", timeout: 60000 });
+  await waitName("川西路线");
+  await wait(300);
+  const c9 = await ev(() => ({ hash: location.hash, home: getComputedStyle(document.getElementById("homeMask")).display !== "none", name: document.getElementById("routeName").textContent }));
+  ok(c9.hash === "#/r/cx" && !c9.home && c9.name === "川西路线", "F5 刷新 #/r/cx → 恢复路线视图 -> " + JSON.stringify(c9));
+  await page.screenshot({ path: path.join(__dirname, "_shot_hash.png") });
+
   /* ================= 汇总 ================= */
   const real = realErr();
   console.log("\n== 控制台错误(" + errors.length + " 条，非网络 " + real.length + " 条) ==");
