@@ -56,10 +56,10 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     routeName: document.getElementById("routeName").textContent,
     tools: [...document.querySelectorAll(".home-tools button")].map(b => b.textContent.trim())
   }));
-  ok(home.shown && home.cards.join(",") === "cx,yl" && home.badges === 0, "画廊 2 卡无徽章 -> " + home.cards.join(","));
+  ok(home.shown && home.cards.join(",") === "yl,cx" && home.badges === 0, "画廊 2 卡无徽章（四季分组：夏 yl 在前、秋 cx 在后） -> " + home.cards.join(","));
   ok(home.cat === "cx,yl" && home.packs === 0, "目录已注册且数据未预载 -> " + JSON.stringify(home));
   ok(home.routeName === "未选择路线", "侧栏路线名=未选择路线");
-  ok(home.tools.length === 3 && /新建路线/.test(home.tools[0]) && /设置/.test(home.tools[1]) && /刷新/.test(home.tools[2]), "首页工具 3 件套 → " + home.tools.join("|"));
+  ok(home.tools.length === 3 && /新建/.test(home.tools[0]) && /设置/.test(home.tools[1]) && /刷新/.test(home.tools[2]), "首页工具 3 件套 → " + home.tools.join("|"));
 
   // A2. 点川西卡 → 进入视图模式（默认隐藏搜索/保存/编辑按钮）
   await ev(() => document.querySelector('.home-card[data-route="cx"]').click());
