@@ -684,6 +684,25 @@ var tdtLabelLayer = L.tileLayer("https://t{s}.tianditu.gov.cn/cia_w/wmts?SERVICE
   subdomains: ["0","1","2","3","4","5","6","7"],
   maxZoom: 18
 });
+// v6.5.3 天地图注记容错：瓦片持续加载失败（典型为浏览器端 Key 未授权当前 Referer 域名 → 403）
+// 时自动关闭注记层并一次性 toast 指引；修复 Key 白名单后重新勾选即可重试（overlayadd 重置失败标记）
+var _tdtFailCount = 0, _tdtFailTimer = null, _tdtFailHandled = false;
+tdtLabelLayer.on("tileerror", function () {
+  if (_tdtFailHandled) return;
+  _tdtFailCount++;
+  if (!_tdtFailTimer) {
+    _tdtFailTimer = setTimeout(function () {
+      _tdtFailTimer = null;
+      if (_tdtFailCount >= 3) {
+        _tdtFailHandled = true;
+        toast("天地图注记加载失败（Key 未授权当前域名，HTTP 403）：请在天地图控制台把本域名加入该 Key 的白名单，或改用本地打开；已自动关闭「卫星标注」");
+        if (map.hasLayer(tdtLabelLayer)) map.removeLayer(tdtLabelLayer);
+      }
+      _tdtFailCount = 0;
+    }, 1500);
+  }
+});
+map.on("overlayadd", function (e) { if (e.layer === tdtLabelLayer) { _tdtFailHandled = false; _tdtFailCount = 0; } });
 var baseLayers = {
   "标准": tfAtlasLayer,
   "地形": topoLayer,
