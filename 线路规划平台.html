@@ -1628,17 +1628,16 @@ function fitRouteView() {
   if (!b.isValid()) return;
   var vp = map.getSize();
   var pad = L.point(Math.round(vp.x * 0.12), Math.round(vp.y * 0.15));
-  // 一次性 setView：先按 padding 算出 zoom（snap 0.5 与 map.zoomSnap 保持一致，避免渲染宽于计算宽），
-  // 再把视图中心向西偏移 shift，路线相对视口向右移动、左缘脱离面板
-  var z = map.getBoundsZoom(b, false, pad);
-  if (z > 8) z = 8;
-  z = Math.round(z * 2) / 2;
-  var shift = Math.round(vp.x * 0.075); // 视觉补偿：左面板 ~220px → 路线在可见区（扣除面板）居中
-  var center = b.getCenter();
-  var px = map.project(center, z);
-  // 视图中心 = 路线中心向西 shift 像素 → 路线相对视口向右 shift → 脱离左面板遮挡
-  var newCenter = map.unproject(L.point(px.x - shift, px.y), z);
-  map.setView(newCenter, z, { animate: true });
+  // 先 fitBounds（animate:false 立即就位；Leaflet 内部正确计算 zoom + snap 0.5 + padding），
+  // 再 setView 把视图中心向西偏移 shift 像素（左面板 ~220px 视觉补偿）
+  map.fitBounds(b, { padding: pad, animate: false });
+  var z = map.getZoom();
+  var shift = Math.round(vp.x * 0.075);
+  if (shift > 0) {
+    var c = map.getCenter();
+    var px = map.project(c, z);
+    map.setView(map.unproject(L.point(px.x - shift, px.y), z), z, { animate: true });
+  }
 }
 
 /* ============================================================
