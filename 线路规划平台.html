@@ -220,14 +220,14 @@ input[type="file"] { display: none; }
 .home-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .home-frost {
   position: absolute; left: 0; right: 0; top: 40%; bottom: 0;
-  backdrop-filter: blur(12px) saturate(140%); -webkit-backdrop-filter: blur(12px) saturate(140%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.85) 100%);
-  mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 50%, rgba(0,0,0,.85) 100%);
+  backdrop-filter: blur(9px) saturate(135%); -webkit-backdrop-filter: blur(9px) saturate(135%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.3) 50%, rgba(0,0,0,.55) 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.3) 50%, rgba(0,0,0,.55) 100%);
   pointer-events: none;
 }
 .home-veil {
   position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.03) 34%, rgba(255,255,255,.18) 60%, rgba(255,255,255,.42) 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.02) 34%, rgba(255,255,255,.10) 60%, rgba(255,255,255,.25) 100%);
 }
 .home-head {
   position: absolute; top: 0; left: 0; right: 0; z-index: 5;
@@ -251,10 +251,10 @@ input[type="file"] { display: none; }
   box-shadow: 0 4px 18px rgba(30,60,110,.12); transition: background .18s, transform .18s;
 }
 .home-tools button:hover { background: rgba(255,255,255,.28); transform: translateY(-1px); }
-/* 卡片滚动层：滚轮滚动时卡片上移；元素顶到达页面中线（容器顶）时渐隐完成 */
+/* 卡片滚动层：板块控制在视口 40%–90% 区域；滚轮滚动时卡片上移，接近容器顶缘（≈40% 线）快速渐隐 */
 .home-scroll {
-  position: absolute; left: 0; right: 0; top: 48%; bottom: 0; z-index: 4;
-  overflow-y: auto; padding: 10px 34px 40px; scrollbar-width: none;
+  position: absolute; left: 0; right: 0; top: 40%; bottom: 2%; z-index: 4;
+  overflow-y: auto; padding: 46px 34px 56px; scrollbar-width: none;
 }
 .home-scroll::-webkit-scrollbar { display: none; }
 .season { margin: 0 0 34px; }
@@ -272,37 +272,26 @@ input[type="file"] { display: none; }
 }
 .season-cards { display: flex; flex-wrap: wrap; gap: 16px; }
 .home-card {
-  width: 330px; box-sizing: border-box;
-  background: rgba(255,255,255,.16); border-radius: 22px; padding: 18px 20px 15px;
+  width: 340px; box-sizing: border-box;
+  background: rgba(255,255,255,.20); border-radius: 22px; padding: 24px 22px 20px;
   cursor: pointer; border: 1px solid rgba(255,255,255,.45);
   backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
   box-shadow: 0 8px 28px rgba(30,60,110,.10), inset 0 1px 0 rgba(255,255,255,.35);
   transition: transform .18s, box-shadow .18s, background .18s;
   position: relative; overflow: hidden;
 }
-.home-card:hover { transform: translateY(-4px); background: rgba(255,255,255,.26); box-shadow: 0 14px 36px rgba(30,60,110,.16), inset 0 1px 0 rgba(255,255,255,.4); }
+.home-card:hover { transform: translateY(-4px); background: rgba(255,255,255,.30); box-shadow: 0 14px 36px rgba(30,60,110,.16), inset 0 1px 0 rgba(255,255,255,.4); }
 .home-card .nm { font-size: 16px; font-weight: 700; color: #22304a; margin: 0 0 5px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-card .meta { font-size: 12px; color: rgba(34,48,74,.66); margin: 0; font-weight: 600; letter-spacing: .5px; }
 .season-empty {
-  width: 330px; box-sizing: border-box; border-radius: 22px; padding: 18px 20px;
+  width: 340px; box-sizing: border-box; border-radius: 22px; padding: 24px 22px;
   border: 1px dashed rgba(38,50,74,.28); color: rgba(38,50,74,.5);
   font-size: 12.5px; letter-spacing: 1px; background: rgba(255,255,255,.10);
   text-align: center;
 }
 .home-empty { text-align: center; color: rgba(38,50,74,.6); font-size: 13px; padding: 40px 0; }
-.home-foot { margin: 10px 0 6px; font-size: 11px; color: rgba(38,50,74,.45); text-align: center; line-height: 1.7; letter-spacing: .5px; }
-/* 滚轮上移 → 卡片行经容器顶部（视口中部偏上）渐隐（滚动驱动动画；不支持的浏览器自动跳过，卡片保持可见） */
-@supports (animation-timeline: view()) {
-  .home-scroll .season {
-    animation: homeFade linear both;
-    animation-timeline: view();
-    animation-range: entry 0% cover 75%;
-  }
-}
-@keyframes homeFade {
-  0%, 70% { opacity: 1; filter: blur(0); transform: translateY(0); }
-  100% { opacity: 0; filter: blur(5px); transform: translateY(-14px); }
-}
+.home-foot { margin: 26px 0 30px; font-size: 11px; color: rgba(38,50,74,.45); text-align: center; line-height: 1.7; letter-spacing: .5px; }
+/* 渐隐由 JS 驱动（applyHomeFade）：板块顶缘升到视口 ~40% 线开始渐隐，到 ~12% 线完全消失 */
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 1500;
@@ -2430,7 +2419,36 @@ function renderHome() {
       '<div class="season-cards">' + body + "</div></section>";
   }).join("");
   grid.innerHTML = html;
+  scheduleHomeFade();
 }
+/* v6.6 主页渐隐（JS 驱动，比 scroll-driven animation 更可控）：
+   板块顶缘在视口 40% 线以下 → 完全清晰；升到 40% 线开始渐隐；到 12% 线完全消失 */
+var _homeFadeRaf = 0;
+function applyHomeFade() {
+  var sc = document.querySelector(".home-scroll");
+  if (!sc) return;
+  var vh = window.innerHeight || document.documentElement.clientHeight || 800;
+  var fadeTop = vh * 0.40, fadeEnd = vh * 0.12;
+  var span = Math.max(1, fadeTop - fadeEnd);
+  sc.querySelectorAll(".season").forEach(function (el) {
+    var top = el.getBoundingClientRect().top;
+    var p = (fadeTop - top) / span;
+    p = p < 0 ? 0 : (p > 1 ? 1 : p);
+    el.style.opacity = String(1 - p);
+    el.style.filter = p > 0 ? "blur(" + (p * 5).toFixed(2) + "px)" : "";
+    el.style.transform = p > 0 ? "translateY(" + (-p * 14).toFixed(1) + "px)" : "";
+  });
+}
+function scheduleHomeFade() {
+  if (_homeFadeRaf) return;
+  _homeFadeRaf = requestAnimationFrame(function () { _homeFadeRaf = 0; applyHomeFade(); });
+}
+(function initHomeFade() {
+  var sc = document.querySelector(".home-scroll");
+  if (!sc) return;
+  sc.addEventListener("scroll", scheduleHomeFade, { passive: true });
+  window.addEventListener("resize", scheduleHomeFade);
+})();
 function showHome() {
   renderHome();
   $("homeMask").style.display = "";
