@@ -251,10 +251,11 @@ input[type="file"] { display: none; }
   box-shadow: 0 4px 18px rgba(30,60,110,.12); transition: background .18s, transform .18s;
 }
 .home-tools button:hover { background: rgba(255,255,255,.28); transform: translateY(-1px); }
-/* 卡片滚动层：板块控制在视口 40%–90% 区域；滚轮滚动时卡片上移，接近容器顶缘（≈40% 线）快速渐隐 */
+/* 卡片滚动层：容器顶缘上移到渐隐终点线（12%），padding 把内容起始位置垫到视口 40%；
+   卡片在滚到裁切线之前已完全透明 → 不会出现硬切边；板块可视区域仍控制在视口 40%–90% */
 .home-scroll {
-  position: absolute; left: 0; right: 0; top: 40%; bottom: 2%; z-index: 4;
-  overflow-y: auto; padding: 46px 34px 56px; scrollbar-width: none;
+  position: absolute; left: 0; right: 0; top: 12%; bottom: 2%; z-index: 4;
+  overflow-y: auto; padding: calc(28vh + 46px) 34px 56px; scrollbar-width: none;
 }
 .home-scroll::-webkit-scrollbar { display: none; }
 .season { margin: 0 0 34px; }
