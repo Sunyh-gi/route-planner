@@ -791,6 +791,10 @@ var TF_KEY = "2a470b3078fd448f8b538487af75c57c";
 var tfAtlasLayer = L.tileLayer("https://tile.thunderforest.com/atlas/{z}/{x}/{y}.png?apikey=" + TF_KEY, {
   attribution: '&copy; <a href="https://www.thunderforest.com/">Thunderforest</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 22
 }).addTo(map);
+// v6.11.2 户外底图（Thunderforest Outdoors：精修山地地形风，与 Atlas 同 Key）
+var tfOutdoorsLayer = L.tileLayer("https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=" + TF_KEY, {
+  attribution: '&copy; <a href="https://www.thunderforest.com/">Thunderforest</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 22
+});
 var topoLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", {
   attribution: '&copy; <a href="https://www.esri.com/">Esri</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 19
 });
@@ -826,6 +830,7 @@ map.on("overlayadd", function (e) { if (e.layer === tdtLabelLayer) { _tdtFailHan
 var baseLayers = {
   "标准": tfAtlasLayer,
   "地形": topoLayer,
+  "户外": tfOutdoorsLayer,
   "卫星": satLayer,
   "OpenStreetMap": osmLayer,
   "National Geographic": natgeoLayer
