@@ -795,9 +795,6 @@ var tfAtlasLayer = L.tileLayer("https://tile.thunderforest.com/atlas/{z}/{x}/{y}
 var tfOutdoorsLayer = L.tileLayer("https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=" + TF_KEY, {
   attribution: '&copy; <a href="https://www.thunderforest.com/">Thunderforest</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 22
 });
-var topoLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}", {
-  attribution: '&copy; <a href="https://www.esri.com/">Esri</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 19
-});
 var satLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
   attribution: '&copy; <a href="https://www.esri.com/">Esri</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 19
 });
@@ -829,7 +826,6 @@ tdtLabelLayer.on("tileerror", function () {
 map.on("overlayadd", function (e) { if (e.layer === tdtLabelLayer) { _tdtFailHandled = false; _tdtFailCount = 0; } });
 var baseLayers = {
   "标准": tfAtlasLayer,
-  "地形": topoLayer,
   "户外": tfOutdoorsLayer,
   "卫星": satLayer,
   "OpenStreetMap": osmLayer,
