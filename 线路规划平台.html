@@ -264,12 +264,12 @@ input[type="file"] { display: none; }
 .home-card {
   width: 340px; box-sizing: border-box;
   background: rgba(255,255,255,.08); border-radius: 22px; padding: 24px 22px 20px;
-  cursor: pointer; border: 1px solid rgba(255,255,255,.45);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.35);
+  cursor: pointer; border: 1px solid rgba(255,255,255,.30);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -12px 20px -8px rgba(0,0,0,.10), 0 6px 18px rgba(0,0,0,.06);
   transition: transform .18s, background .18s;
   position: relative; overflow: hidden;
 }
-.home-card:hover { transform: translateY(-4px); background: rgba(255,255,255,.16); box-shadow: inset 0 1px 0 rgba(255,255,255,.4); }
+.home-card:hover { transform: translateY(-4px); background: rgba(255,255,255,.15); }
 .home-card .nm { font-size: 16px; font-weight: 700; color: rgba(255,255,255,.85); margin: 0 0 5px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home-card .meta { font-size: 12px; color: rgba(255,255,255,.6); margin: 0; font-weight: 600; letter-spacing: .5px; }
 .season-empty {
@@ -2404,6 +2404,7 @@ function renderHome() {
   }).join("");
   grid.innerHTML = html;
   scheduleHomeFade();
+  applyLiquidGlassAll();
 }
 /* v6.6 主页渐隐（JS 驱动，比 scroll-driven animation 更可控）：
    板块顶缘在视口 40% 线以下 → 完全清晰；升到 40% 线开始渐隐；到 12% 线完全消失 */
@@ -2433,6 +2434,94 @@ function scheduleHomeFade() {
   sc.addEventListener("scroll", scheduleHomeFade, { passive: true });
   window.addEventListener("resize", scheduleHomeFade);
 })();
+/* ============================================================
+ * v6.8 真液态玻璃（Liquid Glass）路线卡片
+ * 原理（technique: shuding/liquid-glass + samasante/liquid-glass 光学词汇）：
+ *   圆角矩形 SDF → 逐像素位移场（边缘 rim-bend 向内折射 + 中央轻微 curvature 放大）
+ *   → 编码进 canvas 位移图（R=X 位移, G=Y 位移）→ SVG feImage + feDisplacementMap
+ *   → backdrop-filter: url(#f) 引用，让背景在玻璃边缘真实弯折（透镜效应）。
+ *   Chromium/Edge 支持 backdrop-filter url()；不支持的浏览器自动退化为纯透明玻璃（CSS 兜底）。
+ * ============================================================ */
+var _lgSeq = 0;
+var LG = { radius: 22, bendPx: 16, bendAmp: 18, domeAmp: 0 };
+function _lgSmooth(a, b, t) { t = Math.max(0, Math.min(1, (t - a) / (b - a))); return t * t * (3 - 2 * t); }
+function _lgApply(el) {
+  var w = el.offsetWidth, h = el.offsetHeight;
+  if (!w || !h) return;
+  var id = "lgf" + (++_lgSeq);
+  var bendPx = Math.min(LG.bendPx, Math.round(Math.min(w, h) * 0.3));
+  var data = new Uint8ClampedArray(w * h * 4);
+  var raw = [], maxAbs = 1;
+  for (var y = 0; y < h; y++) {
+    for (var x = 0; x < w; x++) {
+      // 圆角矩形 SDF（内部为负 = 到边界距离）
+      var qx = Math.abs(x - w / 2) - (w / 2 - LG.radius);
+      var qy = Math.abs(y - h / 2) - (h / 2 - LG.radius);
+      var dOut = Math.min(Math.max(qx, qy), 0) + Math.sqrt(Math.max(qx, 0) * Math.max(qx, 0) + Math.max(qy, 0) * Math.max(qy, 0)) - LG.radius;
+      // rim bend：边缘带内向内折射（边界最强 → 内部衰减为 0）
+      var rim = _lgSmooth(0, 1, 1 + dOut / bendPx);           // 边界=1，bezel 外=0
+      // dome：中央轻微放大（凸透镜感）
+      var ux = (x - w / 2) / (w / 2), uy = (y - h / 2) / (h / 2);
+      var amp = LG.bendAmp * rim + LG.domeAmp * (1 - rim);
+      var dx = -ux * amp * Math.abs(ux), dy = -uy * amp * Math.abs(uy);
+      raw.push(dx, dy);
+      var m = Math.max(Math.abs(dx), Math.abs(dy));
+      if (m > maxAbs) maxAbs = m;
+    }
+  }
+  var idx = 0;
+  for (var i = 0; i < raw.length; i += 2) {
+    data[idx++] = (raw[i] / maxAbs + 0.5) * 255;
+    data[idx++] = (raw[i + 1] / maxAbs + 0.5) * 255;
+    data[idx++] = 0; data[idx++] = 255;
+  }
+  var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  cv.getContext("2d").putImageData(new ImageData(data, w, h), 0, 0);
+  var NS = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("width", "0"); svg.setAttribute("height", "0");
+  svg.style.position = "absolute";
+  var defs = document.createElementNS(NS, "defs");
+  var filter = document.createElementNS(NS, "filter");
+  filter.setAttribute("id", id);
+  filter.setAttribute("filterUnits", "userSpaceOnUse");
+  filter.setAttribute("color-interpolation-filters", "sRGB");
+  filter.setAttribute("x", "0"); filter.setAttribute("y", "0");
+  filter.setAttribute("width", String(w)); filter.setAttribute("height", String(h));
+  var feImage = document.createElementNS(NS, "feImage");
+  feImage.setAttribute("width", String(w)); feImage.setAttribute("height", String(h));
+  feImage.setAttribute("href", cv.toDataURL());
+  var feDisp = document.createElementNS(NS, "feDisplacementMap");
+  feDisp.setAttribute("in", "SourceGraphic");
+  feDisp.setAttribute("xChannelSelector", "R");
+  feDisp.setAttribute("yChannelSelector", "G");
+  feDisp.setAttribute("scale", String(maxAbs));
+  filter.appendChild(feImage); filter.appendChild(feDisp);
+  defs.appendChild(filter); svg.appendChild(defs);
+  var host = document.getElementById("lgDefs");
+  if (host) host.appendChild(svg);
+  var fx = "url(#" + id + ") blur(1px) brightness(1.05) saturate(1.12) contrast(1.02)";
+  el.style.backdropFilter = fx;
+  el.style.webkitBackdropFilter = fx;
+}
+function applyLiquidGlassAll() {
+  var mask = document.getElementById("homeMask");
+  if (!mask) return;
+  var host = document.getElementById("lgDefs");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "lgDefs";
+    host.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;pointer-events:none";
+    mask.appendChild(host);
+  }
+  host.innerHTML = "";
+  mask.querySelectorAll(".home-card").forEach(function (el) { _lgApply(el); });
+}
+var _lgResizeTimer = 0;
+window.addEventListener("resize", function () {
+  clearTimeout(_lgResizeTimer);
+  _lgResizeTimer = setTimeout(applyLiquidGlassAll, 250);
+});
 function showHome() {
   renderHome();
   $("homeMask").style.display = "";
