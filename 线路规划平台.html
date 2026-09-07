@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="zh-CN" data-page-node-id="z2J4M7nFSDkLuNaKv0DJFO">
+<head data-page-node-id="CuDAeRF4sMcpBAwZWwFYW2">
+<meta charset="UTF-8" data-page-node-id="jgvRonoRH9LgNaJtLx8hMD">
+<meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="srehwd2BlSTlSiXcrFqEr0">
 <title>线路规划平台</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" data-page-node-id="2TAEXx3LY5LVRCIqPsSUQn">
 <style>
 html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 #map { height: 100%; width: 100%; }
@@ -27,8 +27,8 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   --glass-lo: rgba(255,255,255,.12);          /* 下缘次高光 */
   --glass-shadow: 0 4px 16px rgba(0,0,0,.06); /* 极淡中性托影 */
   --glass-blur: blur(1px);                    /* L1 小件柔化（极轻） */
-  --glass-blur-panel: blur(10px);             /* 面板/弹窗级柔化 */
-  --glass-blur-content: blur(10px);           /* L2 内容玻璃柔化 */
+  --glass-blur-panel: blur(8px);             /* 面板/弹窗级柔化 */
+  --glass-blur-content: blur(8px);           /* L2 内容玻璃柔化 */
   --glass-content-bg: rgba(255,255,255,.10);  /* L2 白底 */
 }
 .info-panel {
@@ -130,7 +130,7 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 /* 弹窗通用 */
 .modal-mask { position: fixed; inset: 0; z-index: 3000; background: rgba(8,12,26,0.22); backdrop-filter: blur(1px); display: none; align-items: center; justify-content: center; }
 .modal-mask.open { display: flex; }
-.modal-card { background: var(--glass-content-bg); color: #222; border-radius: 18px; backdrop-filter: var(--glass-blur-content); -webkit-backdrop-filter: var(--glass-blur-content); border: 1px solid rgba(255,255,255,.45); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), var(--glass-shadow), 0 14px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
+.modal-card { background: rgba(255,255,255,.40); color: #222; border-radius: 18px; backdrop-filter: blur(32px) saturate(140%); -webkit-backdrop-filter: blur(32px) saturate(140%); border: 1px solid rgba(255,255,255,.50); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 12px 18px -12px rgba(255,255,255,.30), 0 24px 60px rgba(0,0,0,.14); display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
 .editor-modal { width: min(470px, 96vw); }
 .settings-modal { width: min(430px, 92vw); }
 .modal-head { display: flex; align-items: center; gap: 8px; padding: 13px 16px 10px; border-bottom: 1px solid rgba(0,0,0,0.07); }
@@ -138,15 +138,15 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .modal-head .x { border: none; background: none; font-size: 15px; cursor: pointer; color: #999; line-height: 1; padding: 4px 6px; border-radius: 6px; }
 .modal-head .x:hover { background: rgba(0,0,0,0.06); color: #333; }
 .modal-body { padding: 12px 16px 16px; overflow-y: auto; }
-.ed-name { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.16); font-size: 13.5px; margin-bottom: 10px; outline: none; }
-.ed-name:focus { border-color: #555; }
+.ed-name { width: 100%; box-sizing: border-box; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.28); box-shadow: inset 0 1px 0 rgba(255,255,255,0.40); font-size: 13.5px; margin-bottom: 10px; outline: none; transition: background .15s, border-color .15s; }
+.ed-name:focus { background: rgba(255,255,255,0.45); border-color: rgba(44,62,107,0.40); }
 .ed-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-.ed-search { flex: 1; min-width: 120px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.16); font-size: 12.5px; box-sizing: border-box; outline: none; }
-.ed-search:focus { border-color: #555; }
-.ed-btn { border: none; background: #2C3E6B; color: #fff; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-size: 12.5px; font-weight: 600; }
+.ed-search { flex: 1; min-width: 120px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.28); box-shadow: inset 0 1px 0 rgba(255,255,255,0.40); font-size: 12.5px; box-sizing: border-box; outline: none; transition: background .15s, border-color .15s; }
+.ed-search:focus { background: rgba(255,255,255,0.45); border-color: rgba(44,62,107,0.40); }
+.ed-btn { border: none; background: #2C3E6B; color: #fff; border-radius: 10px; padding: 8px 14px; cursor: pointer; font-size: 12.5px; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 8px rgba(44,62,107,0.22); }
 .ed-btn:hover { opacity: 0.9; }
-.ed-btn.ghost { background: rgba(80,85,95,0.12); color: #555; }
-.ed-btn.gray { background: #eceef2; color: #555; }
+.ed-btn.ghost { background: rgba(255,255,255,0.32); color: #4a5568; box-shadow: inset 0 1px 0 rgba(255,255,255,0.55); }
+.ed-btn.gray { background: rgba(255,255,255,0.32); color: #4a5568; box-shadow: inset 0 1px 0 rgba(255,255,255,0.55); }
 .search-res { border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden; margin-bottom: 8px; max-height: 168px; overflow-y: auto; display: none; background: #fff; }
 .search-res.show { display: block; }
 .res-item { display: flex; align-items: center; gap: 8px; padding: 6px 9px; cursor: pointer; font-size: 12.5px; border-bottom: 1px solid rgba(0,0,0,0.05); }
@@ -214,10 +214,10 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .ed-help b { color: #555; }
 /* 设置面板精简版 */
 .set-label {
-  font-size: 12.5px; font-weight: 700; color: #444;
+  font-size: 12.5px; font-weight: 400; color: rgba(255,255,255,.94); letter-spacing: .3px;
   display: flex; align-items: baseline; gap: 8px; margin: 0 0 7px 2px;
 }
-.set-label .hint { font-weight: 400; font-size: 10px; color: #a5adbc; }
+.set-label .hint { font-weight: 300; font-size: 10px; color: rgba(255,255,255,.65); }
 .set-label .repo {
   margin-left: auto; font-size: 10.5px; font-weight: 600; color: #7b8aa5;
   background: rgba(80,85,95,0.08); padding: 2px 8px; border-radius: 999px;
@@ -417,8 +417,8 @@ input[type="file"] { display: none; }
 /* v6.10.3 地点详情 popup 玻璃化（白.10 + blur(20px) + 受光） */
 .leaflet-popup-content-wrapper {
   background: rgba(255,255,255,0.10);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
   border: 1px solid rgba(255,255,255,0.50);
   border-radius: 14px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 12px 18px -12px rgba(255,255,255,0.30), 0 10px 26px rgba(0,0,0,0.10);
@@ -441,7 +441,7 @@ input[type="file"] { display: none; }
 .leaflet-control-zoom { border: none !important; box-shadow: none !important; border-radius: 12px; overflow: hidden; }
 .leaflet-control-zoom a {
   background: rgba(255,255,255,.10);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   border: none; color: #3a4658 !important;
   border-bottom: 1px solid rgba(255,255,255,.25);
   transition: background .15s;
@@ -456,6 +456,8 @@ input[type="file"] { display: none; }
 }
 .map-dark .leaflet-popup-tip { background: rgba(255,255,255,.10); }
 .map-dark .leaflet-popup-content { color: rgba(255,255,255,.92); }
+body.map-dark .set-label { color: rgba(255,255,255,.94); }
+body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
 .map-dark .leaflet-control-layers label, .map-dark .leaflet-control-layers .leaflet-control-layers-selector { color: rgba(255,255,255,.92); }
 .map-dark .leaflet-control-zoom a:hover, .map-dark .leaflet-control-layers:hover { background: rgba(255,255,255,.20); color: #fff !important; }
 .day-card {
@@ -464,8 +466,8 @@ input[type="file"] { display: none; }
   border-radius: 16px;
   font-size: 12px; line-height: 1.35;
   background: rgba(255,255,255,0.10);
-  backdrop-filter: blur(10px) saturate(140%);
-  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
   border: 1px solid rgba(255,255,255,0.50);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 12px 18px -12px rgba(255,255,255,0.30), 0 10px 26px rgba(0,0,0,0.10);
   color: rgba(30,35,50,0.92);
@@ -612,60 +614,60 @@ input[type="file"] { display: none; }
 
 </style>
 </head>
-<body>
-<div id="map"></div>
+<body data-page-node-id="qZIWgjJ5VqHl1qQFLj5mc8">
+<div id="map" data-page-node-id="srSEUr3N7jveCtd2qrU6yP"></div>
 
 <!-- ========== 主页（路线库画廊） ========== -->
-<div id="homeMask">
-  <img class="home-bg" src="assets/home-bg.jpg" alt="">
-  <div class="home-head">
-    <div class="home-title">
-      <h1>四季路线</h1>
-      <span class="sub">SPRING · SUMMER · AUTUMN · WINTER</span>
+<div id="homeMask" data-page-node-id="jh446BPsO40YK6RDw9tinz">
+  <img class="home-bg" src="assets/home-bg.jpg" alt="" data-page-node-id="dEMrRKfR5szKynbMfoEYWo">
+  <div class="home-head" data-page-node-id="Ix6BY4VfrHLUjzQFQwD2C1">
+    <div class="home-title" data-page-node-id="1txzcsg3vn0ymQiRCtpLDl">
+      <h1 data-page-node-id="s0On90Maic1J6RWfjKZuiD">四季路线</h1>
+      <span class="sub" data-page-node-id="dWp5hD3Xz3cq55mQZEBRiI">SPRING · SUMMER · AUTUMN · WINTER</span>
     </div>
-    <div class="home-tools">
-      <button id="homeNew">＋ 新建</button>
-      <button id="homeSettings">⚙ 设置</button>
-      <button id="homeRefresh">🔄 刷新</button>
+    <div class="home-tools" data-page-node-id="6WXOCEfG5KUMqFWnBmV7UH">
+      <button id="homeNew" data-page-node-id="mKFTD21tXYyuQbCZlpOrZV">＋ 新建</button>
+      <button id="homeSettings" data-page-node-id="jzUIGOUsEglS7mENHkhFma">⚙ 设置</button>
+      <button id="homeRefresh" data-page-node-id="zcpyGPaTwh4y59fE4WriRz">🔄 刷新</button>
     </div>
   </div>
-  <div class="home-scroll">
-    <div id="homeGrid"></div>
+  <div class="home-scroll" data-page-node-id="lMMl3KuyAfbnthj4nFkCT6">
+    <div id="homeGrid" data-page-node-id="NXrRE1NzYLSPDbVBi20YAT"></div>
   </div>
 </div>
-<button id="homeFab">⌂ 主页</button>
+<button id="homeFab" data-page-node-id="lu3OEIz7GeXlyTkCs8O2cb">⌂ 主页</button>
 
-<div class="info-panel">
-  <div class="route-head">
-    <span class="nm" id="routeName">未选择路线</span>
-    <span class="edit-pill" id="editPill" hidden>编辑中</span>
-    <span class="menu" id="routeMenuBtn" title="更多">⋯</span>
+<div class="info-panel" data-page-node-id="wJ7BU7RdaGEOCDj0W8GB2p">
+  <div class="route-head" data-page-node-id="GT1q0Lp8KUzCzdgrokCysH">
+    <span class="nm" id="routeName" data-page-node-id="T97pFHPH9Avi6PkscqB7pX">未选择路线</span>
+    <span class="edit-pill" id="editPill" hidden data-page-node-id="fOCh3tO1lyJnlS9bUZGiFZ">编辑中</span>
+    <span class="menu" id="routeMenuBtn" title="更多" data-page-node-id="uKMNY6n46VJFwtUKTalCod">⋯</span>
   </div>
-  <div class="route-edit-row">
-    <div class="ed-search-wrap">
-      <input class="ed-search" id="edSearch" placeholder="地名 / GPS 坐标" autocomplete="off" spellcheck="false">
+  <div class="route-edit-row" data-page-node-id="SGSXWX2CQOd2CbqhiSpb8m">
+    <div class="ed-search-wrap" data-page-node-id="34fcIs07h9nk526S98FszZ">
+      <input class="ed-search" id="edSearch" placeholder="地名 / GPS 坐标" autocomplete="off" spellcheck="false" data-page-node-id="m7u32ziGVF6VRMTJ73pj3f">
     </div>
-    <button class="ed-search-go" id="edSearchBtn" title="搜索" type="button" aria-label="搜索">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.7" y1="15.7" x2="20.5" y2="20.5"/></svg>
+    <button class="ed-search-go" id="edSearchBtn" title="搜索" type="button" aria-label="搜索" data-page-node-id="fP9wXDnOsHR9onjfSiIkkH">
+      <svg viewBox="0 0 24 24" aria-hidden="true" data-page-node-id="YsEjgsDejLtCvTHuakL9FM"><circle cx="10.5" cy="10.5" r="6.5" data-page-node-id="AaQWE6TEqiJ6C12aYFdoTN"/><line x1="15.7" y1="15.7" x2="20.5" y2="20.5" data-page-node-id="8amCad7tf5Y7CbH9dr1e9i"/></svg>
     </button>
   </div>
-  <div class="search-res" id="edResults"></div>
-  <div class="wp-list" id="wpList"></div>
-  <div class="save-row">
-    <button class="ed-btn save-btn" id="saveBtn">保存</button>
-    <span class="dirty-hint" id="dirtyHint"></span>
+  <div class="search-res" id="edResults" data-page-node-id="V0QY6MGxumP3A0NzhAXWes"></div>
+  <div class="wp-list" id="wpList" data-page-node-id="xxl06DYipaVbZxquGXSNym"></div>
+  <div class="save-row" data-page-node-id="UB4fgvGftVUa46FbtqwN4D">
+    <button class="ed-btn save-btn" id="saveBtn" data-page-node-id="bcsAFdore8xLyCNi87caJP">保存</button>
+    <span class="dirty-hint" id="dirtyHint" data-page-node-id="n6BKslJ1KnyIR5yHC2rjls"></span>
   </div>
 </div>
 
 <!-- 路线操作菜单（编辑路线 / 删除路线 / 回到主页） -->
-<div class="route-menu-pop" id="routeMenuPop">
-  <button id="routeMenuEdit">编辑路线</button>
-  <button id="routeMenuDel" class="del">删除路线</button>
-  <button id="routeMenuHome">回到主页</button>
+<div class="route-menu-pop" id="routeMenuPop" data-page-node-id="oquxVCk2yzQspm3mDD4aJE">
+  <button id="routeMenuEdit" data-page-node-id="hqmoSvCePG4LrF4B0iiJO5">编辑路线</button>
+  <button id="routeMenuDel" class="del" data-page-node-id="dwdHys2FGzNNbnnf9p6LiE">删除路线</button>
+  <button id="routeMenuHome" data-page-node-id="9RjIG2PvQMQ8Fh9ZnF8FhI">回到主页</button>
 </div>
 
-<div class="osm-credit">
-  地图 &copy; <a href="https://www.esri.com/" target="_blank">Esri</a> / <a href="https://openstreetmap.org/copyright" target="_blank">OSM</a> | 路由: <a href="https://project-osrm.org/" target="_blank">OSRM</a>
+<div class="osm-credit" data-page-node-id="hGi1knJl2AKOfgNjHyfG1r">
+  地图 &copy; <a href="https://www.esri.com/" target="_blank" data-page-node-id="Ch6nZLD1XP3u5fO5UNVsRe">Esri</a> / <a href="https://openstreetmap.org/copyright" target="_blank" data-page-node-id="LtedNREIRTH4MMfSSfC3Zq">OSM</a> | 路由: <a href="https://project-osrm.org/" target="_blank" data-page-node-id="GSzRyFDvUM3wDpB6GJjcYX">OSRM</a>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -841,6 +843,7 @@ map.on("baselayerchange", function(e) {
   var m = document.getElementById("map");
   if (dark) { panel.classList.add("sat-active"); if (m) m.classList.add("map-dark"); }
   else { panel.classList.remove("sat-active"); if (m) m.classList.remove("map-dark"); }
+  document.body.classList.toggle("map-dark", dark);
 });
 
 // ========== 图钉 SVG ==========
@@ -983,38 +986,36 @@ wpList.addEventListener("click", function(ev) {
 // 不默认加载任何路线：首屏为主页画廊，点击卡片时才按需加载对应数据
 </script>
 
-<input type="file" id="fileImport" accept=".json,application/json">
-<div class="toast" id="toast"></div>
+<input type="file" id="fileImport" accept=".json,application/json" data-page-node-id="7YWIhdJpHbHL8uyM9X3hsa">
+<div class="toast" id="toast" data-page-node-id="q4AqzuLjCXFBDK0edU2XAX"></div>
 
 <!-- ========== 设置 ========== -->
-<div class="modal-mask" id="settingsMask">
-  <div class="modal-card settings-modal">
-    <div class="modal-head"><span class="ttl">设置</span><button class="x" id="settingsClose">✕</button></div>
-    <div class="modal-body">
-      <div class="set-label">高德地图 Web 服务 Key <span class="hint">地名搜索 · console.amap.com 申请</span></div>
-      <input class="ed-name" id="amapKeyInput" placeholder="粘贴高德 Web 服务 Key">
-      <div class="set-btns">
-        <button class="ed-btn gray" id="amapTest">测试</button>
-        <button class="ed-btn" id="amapSave">保存</button>
+<div class="modal-mask" id="settingsMask" data-page-node-id="TlCcGpTLVr1kM3A5wsNVlS">
+  <div class="modal-card settings-modal" data-page-node-id="kPQqYo7iD02QRwRijB6nd7">
+    <div class="modal-head" data-page-node-id="I2A1607uhDdx4yzJZ0AT6f"><span class="ttl" data-page-node-id="3C2Ds9wQY3gj4FMM7ndc6k">设置</span><button class="x" id="settingsClose" data-page-node-id="ntVYvGt4huBnB7Ti41CYuM">✕</button></div>
+    <div class="modal-body" data-page-node-id="2iVst9M8E7Yt8FqHGHmWV8">
+      <div class="set-label" data-page-node-id="xmakKmbg34E2Xv7sei9z6e">高德地图 Web 服务 Key</div>
+      <input class="ed-name" id="amapKeyInput" placeholder="粘贴高德 Web 服务 Key" data-page-node-id="CoVDqf8UK0EvLOFVFPvNBi">
+      <div class="set-btns" data-page-node-id="7zHq6iRbA7m8mqkYQiiCIY">
+        <button class="ed-btn gray" id="amapTest" data-page-node-id="SGLpsHD9uv6ZC3U6tS6JHL">测试</button>
+        <button class="ed-btn" id="amapSave" data-page-node-id="wTePrRNhMSEBqH19iafpUx">保存</button>
       </div>
 
-      <div class="set-sep"></div>
-      <div class="set-label">GitHub Token <span class="hint">路线真源仓库 · 保存/删除需 Token</span>
-        <span class="repo" id="ghRepoLabel" title="点击修改仓库">Sunyh-gi/route-planner <b>✎</b></span>
-      </div>
-      <input class="ed-name" id="ghToken" placeholder="粘贴 GitHub Token">
-      <div class="set-btns">
-        <button class="ed-btn gray" id="ghTest">测试</button>
-        <button class="ed-btn gray" id="ghRefresh">🔄 刷新目录</button>
-        <button class="ed-btn gray" id="ghMigrate">⇪ 迁移旧路线</button>
-        <button class="ed-btn" id="ghSave">保存</button>
+      <div class="set-sep" data-page-node-id="961q32jdz7vn0KwOhpUoi8"></div>
+      <div class="set-label" data-page-node-id="l8MbAlYZ5Nm2AiL9oW7ZJZ">GitHub Token</div>
+      <input class="ed-name" id="ghToken" placeholder="粘贴 GitHub Token" data-page-node-id="1UVUedhSZfs1CDoonpiaoN">
+      <div class="set-btns" data-page-node-id="qeyu0eV4LWPe5LiO4C6sRk">
+        <button class="ed-btn gray" id="ghTest" data-page-node-id="VrlTe0MAMxv7VgtFEXbNAL">测试</button>
+        <button class="ed-btn gray" id="ghRefresh" data-page-node-id="E1ZJwcDQFEJk9TJMTGhp9o">🔄 刷新目录</button>
+        <button class="ed-btn gray" id="ghMigrate" data-page-node-id="oqHC0UPEy153mRc35Fxo0U">⇪ 迁移旧路线</button>
+        <button class="ed-btn" id="ghSave" data-page-node-id="5GNK6yH5AkUZM93AIDmoL9">保存</button>
       </div>
     </div>
   </div>
 </div>
 
-<input type="file" id="fileImport" accept=".json,application/json">
-<div class="toast" id="toast"></div>
+<input type="file" id="fileImport" accept=".json,application/json" data-page-node-id="5QH98jhyr1qSeJcz4Sp43Z">
+<div class="toast" id="toast" data-page-node-id="DQOe7mdRZlDoEAA9t8xAZJ"></div>
 
 <script>
 /* ============================================================
@@ -2352,7 +2353,7 @@ function ghSaveConfig() {
   cur.token = $("ghToken").value.trim();
   store.gh = cur;
   saveStore();
-  $("ghRepoLabel").innerHTML = esc(cur.repo) + " <b>✎</b>";
+  var rl = $("ghRepoLabel"); if (rl) rl.innerHTML = esc(cur.repo) + " <b>✎</b>";
   if (cur.token) {
     toast("GitHub Token 已保存，正在刷新目录…");
     if (ghEnabled()) refreshFromRepo().catch(function () {});
@@ -2362,7 +2363,7 @@ function ghSaveConfig() {
 }
 $("ghSave").addEventListener("click", ghSaveConfig);
 // 点击仓库名可修改（支持 owner/repo 或 owner/repo@分支）
-$("ghRepoLabel").addEventListener("click", function () {
+var ghRepoEl = $("ghRepoLabel"); if (ghRepoEl) ghRepoEl.addEventListener("click", function () {
   var cur = store.gh || {};
   var old = (cur.repo || GH_DEFAULT_REPO) + (cur.branch && cur.branch !== "main" ? "@" + cur.branch : "");
   var v = prompt("路线仓库（owner/repo），分支非 main 用 owner/repo@分支：", old);
@@ -2376,7 +2377,7 @@ $("ghRepoLabel").addEventListener("click", function () {
   store.gh.repo = rp;
   store.gh.branch = br || GH_DEFAULT_BRANCH;
   saveStore();
-  $("ghRepoLabel").innerHTML = esc(rp) + " <b>✎</b>";
+  if (ghRepoEl) ghRepoEl.innerHTML = esc(rp) + " <b>✎</b>";
   toast("路线仓库已改为 " + rp + (br && br !== "main" ? "@" + br : ""));
 });
 $("ghTest").addEventListener("click", function () {
