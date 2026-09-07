@@ -259,8 +259,8 @@ input[type="file"] { display: none; }
 }
 .home-scroll::-webkit-scrollbar { display: none; }
 .season { margin: 0 0 34px; }
-/* v6.7 试版：季节头文字改白（与壁纸协调，加阴影保可读性），去 emoji 图标 */
-.season-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; color: rgba(255,255,255,.96); text-shadow: 0 1px 10px rgba(30,60,110,.45), 0 1px 2px rgba(30,60,110,.35); }
+/* v6.7 试版：季节头文字改白（与壁纸协调），去 emoji 图标；无文字阴影，纯液态玻璃质感 */
+.season-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; color: rgba(255,255,255,.96); }
 .season-head .nm { font-size: 19px; font-weight: 700; letter-spacing: 2px; }
 .season-head .nm i {
   font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: 2.5px;
@@ -269,7 +269,7 @@ input[type="file"] { display: none; }
 .season-head .cnt {
   font-size: 10.5px; font-weight: 600; color: rgba(255,255,255,.85);
   border: 1px solid rgba(255,255,255,.4); border-radius: 999px; padding: 1px 9px;
-  background: rgba(255,255,255,.14); text-shadow: 0 1px 6px rgba(30,60,110,.4);
+  background: rgba(255,255,255,.14);
 }
 .season-cards { display: flex; flex-wrap: wrap; gap: 16px; }
 .home-card {
@@ -282,15 +282,15 @@ input[type="file"] { display: none; }
   position: relative; overflow: hidden;
 }
 .home-card:hover { transform: translateY(-4px); background: rgba(110,150,205,.38); box-shadow: 0 14px 36px rgba(30,60,110,.16), inset 0 1px 0 rgba(255,255,255,.4); }
-.home-card .nm { font-size: 16px; font-weight: 700; color: rgba(255,255,255,.72); margin: 0 0 5px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 10px rgba(30,60,110,.45), 0 1px 2px rgba(30,60,110,.35); }
-.home-card .meta { font-size: 12px; color: rgba(255,255,255,.5); margin: 0; font-weight: 600; letter-spacing: .5px; text-shadow: 0 1px 8px rgba(30,60,110,.4); }
+.home-card .nm { font-size: 16px; font-weight: 700; color: rgba(255,255,255,.72); margin: 0 0 5px; letter-spacing: .5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.home-card .meta { font-size: 12px; color: rgba(255,255,255,.5); margin: 0; font-weight: 600; letter-spacing: .5px; }
 .season-empty {
   width: 340px; box-sizing: border-box; border-radius: 22px; padding: 24px 22px;
   border: 1px dashed rgba(255,255,255,.45); color: rgba(255,255,255,.78);
   font-size: 12.5px; letter-spacing: 1px; background: rgba(255,255,255,.10);
-  text-align: center; text-shadow: 0 1px 8px rgba(30,60,110,.4);
+  text-align: center;
 }
-.home-empty { text-align: center; color: rgba(255,255,255,.8); font-size: 13px; padding: 40px 0; text-shadow: 0 1px 8px rgba(30,60,110,.4); }
+.home-empty { text-align: center; color: rgba(255,255,255,.8); font-size: 13px; padding: 40px 0; }
 /* 渐隐由 JS 驱动（applyHomeFade）：板块顶缘升到视口 ~40% 线开始渐隐，到 ~12% 线完全消失 */
 /* 回到主页悬浮钮 */
 #homeFab {
