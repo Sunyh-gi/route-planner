@@ -8,6 +8,27 @@
 <style>
 html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 #map { height: 100%; width: 100%; }
+/* ============================================================
+ * v6.9 液态玻璃设计 token（全项目元素的设计基础与核心）
+ * 新增/修改任何卡片、按钮、浮层元素前，先按此配方设计玻璃效果。
+ * 禁止：磨砂(>4px blur)、色块底、彩色/深蓝投影、文字阴影。
+ * L1 浮层玻璃 —— 地图/壁纸上小组件（按钮、菜单、toast、pill）
+ * L2 内容玻璃 —— 弹窗/表单载体（可读性优先，白底更高）
+ * L3 主页卡片 —— 壁纸大卡（JS 折射 _lgApply + 受光，见 .home-card）
+ * 卫星等深色底图用 .sat-active/.map-dark 暗玻璃变体（已有体系）。
+ * ============================================================ */
+:root {
+  --glass-bg: rgba(255,255,255,.10);          /* L1 玻璃底 */
+  --glass-bg-hover: rgba(255,255,255,.18);
+  --glass-border: rgba(255,255,255,.30);      /* 细白边框 */
+  --glass-hi: rgba(255,255,255,.38);          /* 顶缘高光线 */
+  --glass-hi-soft: rgba(255,255,255,.18);     /* 顶内侧柔光带 */
+  --glass-lo: rgba(255,255,255,.10);          /* 下缘次高光 */
+  --glass-shadow: 0 4px 16px rgba(0,0,0,.04); /* 极淡中性托影 */
+  --glass-blur: blur(3px);                    /* L1 面板级柔化 */
+  --glass-blur-content: blur(14px);           /* L2 内容玻璃柔化 */
+  --glass-content-bg: rgba(255,255,255,.74);  /* L2 白底（表单可读性） */
+}
 .info-panel {
   position: absolute; top: 16px; left: 16px;
   border-radius: 20px; padding: 18px 20px;
@@ -107,7 +128,7 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 /* 弹窗通用 */
 .modal-mask { position: fixed; inset: 0; z-index: 3000; background: rgba(8,12,26,0.34); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; }
 .modal-mask.open { display: flex; }
-.modal-card { background: #fdfdfd; color: #222; border-radius: 18px; box-shadow: 0 14px 48px rgba(0,0,0,0.28); display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
+.modal-card { background: var(--glass-content-bg); color: #222; border-radius: 18px; backdrop-filter: var(--glass-blur-content); -webkit-backdrop-filter: var(--glass-blur-content); border: 1px solid rgba(255,255,255,.45); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), var(--glass-shadow), 0 14px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
 .editor-modal { width: min(470px, 96vw); }
 .settings-modal { width: min(430px, 92vw); }
 .modal-head { display: flex; align-items: center; gap: 8px; padding: 13px 16px 10px; border-bottom: 1px solid rgba(0,0,0,0.07); }
@@ -207,7 +228,7 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .set-btns .ed-btn + .ed-btn { margin-left: 2px; }
 .set-btns .ed-btn:last-child { margin-left: auto; }
 .set-sep { height: 1px; background: rgba(0,0,0,0.07); margin: 15px 0 13px; }
-.toast { position: fixed; left: 50%; bottom: 38px; transform: translateX(-50%); z-index: 5000; background: rgba(28,34,50,0.95); color: #fff; font-size: 12.5px; padding: 9px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 80vw; }
+.toast { position: fixed; left: 50%; bottom: 38px; transform: translateX(-50%); z-index: 5000; background: rgba(28,34,50,.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.22); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), var(--glass-shadow); color: #fff; font-size: 12.5px; padding: 9px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 80vw; }
 .toast.show { opacity: 1; }
 input[type="file"] { display: none; }
 
@@ -233,13 +254,14 @@ input[type="file"] { display: none; }
 }
 .home-tools { display: flex; gap: 8px; }
 .home-tools button {
-  border: 1px solid rgba(255,255,255,.45); border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  border: 1px solid var(--glass-border); border-radius: 999px; padding: 8px 16px; cursor: pointer;
   font-size: 12.5px; font-weight: 600; color: #fff; letter-spacing: .5px;
-  background: rgba(255,255,255,.14);
-  backdrop-filter: blur(14px) saturate(150%); -webkit-backdrop-filter: blur(14px) saturate(150%);
-  box-shadow: 0 4px 18px rgba(30,60,110,.12); transition: background .18s, transform .18s;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow);
+  transition: background .18s, transform .18s;
 }
-.home-tools button:hover { background: rgba(255,255,255,.28); transform: translateY(-1px); }
+.home-tools button:hover { background: var(--glass-bg-hover); transform: translateY(-1px); }
 /* 卡片滚动层：容器顶缘上移到渐隐终点线（12%），padding 把内容起始位置垫到视口 40%；
    卡片在滚到裁切线之前已完全透明 → 不会出现硬切边；板块可视区域仍控制在视口 40%–90% */
 .home-scroll {
@@ -295,12 +317,15 @@ input[type="file"] { display: none; }
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 1500;
-  background: rgba(255,255,255,0.9); border: 1px solid rgba(80,85,95,0.22);
-  color: #555; border-radius: 999px; padding: 8px 16px; cursor: pointer;
-  font-size: 13px; font-weight: 700; box-shadow: 0 4px 14px rgba(20,30,60,0.18); display: none;
+  background: rgba(255,255,255,.16); border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  color: #fff; border-radius: 999px; padding: 8px 16px; cursor: pointer;
+  font-size: 13px; font-weight: 700;
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow);
+  display: none;
   font-family: inherit;
 }
-#homeFab:hover { background: rgba(80,85,95,0.88); color: #fff; }
+#homeFab:hover { background: rgba(255,255,255,.26); }
 
 /* ========== 路线界面 · 内联编辑器（侧栏） ========== */
 .info-panel .route-head {
@@ -392,11 +417,11 @@ input[type="file"] { display: none; }
   padding: 11px 12px 9px;
   border-radius: 16px;
   font-size: 12px; line-height: 1.35;
-  background: rgba(255,255,255,0.58);
-  backdrop-filter: blur(20px) saturate(170%);
-  -webkit-backdrop-filter: blur(20px) saturate(170%);
-  border: 1px solid rgba(255,255,255,0.68);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.62), 0 10px 26px rgba(0,0,0,0.14);
+  background: rgba(255,255,255,0.52);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255,255,255,0.50);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 12px 18px -12px rgba(255,255,255,0.30), 0 10px 26px rgba(0,0,0,0.10);
   color: rgba(30,35,50,0.92);
 }
 .day-card .dc-title { font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -484,13 +509,12 @@ input[type="file"] { display: none; }
 /* v6.4 保存按钮：液态玻璃 + 仅「保存」二字 */
 .save-row .save-btn {
   flex: 1; padding: 9px 12px; font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
-  background: rgba(255,255,255,0.55);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  border: 1px solid rgba(255,255,255,0.72);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: 11px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), 0 2px 8px rgba(0,0,0,0.06);
-  color: rgba(80,85,95,0.95);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow);
+  color: rgba(40,48,66,0.95);
   transition: background .15s, color .15s, transform .1s;
   font-family: inherit;
 }
@@ -520,9 +544,11 @@ input[type="file"] { display: none; }
 /* 路线菜单弹层 */
 .route-menu-pop {
   position: fixed; top: 56px; left: 18px; z-index: 1600;
-  background: #fdfdfd; border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.22);
+  background: rgba(255,255,255,.62); border-radius: 14px;
+  backdrop-filter: var(--glass-blur-content); -webkit-backdrop-filter: var(--glass-blur-content);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), var(--glass-shadow), 0 12px 32px rgba(0,0,0,.10);
   display: none; flex-direction: column; min-width: 168px;
-  border: 1px solid rgba(0,0,0,0.08); overflow: hidden;
+  border: 1px solid rgba(255,255,255,.45); overflow: hidden;
   font-family: inherit;
 }
 .route-menu-pop.open { display: flex; }
