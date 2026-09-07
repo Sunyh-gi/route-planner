@@ -141,6 +141,14 @@ routes/
 
 > 多电脑工作：每台机都填同样的 Token 即可双向同步。Token 只在本机 localStorage，不上传 GitHub；可在 github.com 随时撤销。
 
+## 液态玻璃设计规范（v6.9 设计基础，新增/修改元素前先按此设计）
+
+- **Token**：`:root` 内 --glass-* 变量（bg .10 / hover .18 / border .30 / hi .38 / hi-soft .18 / lo .10 / shadow / blur 3px / content-bg .74 / blur-content 14px）
+- **三层玻璃**：L1 浮层玻璃（地图/壁纸上小组件：按钮/菜单/toast/pill —— blur(3px)+白.10+受光）；L2 内容玻璃（弹窗/表单：白.74+blur(14px)，可读性优先）；L3 主页卡片（JS 折射 _lgApply + 受光，见 .home-card）
+- **受光四件套**：顶缘 1px 高光 + 顶内侧柔光带 + 下缘次高光 + 极淡中性托影（禁止彩色/深蓝投影）
+- **禁止**：重磨砂（>4px）、色块底、文字阴影；深色底图用 .sat-active/.map-dark 暗玻璃变体
+- **折射**：仅主页卡片启用（feDisplacementMap 极轻 6px 带/3px 弯折，_lgApply）；其他元素不加
+
 ## 验证
 
 - `_smoke.js`：三阶段冒烟（puppeteer-core + 系统 Edge，`file://` 直开场景）
