@@ -9,25 +9,26 @@
 html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 #map { height: 100%; width: 100%; }
 /* ============================================================
- * v6.9 液态玻璃设计 token（全项目元素的设计基础与核心）
+ * v6.9.1 液态玻璃设计 token（全项目元素的设计基础与核心）
  * 新增/修改任何卡片、按钮、浮层元素前，先按此配方设计玻璃效果。
- * 禁止：磨砂(>4px blur)、色块底、彩色/深蓝投影、文字阴影。
- * L1 浮层玻璃 —— 地图/壁纸上小组件（按钮、菜单、toast、pill）
- * L2 内容玻璃 —— 弹窗/表单载体（可读性优先，白底更高）
+ * L1 浮层玻璃用「暗调玻璃」：浅色底图上玻璃片清晰可感（白.10 在浅底上不可见），
+ *    白字/白边框在暗调上可读；依然清透（blur 6px 柔而不雾）。
+ * L2 内容玻璃 —— 弹窗/表单载体（白底 + 高透过 blur，可读性优先）
  * L3 主页卡片 —— 壁纸大卡（JS 折射 _lgApply + 受光，见 .home-card）
  * 卫星等深色底图用 .sat-active/.map-dark 暗玻璃变体（已有体系）。
+ * 禁止：重磨砂(>8px 于 L1)、色块底、彩色/深蓝投影、文字阴影。
  * ============================================================ */
 :root {
-  --glass-bg: rgba(255,255,255,.10);          /* L1 玻璃底 */
-  --glass-bg-hover: rgba(255,255,255,.18);
-  --glass-border: rgba(255,255,255,.30);      /* 细白边框 */
-  --glass-hi: rgba(255,255,255,.38);          /* 顶缘高光线 */
-  --glass-hi-soft: rgba(255,255,255,.18);     /* 顶内侧柔光带 */
-  --glass-lo: rgba(255,255,255,.10);          /* 下缘次高光 */
-  --glass-shadow: 0 4px 16px rgba(0,0,0,.04); /* 极淡中性托影 */
-  --glass-blur: blur(3px);                    /* L1 面板级柔化 */
-  --glass-blur-content: blur(14px);           /* L2 内容玻璃柔化 */
-  --glass-content-bg: rgba(255,255,255,.74);  /* L2 白底（表单可读性） */
+  --glass-bg: rgba(30,42,66,.16);             /* L1 暗调玻璃底（浅底图上可见） */
+  --glass-bg-hover: rgba(30,42,66,.26);
+  --glass-border: rgba(255,255,255,.35);      /* 细白边框 */
+  --glass-hi: rgba(255,255,255,.45);          /* 顶缘高光线 */
+  --glass-hi-soft: rgba(255,255,255,.20);     /* 顶内侧柔光带 */
+  --glass-lo: rgba(255,255,255,.12);          /* 下缘次高光 */
+  --glass-shadow: 0 4px 16px rgba(0,0,0,.06); /* 极淡中性托影 */
+  --glass-blur: blur(6px);                    /* L1 柔化（柔而不雾） */
+  --glass-blur-content: blur(20px);           /* L2 内容玻璃柔化 */
+  --glass-content-bg: rgba(255,255,255,.58);  /* L2 白底（高透过） */
 }
 .info-panel {
   position: absolute; top: 16px; left: 16px;
@@ -126,7 +127,7 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .rs-credit { font-size: 10px; color: #999; margin: 6px 0 2px; letter-spacing: 0.2px; }
 .info-panel.sat-active .rs-credit { color: rgba(255,255,255,0.75); }
 /* 弹窗通用 */
-.modal-mask { position: fixed; inset: 0; z-index: 3000; background: rgba(8,12,26,0.34); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; }
+.modal-mask { position: fixed; inset: 0; z-index: 3000; background: rgba(8,12,26,0.22); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; }
 .modal-mask.open { display: flex; }
 .modal-card { background: var(--glass-content-bg); color: #222; border-radius: 18px; backdrop-filter: var(--glass-blur-content); -webkit-backdrop-filter: var(--glass-blur-content); border: 1px solid rgba(255,255,255,.45); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), var(--glass-shadow), 0 14px 48px rgba(0,0,0,.18); display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
 .editor-modal { width: min(470px, 96vw); }
@@ -317,15 +318,15 @@ input[type="file"] { display: none; }
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 1500;
-  background: rgba(255,255,255,.16); border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(30,42,66,.32); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   color: #fff; border-radius: 999px; padding: 8px 16px; cursor: pointer;
   font-size: 13px; font-weight: 700;
   box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow);
   display: none;
   font-family: inherit;
 }
-#homeFab:hover { background: rgba(255,255,255,.26); }
+#homeFab:hover { background: rgba(30,42,66,.45); }
 
 /* ========== 路线界面 · 内联编辑器（侧栏） ========== */
 .info-panel .route-head {
@@ -514,11 +515,11 @@ input[type="file"] { display: none; }
   border: 1px solid var(--glass-border);
   border-radius: 11px;
   box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow);
-  color: rgba(40,48,66,0.95);
+  color: rgba(255,255,255,.94);
   transition: background .15s, color .15s, transform .1s;
   font-family: inherit;
 }
-.save-row .save-btn:hover { background: rgba(80,85,95,0.88); color: #fff; }
+.save-row .save-btn:hover { background: rgba(36,50,74,.30); color: #fff; }
 .save-row .save-btn:active { transform: scale(0.98); }
 .save-row .dirty-hint {
   flex: none; font-size: 11px; color: #c0392b; font-weight: 600;
@@ -544,8 +545,8 @@ input[type="file"] { display: none; }
 /* 路线菜单弹层 */
 .route-menu-pop {
   position: fixed; top: 56px; left: 18px; z-index: 1600;
-  background: rgba(255,255,255,.62); border-radius: 14px;
-  backdrop-filter: var(--glass-blur-content); -webkit-backdrop-filter: var(--glass-blur-content);
+  background: rgba(30,42,66,.55); border-radius: 14px;
+  backdrop-filter: blur(10px) saturate(120%); -webkit-backdrop-filter: blur(10px) saturate(120%);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.55), var(--glass-shadow), 0 12px 32px rgba(0,0,0,.10);
   display: none; flex-direction: column; min-width: 168px;
   border: 1px solid rgba(255,255,255,.45); overflow: hidden;
@@ -554,13 +555,13 @@ input[type="file"] { display: none; }
 .route-menu-pop.open { display: flex; }
 .route-menu-pop button {
   border: none; background: transparent; padding: 10px 14px;
-  font-size: 13px; color: #333; cursor: pointer; text-align: left;
-  border-bottom: 1px solid rgba(0,0,0,0.05); font-family: inherit;
+  font-size: 13px; color: rgba(255,255,255,.92); cursor: pointer; text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.10); font-family: inherit;
 }
 .route-menu-pop button:last-child { border-bottom: none; }
-.route-menu-pop button:hover { background: rgba(80,85,95,0.12); color: #444; }
-.route-menu-pop button.del { color: #c0392b; }
-.route-menu-pop button.del:hover { background: rgba(192,57,43,0.12); }
+.route-menu-pop button:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.route-menu-pop button.del { color: #ff8a7a; }
+.route-menu-pop button.del:hover { background: rgba(255,138,122,0.16); }
 
 /* 路线操作失败/成功 toast 颜色变体（沿用 .toast） */
 
