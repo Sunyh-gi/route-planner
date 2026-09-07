@@ -27,9 +27,9 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   --glass-lo: rgba(255,255,255,.12);          /* 下缘次高光 */
   --glass-shadow: 0 4px 16px rgba(0,0,0,.06); /* 极淡中性托影 */
   --glass-blur: blur(1px);                    /* L1 小件柔化（极轻） */
-  --glass-blur-panel: blur(3px);              /* 面板/弹窗级柔化（文字密集，糊掉底图小字） */
-  --glass-blur-content: blur(3px);           /* L2 内容玻璃柔化 */
-  --glass-content-bg: rgba(255,255,255,.58);  /* L2 白底（高透过） */
+  --glass-blur-panel: blur(10px);             /* 面板/弹窗级柔化 */
+  --glass-blur-content: blur(10px);           /* L2 内容玻璃柔化 */
+  --glass-content-bg: rgba(255,255,255,.10);  /* L2 白底 */
 }
 .info-panel {
   position: absolute; top: 16px; left: 16px;
@@ -39,11 +39,11 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   overflow-x: hidden;
   scrollbar-width: none;         /* Firefox 隐藏滚动条 */
   -ms-overflow-style: none;      /* 旧 Edge/IE */
-  background: rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.10);
   backdrop-filter: var(--glass-blur-panel);
   -webkit-backdrop-filter: var(--glass-blur-panel);
-  border: 1px solid rgba(255,255,255,0.18);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+  border: 1px solid rgba(255,255,255,0.30);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.06);
 }
 /* 隐藏滚动条但保留滚动（Chrome/Safari） */
 .info-panel::-webkit-scrollbar { width: 0; height: 0; display: none; }
@@ -319,8 +319,8 @@ input[type="file"] { display: none; }
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 1500;
-  background: var(--glass-bg); border: 1px solid var(--glass-border);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(255,255,255,.10); border: 1px solid var(--glass-border);
+  backdrop-filter: var(--glass-blur-panel); -webkit-backdrop-filter: var(--glass-blur-panel);
   color: #3a4658; border-radius: 999px; padding: 8px 16px; cursor: pointer;
   font-size: 13px; font-weight: 700;
   box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow);
@@ -414,14 +414,58 @@ input[type="file"] { display: none; }
   border: 1px solid rgba(255,255,255,0.6);
   box-shadow: 0 1px 6px rgba(0,0,0,0.10);
 }
+/* v6.10.3 地点详情 popup 玻璃化（白.10 + blur(20px) + 受光） */
+.leaflet-popup-content-wrapper {
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid rgba(255,255,255,0.50);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 12px 18px -12px rgba(255,255,255,0.30), 0 10px 26px rgba(0,0,0,0.10);
+}
+.leaflet-popup-content { margin: 12px 16px; color: rgba(35,45,66,0.92); font-size: 12.5px; line-height: 1.6; }
+.leaflet-popup-tip { background: rgba(255,255,255,0.10); }
+/* v6.10.3 底图选择控件玻璃化（白.10 + blur(20px) + 受光） */
+.leaflet-control-layers {
+  background: rgba(255,255,255,.10);
+  backdrop-filter: var(--glass-blur-panel); -webkit-backdrop-filter: var(--glass-blur-panel);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow) !important;
+  color: #3a4658;
+  padding: 8px 10px;
+}
+.leaflet-control-layers-expanded { padding: 8px 10px; color: #3a4658; }
+.leaflet-control-layers:hover { background: rgba(255,255,255,.20); }
+/* v6.10.2 缩放控件玻璃化 */
+.leaflet-control-zoom { border: none !important; box-shadow: none !important; border-radius: 12px; overflow: hidden; }
+.leaflet-control-zoom a {
+  background: rgba(255,255,255,.10);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border: none; color: #3a4658 !important;
+  border-bottom: 1px solid rgba(255,255,255,.25);
+  transition: background .15s;
+}
+.leaflet-control-zoom a:last-child { border-bottom: none; }
+.leaflet-control-zoom a:hover { background: rgba(255,255,255,.20); color: #222 !important; }
+/* 深色底图变体：卫星/NatGeo 上改暗玻璃白字 */
+.map-dark .leaflet-popup-content-wrapper,
+.map-dark .leaflet-control-layers,
+.map-dark .leaflet-control-zoom a {
+  background: rgba(255,255,255,.10); color: rgba(255,255,255,.92); border-color: rgba(255,255,255,.25);
+}
+.map-dark .leaflet-popup-tip { background: rgba(255,255,255,.10); }
+.map-dark .leaflet-popup-content { color: rgba(255,255,255,.92); }
+.map-dark .leaflet-control-layers label, .map-dark .leaflet-control-layers .leaflet-control-layers-selector { color: rgba(255,255,255,.92); }
+.map-dark .leaflet-control-zoom a:hover, .map-dark .leaflet-control-layers:hover { background: rgba(255,255,255,.20); color: #fff !important; }
 .day-card {
   min-width: 172px; max-width: 240px;
   padding: 11px 12px 9px;
   border-radius: 16px;
   font-size: 12px; line-height: 1.35;
-  background: rgba(255,255,255,0.52);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  background: rgba(255,255,255,0.10);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
   border: 1px solid rgba(255,255,255,0.50);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.55), inset 0 12px 18px -12px rgba(255,255,255,0.30), 0 10px 26px rgba(0,0,0,0.10);
   color: rgba(30,35,50,0.92);
@@ -511,8 +555,8 @@ input[type="file"] { display: none; }
 /* v6.4 保存按钮：液态玻璃 + 仅「保存」二字 */
 .save-row .save-btn {
   flex: 1; padding: 9px 12px; font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(255,255,255,.10);
+  backdrop-filter: var(--glass-blur-panel); -webkit-backdrop-filter: var(--glass-blur-panel);
   border: 1px solid var(--glass-border);
   border-radius: 11px;
   box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), var(--glass-shadow);
@@ -546,8 +590,8 @@ input[type="file"] { display: none; }
 /* 路线菜单弹层 */
 .route-menu-pop {
   position: fixed; top: 56px; left: 18px; z-index: 1600;
-  background: rgba(255,255,255,.08); border-radius: 14px;
-  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  background: rgba(255,255,255,.10); border-radius: 14px;
+  backdrop-filter: var(--glass-blur-panel); -webkit-backdrop-filter: var(--glass-blur-panel);
   box-shadow: inset 0 1px 0 var(--glass-hi), var(--glass-shadow), 0 12px 32px rgba(0,0,0,.10);
   display: none; flex-direction: column; min-width: 168px;
   border: 1px solid var(--glass-border); overflow: hidden;
@@ -1118,7 +1162,7 @@ function segText(route, idx, isPrev) {
   var c = route.segs && route.segs[segKey(a, b)];
   if (c) {
     var ic = (c.p === "foot" || c.p === "cycling") ? modeIcon(c.p) : carIcon;
-    return '<span style="color:#555;">' + (isPrev ? "上段" : "下段") + ": " + (c.d / 1000).toFixed(1) +
+    return '<span style="color:inherit;">' + (isPrev ? "上段" : "下段") + ": " + (c.d / 1000).toFixed(1) +
       'km</span>' + ic + '<span style="color:#999;">' + c.m + "分钟</span>";
   }
   return '<span style="color:#bbb;">' + (isPrev ? "上段" : "下段") + ": 待规划</span>";
@@ -2483,11 +2527,12 @@ function scheduleHomeFade() {
  * 尺寸变化：ResizeObserver 防抖重建（面板展开/弹窗打开）。
  * ============================================================ */
 var _lgSeq = 0;
-var LG = { bendPx: 8, bendAmp: 5 };
+var LG = { bendPx: 8, bendAmpMax: 8 };
 var _lgMap = new WeakMap();
-var LG_SELECTORS = ['.home-card', '.info-panel', '.route-menu-pop', '.modal-card', '.home-tools button', '#homeFab', '.save-row .save-btn', '.day-card', '.toast'];
+var LG_SELECTORS = ['.home-card']; // v6.10.3 折射仅主页卡片；路线页元素 = 白.10 + blur(20px)
 function _lgSmooth(a, b, t) { t = Math.max(0, Math.min(1, (t - a) / (b - a))); return t * t * (3 - 2 * t); }
 function _lgBuild(el) {
+  if (el.closest && el.closest('.map-daypop')) return; // daypop 容器保持透明，内部 day-card 自带玻璃
   var w = el.offsetWidth, h = el.offsetHeight;
   if (!w || !h) return;
   var st = getComputedStyle(el);
@@ -2496,7 +2541,7 @@ function _lgBuild(el) {
   radius = Math.min(radius, w / 2, h / 2);
   var minWH = Math.min(w, h);
   var bendPx = Math.max(4, Math.min(LG.bendPx, Math.round(minWH * 0.35)));
-  var bendAmp = Math.max(2, Math.min(6, minWH * 0.05));
+  var bendAmp = isFour ? 4 : Math.max(2, Math.min(8, minWH * 0.045));
   var data = new Uint8ClampedArray(w * h * 4);
   var raw = [], maxAbs = 1;
   for (var y = 0; y < h; y++) {
@@ -2547,8 +2592,19 @@ function _lgBuild(el) {
   if (prev && prev.svg && prev.svg.parentNode) prev.svg.remove();
   host.appendChild(svg);
   _lgMap.set(el, { w: w, h: h, id: id, svg: svg });
-  var isPanel = el.classList.contains('info-panel') || el.classList.contains('modal-card') || el.classList.contains('day-card');
-  var fx = 'url(#' + id + ') ' + (isPanel ? 'blur(3px)' : 'blur(1px)');
+  var isPopup = el.classList.contains('leaflet-popup-content-wrapper');
+  var isDayCard = el.classList.contains('day-card');
+  var isScrollPanel = el.classList.contains('info-panel') || el.classList.contains('modal-card');
+  // Chromium：backdrop-filter 中 url(#svg) 与 blur() 混用时 blur 会被忽略（滚动容器上必现）
+  // → 滚动面板磨砂优先、放弃折射；非滚动卡（popup/day-card）可安全组合
+  if (isScrollPanel) {
+    el.style.backdropFilter = 'blur(20px)';
+    el.style.webkitBackdropFilter = 'blur(20px)';
+    return;
+  }
+  var isFour = isPopup || isDayCard || el.classList.contains('leaflet-control-layers') || el.classList.contains('leaflet-control-zoom');
+  var isCard = el.classList.contains('home-card');
+  var fx = 'url(#' + id + ')' + (isCard ? '' : ' ' + ((isPopup || isDayCard) ? 'blur(20px)' : 'blur(1px)'));
   el.style.backdropFilter = fx;
   el.style.webkitBackdropFilter = fx;
 }
