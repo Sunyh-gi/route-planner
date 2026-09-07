@@ -26,8 +26,9 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   --glass-hi-soft: rgba(255,255,255,.20);     /* 顶内侧柔光带 */
   --glass-lo: rgba(255,255,255,.12);          /* 下缘次高光 */
   --glass-shadow: 0 4px 16px rgba(0,0,0,.06); /* 极淡中性托影 */
-  --glass-blur: blur(1px);                    /* L1 柔化（极轻） */
-  --glass-blur-content: blur(1px);           /* L2 内容玻璃柔化 */
+  --glass-blur: blur(1px);                    /* L1 小件柔化（极轻） */
+  --glass-blur-panel: blur(3px);              /* 面板/弹窗级柔化（文字密集，糊掉底图小字） */
+  --glass-blur-content: blur(3px);           /* L2 内容玻璃柔化 */
   --glass-content-bg: rgba(255,255,255,.58);  /* L2 白底（高透过） */
 }
 .info-panel {
@@ -39,8 +40,8 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   scrollbar-width: none;         /* Firefox 隐藏滚动条 */
   -ms-overflow-style: none;      /* 旧 Edge/IE */
   background: rgba(255,255,255,0.08);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur-panel);
+  -webkit-backdrop-filter: var(--glass-blur-panel);
   border: 1px solid rgba(255,255,255,0.18);
   box-shadow: 0 4px 24px rgba(0,0,0,0.04);
 }
@@ -2546,7 +2547,8 @@ function _lgBuild(el) {
   if (prev && prev.svg && prev.svg.parentNode) prev.svg.remove();
   host.appendChild(svg);
   _lgMap.set(el, { w: w, h: h, id: id, svg: svg });
-  var fx = 'url(#' + id + ') blur(1px)';
+  var isPanel = el.classList.contains('info-panel') || el.classList.contains('modal-card') || el.classList.contains('day-card');
+  var fx = 'url(#' + id + ') ' + (isPanel ? 'blur(3px)' : 'blur(1px)');
   el.style.backdropFilter = fx;
   el.style.webkitBackdropFilter = fx;
 }
