@@ -246,8 +246,13 @@ input[type="file"] { display: none; }
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: 26px 34px 0;
 }
-.home-title .brand-logo {
-  display: block; width: 216px; height: auto; filter: drop-shadow(0 3px 16px rgba(20,40,90,.35));
+.home-title h1 {
+  margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 6px; color: #fff;
+  text-shadow: 0 2px 18px rgba(30,60,110,.45), 0 1px 2px rgba(30,60,110,.35);
+}
+.home-title .sub {
+  display: block; margin-top: 6px; font-size: 10.5px; letter-spacing: 3.5px;
+  color: rgba(255,255,255,.85); text-shadow: 0 1px 8px rgba(30,60,110,.5);
 }
 .home-tools { display: flex; gap: 8px; }
 .home-tools button {
@@ -617,14 +622,8 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
   <img class="home-bg" src="assets/home-bg.jpg" alt="" data-page-node-id="dEMrRKfR5szKynbMfoEYWo">
   <div class="home-head" data-page-node-id="Ix6BY4VfrHLUjzQFQwD2C1">
     <div class="home-title" data-page-node-id="1txzcsg3vn0ymQiRCtpLDl">
-      <svg class="brand-logo" viewBox="0 0 1100 700" role="img" aria-label="Lonely Travel">
-        <g fill="none" stroke="#2d59a8" stroke-width="54">
-          <path d="M 708 215 A 190 190 0 0 0 392 215"/>
-          <path d="M 383 410 A 190 190 0 0 0 717 410"/>
-        </g>
-        <text x="550" y="352" text-anchor="middle" fill="#2d59a8"
-          font-family="'Arial Black', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="160" letter-spacing="-6">lonely travel</text>
-      </svg>
+      <h1 data-page-node-id="s0On90Maic1J6RWfjKZuiD">四季路线</h1>
+      <span class="sub" data-page-node-id="dWp5hD3Xz3cq55mQZEBRiI">SPRING · SUMMER · AUTUMN · WINTER</span>
     </div>
     <div class="home-tools" data-page-node-id="6WXOCEfG5KUMqFWnBmV7UH">
       <button id="homeNew" data-page-node-id="mKFTD21tXYyuQbCZlpOrZV">＋ 新建</button>
