@@ -230,6 +230,20 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .set-btns .ed-btn + .ed-btn { margin-left: 2px; }
 .set-btns .ed-btn:last-child { margin-left: auto; }
 .set-sep { height: 1px; background: rgba(0,0,0,0.07); margin: 15px 0 13px; }
+/* v6.12 首页↔路线页上滑转场（View Transitions API，不支持的浏览器直接切换） */
+
+html::view-transition-old(root) { animation: 750ms cubic-bezier(.22,.61,.36,1) both vt-out; }
+html::view-transition-new(root) { animation: 750ms cubic-bezier(.22,.61,.36,1) both vt-in; }
+html.vt-back::view-transition-old(root) { animation: 750ms cubic-bezier(.22,.61,.36,1) both vt-back-out; }
+html.vt-back::view-transition-new(root) { animation: 750ms cubic-bezier(.22,.61,.36,1) both vt-back-in; }
+@keyframes vt-out { to { transform: translateY(-100%); } }
+@keyframes vt-in { from { transform: translateY(100%); } }
+@keyframes vt-back-out { to { transform: translateY(100%); } }
+@keyframes vt-back-in { from { transform: translateY(-100%); } }
+@media (prefers-reduced-motion: reduce) {
+  html::view-transition-old(root), html::view-transition-new(root),
+  html.vt-back::view-transition-old(root), html.vt-back::view-transition-new(root) { animation: none !important; }
+}
 .toast { position: fixed; left: 50%; bottom: 38px; transform: translateX(-50%); z-index: 5000; background: rgba(28,34,50,.72); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,.22); box-shadow: inset 0 1px 0 rgba(255,255,255,.14), var(--glass-shadow); color: #fff; font-size: 12.5px; padding: 9px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: 80vw; }
 .toast.show { opacity: 1; }
 input[type="file"] { display: none; }
@@ -242,7 +256,7 @@ input[type="file"] { display: none; }
 }
 .home-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .home-head {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 5;
+  position: absolute; top: 0; left: 0; right: 0; z-index: 5001;
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: 26px 34px 0;
 }
@@ -321,7 +335,7 @@ input[type="file"] { display: none; }
 /* 渐隐由 JS 驱动（applyHomeFade）：板块顶缘升到视口 ~40% 线开始渐隐，到 ~12% 线完全消失 */
 /* 回到主页悬浮钮 */
 #homeFab {
-  position: fixed; left: 16px; bottom: 16px; z-index: 1500;
+  position: fixed; left: 16px; bottom: 16px; z-index: 5001;
   background: rgba(255,255,255,.10); border: 1px solid var(--glass-border);
   backdrop-filter: var(--glass-blur-panel); -webkit-backdrop-filter: var(--glass-blur-panel);
   color: #3a4658; border-radius: 999px; padding: 8px 16px; cursor: pointer;
@@ -2711,23 +2725,36 @@ function closeSettings() {
   st.settings = false;
   syncHash(hashForState(st));
 }
+function navWithViewTransition(mutate) {
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var hm = document.getElementById("homeMask");
+  var homeVisible = !!(hm && hm.style.display !== "none");
+  if (!document.startViewTransition || reduce) { mutate(); return; }
+  document.documentElement.classList.toggle("vt-back", !homeVisible);
+  var vt = document.startViewTransition(function () { mutate(); });
+  vt.finished.then(function () { document.documentElement.classList.remove("vt-back"); }).catch(function () {});
+}
 function applyHashLocation() {
   var st = parseHashState();
   var cur = currentState();
   // 1) 页面切换（home / new / route）
   if (st.page === "route" && st.id) {
     if (cur.page !== "route" || cur.id !== st.id) {
-      if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，切换后将丢失，确定吗？")) { revertHash(cur); return; }
-      enterRoute(st.id); // enterRoute 内部 async 完成后 syncHash('#/r/<id>')
+      navWithViewTransition(function () {
+        if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，切换后将丢失，确定吗？")) { revertHash(cur); return; }
+        enterRoute(st.id); // enterRoute 内部 async 完成后 syncHash('#/r/<id>')
+      });
     }
   } else if (st.page === "new") {
     if (cur.page !== "new") {
-      if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，新建将丢弃，确定吗？")) { revertHash(cur); return; }
-      enterNewRoute();
+      navWithViewTransition(function () {
+        if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，新建将丢弃，确定吗？")) { revertHash(cur); return; }
+        enterNewRoute();
+      });
     }
   } else { // home
     if (cur.page !== "home") {
-      if (!exitToHome()) { revertHash(cur); return; } // exitToHome 内部已 confirm
+      navWithViewTransition(function () { if (!exitToHome()) { revertHash(cur); return; } }); // exitToHome 内部已 confirm
     }
   }
   // 2) 设置弹层开关
@@ -2746,11 +2773,10 @@ $("homeMask").addEventListener("click", function (ev) {
   var card = ev.target.closest ? ev.target.closest(".home-card") : null;
   if (!card) return;
   var id = card.getAttribute("data-route");
-  hideHome();
-  enterRoute(id);
+  location.hash = "#/r/" + id; // v6.12：触发 hashchange → navWithViewTransition（首页快照先捕获）
 });
-$("homeFab").addEventListener("click", function () { exitToHome(); });
-$("homeNew").addEventListener("click", function () { hideHome(); enterNewRoute(); });
+$("homeFab").addEventListener("click", function () { location.hash = "#/"; });
+$("homeNew").addEventListener("click", function () { location.hash = "#/n"; });
 $("homeRefresh").addEventListener("click", function () { doRefresh(); });
 // v6.5.2：设置改为直接覆盖在主页之上（z-index 3000 > homeMask 2400），不再 hideHome
 $("homeSettings").addEventListener("click", function () { openSettings(); });
