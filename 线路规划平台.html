@@ -1772,7 +1772,7 @@ function fitRouteView() {
   if (shift > 0) {
     var c = map.getCenter();
     var px = map.project(c, z);
-    map.setView(map.unproject(L.point(px.x - shift, px.y), z), z, { animate: true });
+    map.setView(map.unproject(L.point(px.x - shift, px.y), z), z, { animate: false }); // v6.12.1 取景补偿改为瞬时（避免转场后再横向平移一下）
   }
 }
 
