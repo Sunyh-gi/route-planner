@@ -282,14 +282,16 @@ input[type="file"] { display: none; }
   transition: background .18s, transform .18s;
 }
 .home-tools button:hover { background: var(--glass-bg-hover); transform: translateY(-1px); }
-/* 卡片滚动层：容器顶缘上移到渐隐终点线（12%），padding 把内容起始位置垫到视口 40%；
-   卡片在滚到裁切线之前已完全透明 → 不会出现硬切边；板块可视区域仍控制在视口 40%–90% */
+/* 卡片滚动层：容器顶缘=渐隐终点线（12%）。v6.14 节奏重排：顶部垫层 28vh+46 → 14vh+12
+   （首板块头从视口 ~45% 提到 ~27%，消除 logo 下大片留白）、板块间距 34→48px、
+   底部收尾 140px → 20vh+16px（尾板块下方留出与顶部对称的壁纸呼吸区，滚到底不贴边）；
+   出场渐隐带 28vh → 12vh（上滑约一半距离即完全隐藏），入场渐显见 applyHomeFade（v6.14） */
 .home-scroll {
   position: absolute; left: 0; right: 0; top: 12%; bottom: 2%; z-index: 4;
-  overflow-y: auto; padding: calc(28vh + 46px) 34px 140px; scrollbar-width: none;
+  overflow-y: auto; padding: calc(14vh + 12px) 34px calc(20vh + 16px); scrollbar-width: none;
 }
 .home-scroll::-webkit-scrollbar { display: none; }
-.season { margin: 0 0 34px; }
+.season { margin: 0 0 48px; } /* v6.14: 34 → 48px，板块节奏更均匀 */
 /* v6.7 试版：季节头文字改白（与壁纸协调），去 emoji 图标；无文字阴影，纯液态玻璃质感 */
 .season-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; color: rgba(255,255,255,.96); }
 .season-head .nm { font-size: 19px; font-weight: 700; letter-spacing: 2px; }
@@ -333,7 +335,8 @@ input[type="file"] { display: none; }
   text-align: center;
 }
 .home-empty { text-align: center; color: rgba(255,255,255,.8); font-size: 13px; padding: 40px 0; }
-/* 渐隐由 JS 驱动（applyHomeFade）：板块顶缘升到视口 ~40% 线开始渐隐，到 ~12% 线完全消失 */
+/* 渐隐由 JS 驱动（applyHomeFade）：出场=板块顶缘升到视口 ~24% 线开始渐隐、~12% 线完全消失；
+   入场=容器底缘向上 10vh 渐显带，板块升起时软渐显不硬切（v6.14） */
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 5001;
@@ -2507,22 +2510,28 @@ function renderHome() {
   scheduleHomeFade();
   applyLiquidGlassAll();
 }
-/* v6.6 主页渐隐（JS 驱动，比 scroll-driven animation 更可控）：
-   板块顶缘在视口 40% 线以下 → 完全清晰；升到 40% 线开始渐隐；到 12% 线完全消失 */
+/* v6.6 主页渐隐（JS 驱动，比 scroll-driven animation 更可控）；
+   v6.14 重排：出场带 24%→12%（原 40%→12%，上滑一半距离即完全隐藏），
+   新增入场带——板块顶缘从容器底缘升起时先软渐显（底缘不再硬切） */
 var _homeFadeRaf = 0;
 function applyHomeFade() {
   var sc = document.querySelector(".home-scroll");
   if (!sc) return;
   var vh = window.innerHeight || document.documentElement.clientHeight || 800;
-  var fadeTop = vh * 0.40, fadeEnd = vh * 0.12;
+  var fadeTop = vh * 0.24, fadeEnd = vh * 0.12; // 出场：24% 线起渐隐，12% 线（=容器顶缘）全隐
   var span = Math.max(1, fadeTop - fadeEnd);
+  var edge = sc.getBoundingClientRect().bottom;  // 入场：底缘向上 10vh 渐显带
+  var enterBand = Math.max(1, vh * 0.10);
   sc.querySelectorAll(".season").forEach(function (el) {
-    var top = el.getBoundingClientRect().top;
-    var p = (fadeTop - top) / span;
-    p = p < 0 ? 0 : (p > 1 ? 1 : p);
+    var b = el.getBoundingClientRect();
+    var pOut = (fadeTop - b.top) / span;
+    pOut = pOut < 0 ? 0 : (pOut > 1 ? 1 : pOut);
+    var pIn = (edge - b.top) / enterBand; // 顶缘刚露头=0，升离渐显带=1
+    pIn = pIn < 0 ? 0 : (pIn > 1 ? 1 : pIn);
+    var p = Math.max(pOut, 1 - pIn);
     el.style.opacity = String(1 - p);
     el.style.filter = p > 0 ? "blur(" + (p * 5).toFixed(2) + "px)" : "";
-    el.style.transform = p > 0 ? "translateY(" + (-p * 14).toFixed(1) + "px)" : "";
+    el.style.transform = pOut > 0 ? "translateY(" + (-pOut * 14).toFixed(1) + "px)" : "";
   });
 }
 function scheduleHomeFade() {
