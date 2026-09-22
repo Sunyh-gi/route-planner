@@ -3,11 +3,13 @@
  * 阶段 A：无 Token 只读回归（默认视图模式；点 ⋯ → 编辑路线进入编辑模式后验证搜索/卡片/加站）
  * 阶段 B：mock fetch 模拟 GitHub 仓库写入
  * 用法：node _smoke.js
+ *   依赖 puppeteer-core 与系统 Edge；若二者不在默认解析路径，用环境变量指定：
+ *   PUPPETEER_PATH=<puppeteer-core 路径>  EDGE_PATH=<Edge 可执行文件路径>
  * ============================================================ */
-const puppeteer = require("C:/Users/Mickey/.workbuddy/binaries/node/workspace/node_modules/puppeteer-core");
+const puppeteer = require(process.env.PUPPETEER_PATH || "puppeteer-core");
 const path = require("path");
 
-const EDGE = "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
+const EDGE = process.env.EDGE_PATH || "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
 const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").replace(/\\/g, "/");
 
 (async () => {
