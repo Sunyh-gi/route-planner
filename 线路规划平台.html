@@ -1032,9 +1032,6 @@ wpList.addEventListener("click", function(ev) {
   </div>
 </div>
 
-<input type="file" id="fileImport" accept=".json,application/json" data-page-node-id="5QH98jhyr1qSeJcz4Sp43Z">
-<div class="toast" id="toast" data-page-node-id="DQOe7mdRZlDoEAA9t8xAZJ"></div>
-
 <script>
 /* ============================================================
  * 路线平台管理：路线增删改、地名/GPS 搜索加站、按天设定、
@@ -2733,6 +2730,8 @@ function navWithViewTransition(mutate) {
   if (!document.startViewTransition || reduce) { mutate(); return; }
   document.documentElement.classList.toggle("vt-back", !homeVisible);
   var vt = document.startViewTransition(function () { mutate(); });
+  // 连续快速导航会 abort 上一个转场（AbortError），此处吞掉，保持控制台干净
+  if (vt.ready && vt.ready.catch) vt.ready.catch(function () {});
   vt.finished.then(function () { document.documentElement.classList.remove("vt-back"); }).catch(function () {});
 }
 function applyHashLocation() {
