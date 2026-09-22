@@ -285,7 +285,7 @@ input[type="file"] { display: none; }
 /* 卡片滚动层：容器顶缘=渐隐终点线（12%）。v6.14 节奏重排：顶部垫层 28vh+46 → 14vh+12
    （首板块头从视口 ~45% 提到 ~27%，消除 logo 下大片留白）、板块间距 34→48px、
    底部收尾 140px → 20vh+16px（尾板块下方留出与顶部对称的壁纸呼吸区，滚到底不贴边）；
-   出场渐隐带 28vh → 12vh（上滑约一半距离即完全隐藏），入场渐显见 applyHomeFade（v6.14） */
+   出场渐隐带 24% → 12%（上滑约一半距离即完全隐藏），入场=底部固定渐隐带见 applyHomeFade（v6.15） */
 .home-scroll {
   position: absolute; left: 0; right: 0; top: 12%; bottom: 2%; z-index: 4;
   overflow-y: auto; padding: calc(14vh + 12px) 34px calc(20vh + 16px); scrollbar-width: none;
@@ -336,7 +336,7 @@ input[type="file"] { display: none; }
 }
 .home-empty { text-align: center; color: rgba(255,255,255,.8); font-size: 13px; padding: 40px 0; }
 /* 渐隐由 JS 驱动（applyHomeFade）：出场=板块顶缘升到视口 ~24% 线开始渐隐、~12% 线完全消失；
-   入场=容器底缘向上 10vh 渐显带，板块升起时软渐显不硬切（v6.14） */
+   入场=底部固定渐隐带（顶部效果的镜像，v6.15）：前板块下方便开始渐隐、尾板块初始全隐，上滑渐显 */
 /* 回到主页悬浮钮 */
 #homeFab {
   position: fixed; left: 16px; bottom: 16px; z-index: 5001;
@@ -2511,8 +2511,9 @@ function renderHome() {
   applyLiquidGlassAll();
 }
 /* v6.6 主页渐隐（JS 驱动，比 scroll-driven animation 更可控）；
-   v6.14 重排：出场带 24%→12%（原 40%→12%，上滑一半距离即完全隐藏），
-   新增入场带——板块顶缘从容器底缘升起时先软渐显（底缘不再硬切） */
+   v6.14 重排：出场带 24%→12%（原 40%→12%，上滑一半距离即完全隐藏）；
+   v6.15 入场改为底部固定渐隐带：顶部出场效果的镜像，带固定在视口内、不随季节走：
+   前板块下方便开始渐隐，尾板块初始全隐，上滑时升离雾带渐显 */
 var _homeFadeRaf = 0;
 function applyHomeFade() {
   var sc = document.querySelector(".home-scroll");
@@ -2520,18 +2521,31 @@ function applyHomeFade() {
   var vh = window.innerHeight || document.documentElement.clientHeight || 800;
   var fadeTop = vh * 0.24, fadeEnd = vh * 0.12; // 出场：24% 线起渐隐，12% 线（=容器顶缘）全隐
   var span = Math.max(1, fadeTop - fadeEnd);
-  var edge = sc.getBoundingClientRect().bottom;  // 入场：底缘向上 10vh 渐显带
-  var enterBand = Math.max(1, vh * 0.10);
-  sc.querySelectorAll(".season").forEach(function (el) {
+  /* v6.15 底部固定带：带顶线 L = 初始最后板块顶 - FADE_LEN。lastRect.top + scrollTop 与滚动无关，
+     故 L 在视口坐标恒定；板块间距 48 > FADE_LEN 40，前板块底恒在 L 上方 8px（不受雾带影响），
+     最后板块初始顶恰在归零线 L+40（全隐）。maxScroll 不足 40 时无下折内容可藏，跳过雾带 */
+  var FADE_LEN = 40;
+  var seasons = sc.querySelectorAll(".season");
+  var last = seasons.length ? seasons[seasons.length - 1] : null;
+  var L = -1;
+  if (last && sc.scrollHeight - sc.clientHeight >= FADE_LEN) {
+    L = last.getBoundingClientRect().top + sc.scrollTop - FADE_LEN;
+  }
+  seasons.forEach(function (el) {
     var b = el.getBoundingClientRect();
     var pOut = (fadeTop - b.top) / span;
     pOut = pOut < 0 ? 0 : (pOut > 1 ? 1 : pOut);
-    var pIn = (edge - b.top) / enterBand; // 顶缘刚露头=0，升离渐显带=1
-    pIn = pIn < 0 ? 0 : (pIn > 1 ? 1 : pIn);
-    var p = Math.max(pOut, 1 - pIn);
+    var pBottom = 0; // 入场：顶缘在归零线 L+40 = 全隐 1，升至 L = 全显 0
+    if (L >= 0) {
+      var vis = (L + FADE_LEN - b.top) / FADE_LEN;
+      vis = vis < 0 ? 0 : (vis > 1 ? 1 : vis);
+      pBottom = 1 - vis;
+    }
+    var p = Math.max(pOut, pBottom);
     el.style.opacity = String(1 - p);
     el.style.filter = p > 0 ? "blur(" + (p * 5).toFixed(2) + "px)" : "";
-    el.style.transform = pOut > 0 ? "translateY(" + (-pOut * 14).toFixed(1) + "px)" : "";
+    var ty = pOut > 0 ? -pOut * 14 : pBottom * 14; // 镜像：出场向上漂移，入场沉入雾带向下漂
+    el.style.transform = ty !== 0 ? "translateY(" + ty.toFixed(1) + "px)" : "";
   });
 }
 function scheduleHomeFade() {
