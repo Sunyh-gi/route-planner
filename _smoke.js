@@ -59,6 +59,26 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     tools: [...document.querySelectorAll(".home-tools button")].map(b => b.textContent.trim())
   }));
   ok(home.shown && home.cards.join(",") === "yl,cx" && home.badges === 0, "画廊 2 卡无徽章（四季分组：夏 yl 在前、秋 cx 在后） -> " + home.cards.join(","));
+
+  // A2. 四季壁纸系统：manifest 就绪 + 东八区当季壁纸已应用
+  const wp1 = await ev(() => ({
+    manifest: !!(window.WALLPAPER_MANIFEST && window.WALLPAPER_MANIFEST.autumn && window.WALLPAPER_MANIFEST.autumn.length === 2
+      && window.WALLPAPER_MANIFEST.spring && window.WALLPAPER_MANIFEST.spring.length === 1),
+    st: window.wpState ? window.wpState() : null
+  }));
+  ok(wp1.manifest && wp1.st && !!wp1.st.season && wp1.st.src === wp1.st.list[wp1.st.idx] && wp1.st.src.indexOf("assets/wp/") === 0,
+    "四季壁纸就绪（东八区当季=" + (wp1.st ? wp1.st.season : "?") + "） -> " + (wp1.st ? wp1.st.src + " | " + wp1.st.dataWp : "null"));
+
+  // A3. 点击左上 logo 在当季壁纸间循环（淡入淡出结束后 src 交替、可循环回位）
+  const L1 = wp1.st.list.length;
+  await ev(() => { document.getElementById("brandLogo").click(); });
+  await wait(950);
+  const wp2 = await ev(() => window.wpState());
+  ok(wp2.list.length === L1 && wp2.idx === (wp1.st.idx + 1) % L1 && wp2.src === wp2.list[wp2.idx], "点 logo 循环壁纸 -> " + wp2.src);
+  await ev(() => { document.getElementById("brandLogo").click(); });
+  await wait(950);
+  const wp3 = await ev(() => window.wpState());
+  ok(wp3.idx === wp1.st.idx && wp3.src === wp3.list[wp3.idx], "再点循环回第 1 张（闭合） -> " + wp3.src);
   ok(home.cat === "cx,yl" && home.packs === 0, "目录已注册且数据未预载 -> " + JSON.stringify(home));
   ok(home.routeName === "未选择路线", "侧栏路线名=未选择路线");
   ok(home.tools.length === 3 && /新建/.test(home.tools[0]) && /设置/.test(home.tools[1]) && /刷新/.test(home.tools[2]), "首页工具 3 件套 → " + home.tools.join("|"));
