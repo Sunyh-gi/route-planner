@@ -2513,7 +2513,10 @@ function renderHome() {
 /* v6.6 主页渐隐（JS 驱动，比 scroll-driven animation 更可控）；
    v6.14 重排：出场带 24%→12%（原 40%→12%，上滑一半距离即完全隐藏）；
    v6.15 入场改为底部固定渐隐带：顶部出场效果的镜像，带固定在视口内、不随季节走：
-   前板块下方便开始渐隐，尾板块初始全隐，上滑时升离雾带渐显 */
+   前板块下方便开始渐隐，尾板块初始全隐，上滑时升离雾带渐显；
+   v6.15.1 入场与出场同速：带长 = 12vh，与出场带 24%→12% 同跨度同速率
+   （v6.15 的 40px 行程用户反馈太快）。渐隐按板块顶缘驱动，前板块顶缘高出尾板块
+   顶缘 = 前板块高 + 间距（854 视口 ≈173px）> 12vh，前板块不受雾带影响 */
 var _homeFadeRaf = 0;
 function applyHomeFade() {
   var sc = document.querySelector(".home-scroll");
@@ -2521,21 +2524,21 @@ function applyHomeFade() {
   var vh = window.innerHeight || document.documentElement.clientHeight || 800;
   var fadeTop = vh * 0.24, fadeEnd = vh * 0.12; // 出场：24% 线起渐隐，12% 线（=容器顶缘）全隐
   var span = Math.max(1, fadeTop - fadeEnd);
-  /* v6.15 底部固定带：带顶线 L = 初始最后板块顶 - FADE_LEN。lastRect.top + scrollTop 与滚动无关，
-     故 L 在视口坐标恒定；板块间距 48 > FADE_LEN 40，前板块底恒在 L 上方 8px（不受雾带影响），
-     最后板块初始顶恰在归零线 L+40（全隐）。maxScroll 不足 40 时无下折内容可藏，跳过雾带 */
-  var FADE_LEN = 40;
+  /* v6.15.1 底部固定带：带顶线 L = 初始最后板块顶 - FADE_LEN。lastRect.top + scrollTop 与滚动无关，
+     故 L 在视口坐标恒定；FADE_LEN = 12vh 与出场带同速，夹进 maxScroll 按实际行程缩带
+     （滚到底恰好全显）；带长不足 8px 视为无下折内容可藏，跳过雾带 */
+  var FADE_LEN = Math.min(Math.round(vh * 0.12), sc.scrollHeight - sc.clientHeight);
   var seasons = sc.querySelectorAll(".season");
   var last = seasons.length ? seasons[seasons.length - 1] : null;
   var L = -1;
-  if (last && sc.scrollHeight - sc.clientHeight >= FADE_LEN) {
+  if (last && FADE_LEN >= 8) {
     L = last.getBoundingClientRect().top + sc.scrollTop - FADE_LEN;
   }
   seasons.forEach(function (el) {
     var b = el.getBoundingClientRect();
     var pOut = (fadeTop - b.top) / span;
     pOut = pOut < 0 ? 0 : (pOut > 1 ? 1 : pOut);
-    var pBottom = 0; // 入场：顶缘在归零线 L+40 = 全隐 1，升至 L = 全显 0
+    var pBottom = 0; // 入场：顶缘在归零线 L+FADE_LEN = 全隐 1，升至 L = 全显 0
     if (L >= 0) {
       var vis = (L + FADE_LEN - b.top) / FADE_LEN;
       vis = vis < 0 ? 0 : (vis > 1 ? 1 : vis);
