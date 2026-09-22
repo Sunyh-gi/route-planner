@@ -1,0 +1,21 @@
+# ============ 本地文件（不入仓库） ============
+# 开发笔记：实现细节、历史修复、参数演进、本机环境
+DEV_NOTES.md
+
+# 凭据（绝不入库）
+.gh_token
+
+# ============ 本地测试 / 探针 / 截图产物 ============
+_probe_*.js
+_shot_*.js
+_verify_*.js
+_patch_*.js
+_tmp*
+_svg_test.html
+_lp_ref*.png
+_shot_*.png
+.tmp/
+
+# ============ 系统 ============
+.DS_Store
+Thumbs.db
