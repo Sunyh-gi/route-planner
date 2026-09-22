@@ -255,7 +255,7 @@ input[type="file"] { display: none; }
   position: fixed; inset: 0; z-index: 2400; overflow: hidden;
   background: linear-gradient(180deg, #dfe9f4 0%, #eef2f7 100%);
 }
-.home-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.home-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .55s ease; }
 .home-head {
   position: absolute; top: 0; left: 0; right: 0; z-index: 5001;
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -263,6 +263,7 @@ input[type="file"] { display: none; }
 }
 .home-title .brand-logo {
   display: block; width: 260px; height: auto; filter: drop-shadow(0 2px 12px rgba(10,40,100,.28));
+  cursor: pointer; /* v6.13 点击 logo 循环当季壁纸 */
 }
 .home-title h1 {
   margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 6px; color: #fff;
@@ -637,10 +638,10 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
 
 <!-- ========== 主页（路线库画廊） ========== -->
 <div id="homeMask" data-page-node-id="jh446BPsO40YK6RDw9tinz">
-  <img class="home-bg" src="assets/home-bg.jpg" alt="" data-page-node-id="dEMrRKfR5szKynbMfoEYWo">
+  <img class="home-bg" id="homeBg" src="assets/wp/autumn/1.jpg" alt="" data-page-node-id="dEMrRKfR5szKynbMfoEYWo">
   <div class="home-head" data-page-node-id="Ix6BY4VfrHLUjzQFQwD2C1">
     <div class="home-title" data-page-node-id="1txzcsg3vn0ymQiRCtpLDl">
-      <img class="brand-logo" src="assets/lonely-travel-logo-white.png" alt="Lonely Travel">
+      <img class="brand-logo" id="brandLogo" src="assets/lonely-travel-logo-white.png" alt="Lonely Travel" title="点击更换当季壁纸">
     </div>
     <div class="home-tools" data-page-node-id="6WXOCEfG5KUMqFWnBmV7UH">
       <button id="homeNew" data-page-node-id="mKFTD21tXYyuQbCZlpOrZV">＋ 新建</button>
@@ -690,6 +691,7 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- ===== 路线目录（外置数据文件，随站点目录一起发布）===== -->
 <script src="routes/catalog.js"></script>
+<script src="assets/wp/manifest.js"></script>
 
 
 <script>
@@ -2533,6 +2535,86 @@ function scheduleHomeFade() {
   if (!sc) return;
   sc.addEventListener("scroll", scheduleHomeFade, { passive: true });
   window.addEventListener("resize", scheduleHomeFade);
+})();
+/* ============================================================
+ * v6.13 四季壁纸系统
+ * 目录 assets/wp/{spring,summer,autumn,winter}/N.jpg，清单 assets/wp/manifest.js。
+ * 东八区按月份定季：春 3-5 / 夏 6-8 / 秋 9-11 / 冬 12-2，每分钟核验跨季自动切换；
+ * 当季清单为空时回落到第一个有图的季节。点左上 logo 在当季壁纸间循环
+ * （双层淡入淡出），每季选中的序号记忆在 localStorage（rt_wp_idx）。
+ * ============================================================ */
+var WP_SEASONS = ["spring", "summer", "autumn", "winter"];
+var WP_LABEL = { spring: "春", summer: "夏", autumn: "秋", winter: "冬" };
+var _wpSeason = null, _wpIdx = 0, _wpSwapping = false;
+function wpSeasonNow() { // 东八区墙钟：UTC 时刻 + (480 - 本机时差) 分钟，getMonth 即东八区月份
+  var d = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
+  var m = d.getMonth() + 1;
+  return (m >= 3 && m <= 5) ? "spring" : (m >= 6 && m <= 8) ? "summer" : (m >= 9 && m <= 11) ? "autumn" : "winter";
+}
+function wpList(season) { // 当季清单；为空则回落到第一个有图的季节
+  var M = window.WALLPAPER_MANIFEST || {}, i, l;
+  l = (M[season] || []).slice();
+  if (!l.length) for (i = 0; i < WP_SEASONS.length; i++) if ((M[WP_SEASONS[i]] || []).length) { l = M[WP_SEASONS[i]].slice(); break; }
+  return l;
+}
+function wpLoadIdx() { try { return JSON.parse(localStorage.getItem("rt_wp_idx") || "{}") || {}; } catch (e) { return {}; } }
+function wpSaveIdx(o) { try { localStorage.setItem("rt_wp_idx", JSON.stringify(o)); } catch (e) {} }
+function wpBgEl() { return document.getElementById("homeBg"); }
+function wpSwapSrc(src, animate) { // 双层淡入淡出：新图叠在旧图上方淡入，完成后旧图移除
+  var cur = wpBgEl();
+  if (!cur || _wpSwapping || cur.getAttribute("src") === src) return cur;
+  if (!animate) { cur.setAttribute("src", src); return cur; }
+  _wpSwapping = true;
+  var nxt = cur.cloneNode(false);
+  nxt.removeAttribute("id");
+  nxt.setAttribute("src", src);
+  nxt.style.opacity = "0";
+  cur.parentNode.insertBefore(nxt, cur.nextSibling);
+  var settle = function () {
+    requestAnimationFrame(function () { nxt.style.opacity = "1"; });
+    setTimeout(function () {
+      if (cur.parentNode) cur.parentNode.removeChild(cur);
+      nxt.id = "homeBg";
+      nxt.removeAttribute("style");
+      _wpSwapping = false;
+    }, 640);
+  };
+  if (nxt.complete) settle();
+  else { nxt.onload = settle; nxt.onerror = function () { if (nxt.parentNode) nxt.parentNode.removeChild(nxt); _wpSwapping = false; }; }
+  return nxt;
+}
+function wpApply(animate) {
+  var s = wpSeasonNow(), list = wpList(s), cur = wpBgEl();
+  if (!list.length || !cur) return false;
+  if (s !== _wpSeason) {
+    _wpSeason = s;
+    var saved = wpLoadIdx();
+    _wpIdx = (typeof saved[s] === "number" && saved[s] >= 0 && saved[s] < list.length) ? saved[s] : 0;
+  }
+  if (_wpIdx >= list.length) _wpIdx = 0;
+  var el = wpSwapSrc(list[_wpIdx], animate === true) || cur;
+  el.setAttribute("data-wp", _wpSeason + " " + (_wpIdx + 1) + "/" + list.length);
+  return true;
+}
+function wpCycle() {
+  var list = wpList(_wpSeason || wpSeasonNow());
+  if (!list.length) return;
+  if (_wpSwapping) return;
+  if (list.length < 2) { toast("当季壁纸只有 1 张，待补充"); return; }
+  _wpIdx = (_wpIdx + 1) % list.length;
+  var o = wpLoadIdx(); o[_wpSeason] = _wpIdx; wpSaveIdx(o);
+  wpApply(true);
+  toast("当季壁纸 " + (_wpIdx + 1) + "/" + list.length + " · " + (WP_LABEL[_wpSeason] || _wpSeason));
+}
+window.wpState = function () { // 测试/调试：当前壁纸状态
+  var el = wpBgEl();
+  return { season: _wpSeason, idx: _wpIdx, list: wpList(_wpSeason || wpSeasonNow()), src: el ? el.getAttribute("src") : null, dataWp: el ? el.getAttribute("data-wp") : null };
+};
+(function wpInit() {
+  wpApply(false);
+  var logo = document.getElementById("brandLogo");
+  if (logo) logo.addEventListener("click", function (e) { e.preventDefault(); wpCycle(); });
+  setInterval(function () { if (wpSeasonNow() !== _wpSeason) wpApply(true); }, 60000);
 })();
 /* ============================================================
  * v6.10 全元素边缘折射（液态玻璃透镜效应）
