@@ -816,6 +816,11 @@ var tfAtlasLayer = L.tileLayer("https://tile.thunderforest.com/atlas/{z}/{x}/{y}
 var tfOutdoorsLayer = L.tileLayer("https://tile.thunderforest.com/outdoors/{z}/{x}/{y}.png?apikey=" + TF_KEY, {
   attribution: '&copy; <a href="https://www.thunderforest.com/">Thunderforest</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 22
 });
+// v6.16 地形晕渲（OpenTopoMap：DEM 晕渲 + 等高线，杂志地形图质感；免 Key，官方 maxZoom 17）
+var topoLayer = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+  attribution: '&copy; <a href="https://openstreetmap.org/copyright">OSM</a> | SRTM | &copy; <a href="https://opentopomap.org/">OpenTopoMap</a> (CC-BY-SA)',
+  subdomains: "abc", maxZoom: 17
+});
 var satLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
   attribution: '&copy; <a href="https://www.esri.com/">Esri</a> | <a href="https://openstreetmap.org/copyright">OSM</a>', maxZoom: 19
 });
@@ -848,6 +853,7 @@ map.on("overlayadd", function (e) { if (e.layer === tdtLabelLayer) { _tdtFailHan
 var baseLayers = {
   "标准": tfAtlasLayer,
   "户外": tfOutdoorsLayer,
+  "地形": topoLayer,
   "卫星": satLayer,
   "OpenStreetMap": osmLayer,
   "National Geographic": natgeoLayer
