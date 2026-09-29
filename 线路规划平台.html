@@ -3,11 +3,25 @@
 <head data-page-node-id="CuDAeRF4sMcpBAwZWwFYW2">
 <meta charset="UTF-8" data-page-node-id="jgvRonoRH9LgNaJtLx8hMD">
 <meta name="viewport" content="width=device-width, initial-scale=1.0" data-page-node-id="srehwd2BlSTlSiXcrFqEr0">
+<!-- v6.17 页面语义：描述 / 主题色 / 分享卡片；标题由 JS 随视图动态更新（见 updateDocTitle） -->
+<meta name="description" content="自驾旅行线路规划与展示平台：按四季画廊浏览川西、伊犁等自驾环线，逐日查看途经点、里程与行程时长。">
+<meta name="theme-color" content="#dfe9f4">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="线路规划平台">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="线路规划平台">
+<meta property="og:description" content="自驾旅行线路规划与展示平台：按四季画廊浏览川西、伊犁等自驾环线，逐日查看途经点、里程与行程时长。">
+<meta name="twitter:card" content="summary">
 <title>线路规划平台</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" data-page-node-id="2TAEXx3LY5LVRCIqPsSUQn">
 <style>
 html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
 #map { height: 100%; width: 100%; }
+/* 无障碍：仅供读屏的文本（视觉隐藏，仍留在可访问性树中） */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
+}
 /* ============================================================
  * v6.9.1 液态玻璃设计 token（全项目元素的设计基础与核心）
  * 新增/修改任何卡片、按钮、浮层元素前，先按此配方设计玻璃效果。
@@ -370,6 +384,22 @@ input[type="file"] { display: none; }
 .info-panel.sat-active .route-head .nm { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
 .info-panel.sat-active .route-head .menu { color: #fff; background: rgba(255,255,255,0.18); }
 .info-panel.sat-active .route-head .menu:hover { background: rgba(255,255,255,0.32); }
+/* v6.18 OSRM 未取到路径提示条（液态玻璃体系内：暖色微底 + 细边） */
+.info-panel .osrm-note {
+  font-size: 11px; line-height: 1.55; letter-spacing: .2px;
+  color: #8a5a17; background: rgba(255,203,120,.30);
+  border: 1px solid rgba(190,130,50,.34); border-radius: 10px;
+  padding: 6px 9px; margin: 0 0 8px;
+}
+.info-panel.sat-active .osrm-note { color: #ffd9a1; background: rgba(120,70,10,.34); border-color: rgba(255,200,120,.34); }
+.info-panel .osrm-note .osrm-retry {
+  margin-left: 6px; padding: 1px 9px; border-radius: 999px; cursor: pointer;
+  font: inherit; font-size: 11px; font-weight: 600;
+  color: #7a4d12; background: rgba(255,255,255,.55); border: 1px solid rgba(190,130,50,.42);
+}
+.info-panel .osrm-note .osrm-retry:hover { background: rgba(255,255,255,.88); }
+.info-panel.sat-active .osrm-note .osrm-retry { color: #ffe4bb; background: rgba(255,255,255,.14); border-color: rgba(255,200,120,.40); }
+.info-panel.sat-active .osrm-note .osrm-retry:hover { background: rgba(255,255,255,.26); }
 
 /* 搜索 + 天数 stepper：紧凑一行 */
 .info-panel .route-edit-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
@@ -633,14 +663,55 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
 
 /* 路线操作失败/成功 toast 颜色变体（沿用 .toast） */
 
+/* ============================================================
+ * v6.18 移动端（手机 / 平板）：只读浏览端
+ * 布局：主页单列铺满；路线页侧栏改为底部玻璃抽屉，地图保留上半屏。
+ * 编辑能力：body.is-mobile 下隐藏全部编辑入口（JS 判定，见 applyMobileReadOnly）；
+ * 窄屏桌面窗口只走布局，仍保留编辑（body 不带 is-mobile）。
+ * ============================================================ */
+@media (max-width: 760px), (pointer: coarse) and (max-width: 1024px) {
+  /* 主页头部收紧、logo 缩小 */
+  .home-head { padding: 16px 16px 0; }
+  .home-title .brand-logo { width: 176px; }
+  .home-tools { gap: 6px; }
+  .home-tools button { padding: 7px 12px; font-size: 12px; }
+  /* 画廊：单列铺满、节奏收紧 */
+  .home-scroll { top: 10%; padding: calc(12vh + 8px) 16px calc(16vh + 12px); }
+  .season { margin-bottom: 34px; }
+  .season-cards { gap: 12px; }
+  .home-card, .season-empty { width: 100%; }
+  .home-card { padding: 18px 16px 16px; border-radius: 18px; }
+  /* 路线页侧栏 → 底部玻璃抽屉 */
+  .info-panel {
+    top: auto; left: 8px; right: 8px; bottom: 58px;
+    max-width: none; max-height: 46vh;
+    border-radius: 18px; padding: 12px 14px;
+  }
+  .info-panel .route-head { margin-bottom: 8px; }
+  .info-panel .wp-item { padding: 6px 8px; }
+  /* 悬浮「主页」钮移到左下角（抽屉下方），替代移动端隐藏的 ⋯ 菜单 */
+  #homeFab { left: 8px; bottom: 12px; padding: 7px 14px; }
+  /* toast 改到顶部居中，避免被底部抽屉遮住 */
+  .toast { bottom: auto; top: 14px; max-width: 88vw; }
+  /* 底部控件让位给抽屉 */
+  .leaflet-bottom { bottom: 62px !important; }
+}
+/* 移动端隐藏全部编辑入口（!important 压过菜单项的内联 display） */
+body.is-mobile #homeNew,
+body.is-mobile #routeMenuEdit,
+body.is-mobile #routeMenuDel,
+body.is-mobile #routeMenuBtn { display: none !important; }
 </style>
 </head>
 <body data-page-node-id="qZIWgjJ5VqHl1qQFLj5mc8">
-<div id="map" data-page-node-id="srSEUr3N7jveCtd2qrU6yP"></div>
+<!-- 页面唯一 h1（视觉隐藏）：主页与路线页共用同一文档，读屏用户需要一个页面级标题 -->
+<h1 class="sr-only">线路规划平台</h1>
+<div id="map" role="application" aria-label="路线地图" data-page-node-id="srSEUr3N7jveCtd2qrU6yP"></div>
 
 <!-- ========== 主页（路线库画廊） ========== -->
 <div id="homeMask" data-page-node-id="jh446BPsO40YK6RDw9tinz">
-  <img class="home-bg" id="homeBg" src="assets/wp/autumn/1.jpg" alt="" data-page-node-id="dEMrRKfR5szKynbMfoEYWo">
+  <!-- v6.18 壁纸只预加载「当季」一张：src 由紧随 manifest.js 的引导脚本按东八区当季写入（不再硬编码某季） -->
+  <img class="home-bg" id="homeBg" alt="" data-page-node-id="dEMrRKfR5szKynbMfoEYWo">
   <div class="home-head" data-page-node-id="Ix6BY4VfrHLUjzQFQwD2C1">
     <div class="home-title" data-page-node-id="1txzcsg3vn0ymQiRCtpLDl">
       <img class="brand-logo" id="brandLogo" src="assets/lonely-travel-logo-white.png" alt="Lonely Travel">
@@ -648,31 +719,33 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
     <div class="home-tools" data-page-node-id="6WXOCEfG5KUMqFWnBmV7UH">
       <button id="homeNew" data-page-node-id="mKFTD21tXYyuQbCZlpOrZV">＋ 新建</button>
       <button id="homeSettings" data-page-node-id="jzUIGOUsEglS7mENHkhFma">⚙ 设置</button>
-      <button id="homeRefresh" data-page-node-id="zcpyGPaTwh4y59fE4WriRz">🔄 刷新</button>
+      <button id="homeRefresh" data-page-node-id="zcpyGPaTwh4y59fE4WriRz">↻ 刷新</button>
     </div>
   </div>
-  <div class="home-scroll" data-page-node-id="lMMl3KuyAfbnthj4nFkCT6">
+  <div class="home-scroll" role="region" aria-label="四季路线画廊" data-page-node-id="lMMl3KuyAfbnthj4nFkCT6">
     <div id="homeGrid" data-page-node-id="NXrRE1NzYLSPDbVBi20YAT"></div>
   </div>
 </div>
-<button id="homeFab" data-page-node-id="lu3OEIz7GeXlyTkCs8O2cb">⌂ 主页</button>
+<button id="homeFab" aria-label="返回主页" data-page-node-id="lu3OEIz7GeXlyTkCs8O2cb">⌂ 主页</button>
 
-<div class="info-panel" data-page-node-id="wJ7BU7RdaGEOCDj0W8GB2p">
+<div class="info-panel" role="complementary" aria-label="路线信息" data-page-node-id="wJ7BU7RdaGEOCDj0W8GB2p">
   <div class="route-head" data-page-node-id="GT1q0Lp8KUzCzdgrokCysH">
     <span class="nm" id="routeName" data-page-node-id="T97pFHPH9Avi6PkscqB7pX">未选择路线</span>
     <span class="edit-pill" id="editPill" hidden data-page-node-id="fOCh3tO1lyJnlS9bUZGiFZ">编辑中</span>
-    <span class="menu" id="routeMenuBtn" title="更多" data-page-node-id="uKMNY6n46VJFwtUKTalCod">⋯</span>
+    <span class="menu" id="routeMenuBtn" role="button" tabindex="0" title="更多" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false" data-page-node-id="uKMNY6n46VJFwtUKTalCod">⋯</span>
   </div>
+  <!-- v6.18 OSRM 未取到路径的可见提示（失败不再静默留虚线） -->
+  <div class="osrm-note" id="osrmNote" role="status" aria-live="polite" hidden></div>
   <div class="route-edit-row" data-page-node-id="SGSXWX2CQOd2CbqhiSpb8m">
     <div class="ed-search-wrap" data-page-node-id="34fcIs07h9nk526S98FszZ">
-      <input class="ed-search" id="edSearch" placeholder="地名 / GPS 坐标" autocomplete="off" spellcheck="false" data-page-node-id="m7u32ziGVF6VRMTJ73pj3f">
+      <input class="ed-search" id="edSearch" placeholder="地名 / GPS 坐标" autocomplete="off" spellcheck="false" aria-label="搜索地名或 GPS 坐标" data-page-node-id="m7u32ziGVF6VRMTJ73pj3f">
     </div>
     <button class="ed-search-go" id="edSearchBtn" title="搜索" type="button" aria-label="搜索" data-page-node-id="fP9wXDnOsHR9onjfSiIkkH">
       <svg viewBox="0 0 24 24" aria-hidden="true" data-page-node-id="YsEjgsDejLtCvTHuakL9FM"><circle cx="10.5" cy="10.5" r="6.5" data-page-node-id="AaQWE6TEqiJ6C12aYFdoTN"/><line x1="15.7" y1="15.7" x2="20.5" y2="20.5" data-page-node-id="8amCad7tf5Y7CbH9dr1e9i"/></svg>
     </button>
   </div>
   <div class="search-res" id="edResults" data-page-node-id="V0QY6MGxumP3A0NzhAXWes"></div>
-  <div class="wp-list" id="wpList" data-page-node-id="xxl06DYipaVbZxquGXSNym"></div>
+  <div class="wp-list" id="wpList" role="list" aria-label="行程地点" data-page-node-id="xxl06DYipaVbZxquGXSNym"></div>
   <div class="save-row" data-page-node-id="UB4fgvGftVUa46FbtqwN4D">
     <button class="ed-btn save-btn" id="saveBtn" data-page-node-id="bcsAFdore8xLyCNi87caJP">保存</button>
     <span class="dirty-hint" id="dirtyHint" data-page-node-id="n6BKslJ1KnyIR5yHC2rjls"></span>
@@ -680,10 +753,10 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
 </div>
 
 <!-- 路线操作菜单（编辑路线 / 删除路线 / 回到主页） -->
-<div class="route-menu-pop" id="routeMenuPop" data-page-node-id="oquxVCk2yzQspm3mDD4aJE">
-  <button id="routeMenuEdit" data-page-node-id="hqmoSvCePG4LrF4B0iiJO5">编辑路线</button>
-  <button id="routeMenuDel" class="del" data-page-node-id="dwdHys2FGzNNbnnf9p6LiE">删除路线</button>
-  <button id="routeMenuHome" data-page-node-id="9RjIG2PvQMQ8Fh9ZnF8FhI">回到主页</button>
+<div class="route-menu-pop" id="routeMenuPop" role="menu" aria-label="路线操作" data-page-node-id="oquxVCk2yzQspm3mDD4aJE">
+  <button id="routeMenuEdit" role="menuitem" data-page-node-id="hqmoSvCePG4LrF4B0iiJO5">编辑路线</button>
+  <button id="routeMenuDel" role="menuitem" class="del" data-page-node-id="dwdHys2FGzNNbnnf9p6LiE">删除路线</button>
+  <button id="routeMenuHome" role="menuitem" data-page-node-id="9RjIG2PvQMQ8Fh9ZnF8FhI">回到主页</button>
 </div>
 
 <div class="osm-credit" data-page-node-id="hGi1knJl2AKOfgNjHyfG1r">
@@ -694,7 +767,30 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
 <!-- ===== 路线目录（外置数据文件，随站点目录一起发布）===== -->
 <script src="routes/catalog.js"></script>
 <script src="assets/wp/manifest.js"></script>
-
+<script>
+// v6.18 壁纸只预加载「当季」一张：manifest 就绪后立即把 #homeBg 指向当季
+// 「记忆序号」那张（与 wpApply 完全同算法），浏览器随即只下载这一张；
+// 其余季节 / 同季其余张不预载，切换季节或点 logo 循环时才懒加载。
+(function () {
+  try {
+    var SEAS = ["spring", "summer", "autumn", "winter"];
+    var M = window.WALLPAPER_MANIFEST || {};
+    var d = new Date(Date.now() + (new Date().getTimezoneOffset() + 480) * 60000);
+    var m = d.getMonth() + 1;
+    var real = (m >= 3 && m <= 5) ? "spring" : (m >= 6 && m <= 8) ? "summer" : (m >= 9 && m <= 11) ? "autumn" : "winter";
+    var list = (M[real] || []).slice();
+    if (!list.length) for (var i = 0; i < SEAS.length; i++) if ((M[SEAS[i]] || []).length) { list = M[SEAS[i]].slice(); break; }
+    if (!list.length) return;
+    var idx = 0;
+    try {
+      var saved = JSON.parse(localStorage.getItem("rt_wp_idx") || "{}") || {};
+      if (typeof saved[real] === "number" && saved[real] >= 0 && saved[real] < list.length) idx = saved[real];
+    } catch (e2) {}
+    var bg = document.getElementById("homeBg");
+    if (bg) bg.setAttribute("src", list[idx]);
+  } catch (e) {}
+})();
+</script>
 
 <script>
 // ===== 路线日色彩库（30 色 · 色轮左半圈 h=214° 柔蓝 → h=360° 柔红）=====
@@ -776,6 +872,27 @@ function dayColor(d, routeId) {
   return DAY_PALETTE[sh[(Math.max(1, d) - 1) % sh.length]];
 }
 
+// v6.19 路线描边（Apple 地图式「亮色主线 + 同色系深色细描边」）：保持色相不变，明度降一档
+var _shadeCache = {};
+function caseColor(hex) {
+  if (_shadeCache[hex]) return _shadeCache[hex];
+  var r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  var mx = Math.max(r, g, b), mn = Math.min(r, g, b), h = 0, sat = 0, l = (mx + mn) / 2;
+  if (mx !== mn) {
+    var d = mx - mn;
+    sat = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : (mx === g ? (b - r) / d + 2 : (r - g) / d + 4);
+    h /= 6;
+  }
+  l = Math.max(0, Math.min(1, l - 0.22));
+  function h2(p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; }
+  var q2 = l < 0.5 ? l * (1 + sat) : l + sat - l * sat, p2 = 2 * l - q2;
+  var out = "#" + [h2(p2, q2, h + 1 / 3), h2(p2, q2, h), h2(p2, q2, h - 1 / 3)]
+    .map(function (v) { var n = Math.round(v * 255); return ("0" + n.toString(16)).slice(-2); }).join("");
+  _shadeCache[hex] = out;
+  return out;
+}
+
 // ========== 通用工具 ==========
 // GCJ-02 to WGS-84（川西历史坐标采集自 GCJ-02 图源）
 function gcj02towgs84(lng, lat) {
@@ -792,11 +909,9 @@ function convertPolyline(poly) {
   return poly.map(function(p) { var w = gcj02towgs84(p[1], p[0]); return [w[1], w[0]]; });
 }
 
-// 出行方式小图标
-var carIcon = '<img src="data:image/png;base64,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" style="height:14px;width:auto;vertical-align:-2px;opacity:0.7;margin:0 3px;">';
-var walkIcon = '<span style="font-size:13px;vertical-align:-2px;margin:0 2px;">\u{1F6B6}</span>';
-var bikeIcon = '<span style="font-size:13px;vertical-align:-2px;margin:0 2px;">\u{1F6B2}</span>';
-function modeIcon(p) { return p === "foot" ? walkIcon : (p === "cycling" ? bikeIcon : carIcon); }
+// v6.18.3 出行方式文字标签（替代原汽车 PNG 小图；与相邻「分钟」同色同字号）
+// 数据层 p 字段语义：foot=步行、cycling=骑马（该字段在本项目实际承载乌孙古道骑马段）、缺省=驾车
+function modeLabel(p) { return p === "foot" ? "步行" : (p === "cycling" ? "骑马" : "驾车"); }
 
 // ========== 地图与底图 ==========
 var map = L.map("map", { attributionControl: false, zoomSnap: 0.5, zoomDelta: 0.5, center: [35, 103], zoom: 4 });
@@ -1009,7 +1124,7 @@ wpList.addEventListener("click", function(ev) {
 </script>
 
 <input type="file" id="fileImport" accept=".json,application/json" data-page-node-id="7YWIhdJpHbHL8uyM9X3hsa">
-<div class="toast" id="toast" data-page-node-id="q4AqzuLjCXFBDK0edU2XAX"></div>
+<div class="toast" id="toast" role="status" aria-live="polite" data-page-node-id="q4AqzuLjCXFBDK0edU2XAX"></div>
 
 <!-- ========== 设置 ========== -->
 <div class="modal-mask" id="settingsMask" data-page-node-id="TlCcGpTLVr1kM3A5wsNVlS">
@@ -1028,7 +1143,7 @@ wpList.addEventListener("click", function(ev) {
       <input class="ed-name" id="ghToken" placeholder="粘贴 GitHub Token" data-page-node-id="1UVUedhSZfs1CDoonpiaoN">
       <div class="set-btns" data-page-node-id="qeyu0eV4LWPe5LiO4C6sRk">
         <button class="ed-btn gray" id="ghTest" data-page-node-id="VrlTe0MAMxv7VgtFEXbNAL">测试</button>
-        <button class="ed-btn gray" id="ghRefresh" data-page-node-id="E1ZJwcDQFEJk9TJMTGhp9o">🔄 刷新目录</button>
+        <button class="ed-btn gray" id="ghRefresh" data-page-node-id="E1ZJwcDQFEJk9TJMTGhp9o">↻ 刷新目录</button>
         <button class="ed-btn gray" id="ghMigrate" data-page-node-id="oqHC0UPEy153mRc35Fxo0U">⇪ 迁移旧路线</button>
         <button class="ed-btn" id="ghSave" data-page-node-id="5GNK6yH5AkUZM93AIDmoL9">保存</button>
       </div>
@@ -1181,9 +1296,8 @@ function segText(route, idx, isPrev) {
   var a = route.stops[idx], b = route.stops[idx + 1];
   var c = route.segs && route.segs[segKey(a, b)];
   if (c) {
-    var ic = (c.p === "foot" || c.p === "cycling") ? modeIcon(c.p) : carIcon;
     return '<span style="color:inherit;">' + (isPrev ? "上段" : "下段") + ": " + (c.d / 1000).toFixed(1) +
-      'km</span>' + ic + '<span style="color:#999;">' + c.m + "分钟</span>";
+      'km</span><span style="color:#999;margin:0 3px;">' + modeLabel(c.p) + '</span><span style="color:#999;">' + c.m + "分钟</span>";
   }
   return '<span style="color:#bbb;">' + (isPrev ? "上段" : "下段") + ": 待规划</span>";
 }
@@ -1213,11 +1327,20 @@ function renderGeneric(route) {
     var poly = c ? c.poly : [[a.lat, a.lng], [b.lat, b.lng]];
     if (c) c.poly.forEach(function (p) { bounds.extend(p); });
     var cMode = c && (c.p === "foot" || c.p === "cycling"); // 步行/骑马段：固定虚线（数据层 p 字段）
+    var dash = cMode ? "7, 7" : (c ? null : "5, 6");
+    // 虚线段必须用方头线帽：圆头会向两端各外扩半个线宽（底线 4.3px×2 > 7px 空隙），
+    // 把 7px 空隙糊掉，虚线段会退化成「珠链」甚至实线
+    var cap = dash ? "butt" : "round";
+    // v6.19 Apple 地图式描边：先铺同色系深色加粗底线，再叠亮色主线，主线四周露出一圈细描边
+    var casing = L.polyline(poly, {
+      color: caseColor(color), weight: 8.6, opacity: 1,
+      dashArray: dash, lineCap: cap, lineJoin: "round"
+    }).addTo(group);
     var layer = L.polyline(poly, {
       color: color, weight: 5.5, opacity: 1,
-      dashArray: cMode ? "7, 7" : (c ? null : "5, 6"), lineCap: "round", lineJoin: "round"
+      dashArray: dash, lineCap: cap, lineJoin: "round"
     }).addTo(group);
-    segLayers.push({ i: i, a: a, b: b, layer: layer, color: color });
+    segLayers.push({ i: i, a: a, b: b, layer: layer, casing: casing, color: color });
   }
   // 标记与侧栏
   for (i = 0; i < stops.length; i++) {
@@ -1228,10 +1351,10 @@ function renderGeneric(route) {
     lookup[String(i)] = { lat: eff[i][0], lng: eff[i][1], marker: marker };
     markers.push(marker);
     if (st.day !== lastDay) {
-      sidebar += '<div class="day-label" data-day="' + st.day + '" style="color:' + darkOnLight(color2) + ';"><span class="day-line" style="background:' + color2 + ';"></span>第' + st.day + "天</div>";
+      sidebar += '<div class="day-label" role="presentation" data-day="' + st.day + '" style="color:' + darkOnLight(color2) + ';"><span class="day-line" style="background:' + color2 + ';"></span>第' + st.day + "天</div>";
       lastDay = st.day;
     }
-    sidebar += '<div class="wp-item" data-key="' + i + '"><span class="dot" style="background:' + color2 + ';color:' + fgOn(color2) + ';">' + (i + 1) + "</span>" +
+    sidebar += '<div class="wp-item" role="listitem" data-key="' + i + '"><span class="dot" style="background:' + color2 + ';color:' + fgOn(color2) + ';">' + (i + 1) + "</span>" +
       esc(st.name) + (st.tag ? ' <span class="tag" style="color:' + darkOnLight(color2) + ";background:" + color2 + '22;">' + esc(st.tag) + "</span>" : "") + "</div>";
   }
   return { group: group, bounds: bounds, adjust: 0, sidebar: sidebar, lookup: lookup, route: route, markers: markers, segLayers: segLayers };
@@ -1239,6 +1362,28 @@ function renderGeneric(route) {
 
 /* ---------- OSRM 段路径（浏览器跨域可用） ---------- */
 var osrmQueue = [], osrmBusy = 0, osrmInFlight = {};
+/* v6.18 OSRM 失败可见提示：把「未取到路径的段」聚合到侧栏状态条（不再静默留虚线）。
+   用独立 DOM 而非 toast：可长期驻留、不抢其它提示，弱网恢复后自动消失。 */
+var _osrmFail = {};
+function osrmNoteRender() {
+  var el = document.getElementById("osrmNote");
+  if (!el) return;
+  var n = 0;
+  for (var k in _osrmFail) if (_osrmFail.hasOwnProperty(k)) n++;
+  if (!n) { el.hidden = true; el.textContent = ""; return; }
+  el.hidden = false;
+  // 重试入口就在本条内：路线页右上并没有「刷新」钮，旧文案把用户指向了不存在的东西
+  el.innerHTML = "⚠ 有 " + n + " 段未取到实际路线（规划服务未响应），暂以直线示意" +
+    '<button type="button" class="osrm-retry">重试</button>';
+}
+function osrmRetry() {
+  if (!edCtx.work) return;
+  osrmNoteReset();  // 清失败标记 → ensureRoutePolys 会为缺失的段重新排队
+  applyEditToMap(); // 原地重建渲染（不重新取景），失败则提示条再次出现
+}
+function osrmNoteReset() { _osrmFail = {}; osrmNoteRender(); }
+// 同名/同坐标相邻点之间没有可规划路段：跳过请求，避免无效失败计入提示
+function samePoint(a, b) { return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lng - b.lng) < 1e-7; }
 function pumpOsrm() {
   while (osrmBusy < 2 && osrmQueue.length) {
     var job = osrmQueue.shift();
@@ -1252,16 +1397,21 @@ function pumpOsrm() {
         var coords = (rt.geometry && rt.geometry.coordinates) || [];
         job.route.segs[job.key] = { d: Math.round(rt.distance), m: Math.round(rt.duration / 60), poly: coords.map(function (c) { return [c[1], c[0]]; }) };
         delete osrmInFlight[job.key];
+        delete _osrmFail[job.key];
         if (job.onDone) job.onDone(job);
       } else {
         delete osrmInFlight[job.key];
+        _osrmFail[job.key] = 1;
         if (job.onFail) job.onFail(job);
       }
+      osrmNoteRender();
       pumpOsrm();
     }).catch(function () {
       osrmBusy--;
       delete osrmInFlight[job.key];
+      _osrmFail[job.key] = 1;
       if (job.onFail) job.onFail(job);
+      osrmNoteRender();
       pumpOsrm();
     });
   }
@@ -1270,22 +1420,26 @@ function ensureRoutePolys(route, segLayers, markers) {
   if (!route.stops || route.stops.length < 2) return;
   for (var i = 0; i < route.stops.length - 1; i++) {
     var a = route.stops[i], b = route.stops[i + 1];
+    if (samePoint(a, b)) continue; // 同名同坐标的相邻点：无路段
     var key = segKey(a, b);
     if (route.segs[key] || osrmInFlight[key]) continue;
     osrmInFlight[key] = true;
     osrmQueue.push({
       a: a, b: b, key: key, route: route,
       onDone: function (job) {
+        var seg = job.route.segs[job.key];
+        if (!seg || !seg.poly) return;
+        // v6.18 同一段键可能对应多个渲染段（路线折返 / 重复加同一地点）：
+        // 全部命中并填充，而不是只填第一段（旧实现只填首个 → 其余永久留虚线）
         for (var k = 0; k < segLayers.length; k++) {
-          if (segLayers[k].a === job.a && segLayers[k].b === job.b) {
-            var mi = segLayers[k].i;
-            segLayers[k].layer.setLatLngs(job.route.segs[job.key]);
-            segLayers[k].layer.setStyle({ dashArray: null });
-            // 段 i 连接第 i 与第 i+1 个地点，同步更新两端弹窗中的里程信息
-            if (markers && markers[mi]) markers[mi].setPopupContent(popupHtmlFor(job.route, mi));
-            if (markers && markers[mi + 1]) markers[mi + 1].setPopupContent(popupHtmlFor(job.route, mi + 1));
-            break;
-          }
+          if (segKey(segLayers[k].a, segLayers[k].b) !== job.key) continue;
+          var mi = segLayers[k].i;
+          segLayers[k].layer.setLatLngs(seg.poly); // 修复：原实现误传 seg 对象（{d,m,poly}），导致线段被置空
+          segLayers[k].layer.setStyle({ dashArray: null });
+          if (segLayers[k].casing) { segLayers[k].casing.setLatLngs(seg.poly); segLayers[k].casing.setStyle({ dashArray: null }); }
+          // 段 i 连接第 i 与第 i+1 个地点，同步更新两端弹窗中的里程信息
+          if (markers && markers[mi]) markers[mi].setPopupContent(popupHtmlFor(job.route, mi));
+          if (markers && markers[mi + 1]) markers[mi + 1].setPopupContent(popupHtmlFor(job.route, mi + 1));
         }
         // v5：真实路线（非预览）的 OSRM 路径已写入 route.segs → 更新缓存并防抖推回仓库文件；预览内容在保存时一并写入
         if (job.route && job.route.id && String(job.route.id).indexOf("__pv") < 0) {
@@ -1293,7 +1447,7 @@ function ensureRoutePolys(route, segLayers, markers) {
           if (catIndexOf(job.route.id) >= 0) scheduleDirtyPush(job.route.id);
         }
       },
-      onFail: function () { /* 保持虚线直线 */ }
+      onFail: function () { /* 保持虚线直线；失败已计入 #osrmNote 提示 */ }
     });
   }
   pumpOsrm();
@@ -1363,14 +1517,44 @@ function rebuildRouteList() {
 /* ---------- 路线头部 + 菜单（侧栏 route-head：显示当前路线名称 / 菜单按钮） ---------- */
 function renderRouteHeader() {
   var nameEl = document.getElementById("routeName");
-  if (!edCtx.work) { nameEl.textContent = "未选择路线"; return; }
+  if (!edCtx.work) { nameEl.textContent = "未选择路线"; updateDocTitle(); return; }
   nameEl.textContent = edCtx.work.name && edCtx.work.name.trim() ? edCtx.work.name : (activeRouteId ? "未命名路线" : "新路线");
+  updateDocTitle();
+}
+/* v6.18 页面语义：文档标题与 og:title 随视图变化（主页 / 路线名 / 新建路线），
+   浏览器标签、书签、分享卡片都能反映当前内容 */
+var DOC_TITLE_BASE = "线路规划平台";
+function updateDocTitle() {
+  var t = DOC_TITLE_BASE;
+  if (edCtx.work) {
+    var nm = (edCtx.work.name || "").trim();
+    t = (nm || "新建路线") + " · " + DOC_TITLE_BASE;
+  }
+  if (document.title !== t) document.title = t;
+  var og = document.querySelector('meta[property="og:title"]');
+  if (og) og.setAttribute("content", t);
 }
 /* v6.4：视图/编辑模式切换
  * 视图模式（默认进入已存在路线）：仅显示路线名 + ⋯ + 各天及地点（只读、点击飞往）；搜索行 / 保存行 / 内联编辑按钮全部隐藏，拖拽关闭
  * 编辑模式：恢复搜索、保存、内联改名/上下移/换天/删除按钮、整行拖拽换位换天；地图点击空白处弹「添加到第几天」卡片
  * 新建 / 复制 进入即编辑模式；点击 ⋯ 中的「编辑路线」可在两态间切换 */
+/* ---------- v6.18 移动端判定：手机/平板为只读浏览端，编辑能力只留给桌面 ---------- */
+var _mqCoarse = window.matchMedia ? window.matchMedia("(pointer: coarse)") : null;
+function isMobileView() {
+  // 只读端 = 触摸设备（手机 / 平板，主指针 coarse）。
+  // 不再用「窄」当判据：窄屏桌面窗口（鼠标）只切移动布局，编辑能力必须保留（见上方 CSS 注释）。
+  return !!(_mqCoarse && _mqCoarse.matches);
+}
+var IS_MOBILE = isMobileView();
+function applyMobileReadOnly() {
+  IS_MOBILE = isMobileView();
+  if (document.body) document.body.classList.toggle("is-mobile", IS_MOBILE);
+  if (IS_MOBILE && edCtx.work && edCtx.editMode) edCtx.editMode = false;
+  applyEditMode();
+  renderWpList();
+}
 function applyEditMode() {
+  if (IS_MOBILE) edCtx.editMode = false; // 移动端恒为视图模式（只读）
   var panel = document.querySelector(".info-panel");
   if (panel) panel.classList.toggle("editing", !!edCtx.editMode);
   var pill = document.getElementById("editPill");
@@ -1381,6 +1565,7 @@ function applyEditMode() {
 }
 function toggleEditMode(force) {
   if (!edCtx.work) return;
+  if (IS_MOBILE) { toast("手机端为只读浏览，编辑请在电脑上打开本页"); return; }
   edCtx.editMode = force === undefined ? !edCtx.editMode : !!force;
   applyEditMode();
   renderWpList(); // 行内编辑按钮 / draggable 随状态重渲
@@ -1389,6 +1574,8 @@ function toggleRouteMenu(force) {
   var pop = document.getElementById("routeMenuPop");
   var open = force === undefined ? !pop.classList.contains("open") : !!force;
   pop.classList.toggle("open", open);
+  var btn = document.getElementById("routeMenuBtn");
+  if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
   if (open) {
     var home = document.getElementById("routeMenuHome");
     var edit = document.getElementById("routeMenuEdit");
@@ -1402,6 +1589,14 @@ function toggleRouteMenu(force) {
   }
 }
 document.getElementById("routeMenuBtn").addEventListener("click", function (ev) {
+  ev.stopPropagation();
+  if (!edCtx.work) return;
+  toggleRouteMenu();
+});
+// v6.18 无障碍：⋯ 是 role=button，键盘 Enter / Space 亦可展开
+document.getElementById("routeMenuBtn").addEventListener("keydown", function (ev) {
+  if (ev.key !== "Enter" && ev.key !== " " && ev.key !== "Spacebar") return;
+  ev.preventDefault();
   ev.stopPropagation();
   if (!edCtx.work) return;
   toggleRouteMenu();
@@ -1425,7 +1620,7 @@ function deleteRouteAsk(id) {
   } else {
     pendingDel = id;
     var nm = catGet(id) ? catGet(id).name : id;
-    toast("再次点击 🗑️ 确认删除「" + nm + "」（将从 GitHub 仓库移除该路线文件）");
+    toast("再次点击 ✕ 确认删除「" + nm + "」（将从 GitHub 仓库移除该路线文件）");
     setTimeout(function () { if (pendingDel === id) pendingDel = null; }, 2600);
   }
 }
@@ -1470,6 +1665,7 @@ document.querySelector(".route-head").addEventListener("click", function (ev) {
   var span = ev.target.closest("#routeName");
   if (!span) return;
   if (!edCtx.work) return;
+  if (!edCtx.editMode) return; // v6.18：视图模式（含移动端只读）点标题不进入改名
   var inp = document.createElement("input");
   inp.className = "ed-name route-name-input";
   inp.value = edCtx.work.name || "";
@@ -1537,10 +1733,10 @@ function renderWpList() {
     var s = edCtx.work.stops[i];
     var c = dayColor(s.day, edCtx.work.id);
     if (s.day !== lastDay) {
-      h += '<div class="day-label" data-day="' + s.day + '" style="color:' + darkOnLight(c) + ';"><span class="day-line" style="background:' + c + ';"></span>第' + s.day + "天</div>";
+      h += '<div class="day-label" role="presentation" data-day="' + s.day + '" style="color:' + darkOnLight(c) + ';"><span class="day-line" style="background:' + c + ';"></span>第' + s.day + "天</div>";
       lastDay = s.day;
     }
-    h += '<div class="wp-item" data-key="' + i + '" data-i="' + i + '"' + (inEdit ? ' draggable="true"' : '') + '>' +
+    h += '<div class="wp-item" role="listitem" data-key="' + i + '" data-i="' + i + '"' + (inEdit ? ' draggable="true"' : '') + '>' +
       '<span class="dot" style="background:' + c + ';color:' + fgOn(c) + ';">' + (i + 1) + "</span>" +
       '<span class="nm">' + esc(s.name) + '</span>' +
       (inEdit ? '<span class="ops">' +
@@ -1872,6 +2068,7 @@ function enterNewRoute() {
   edCtx.work = { id: newId(), name: "", stops: [], segs: {} };
   edCtx.preset = { c: null, tag: "" };
   edCtx.editMode = true; // 新建路线直接进入编辑模式（搜索 / 加站 / 保存）
+  osrmNoteReset(); // 换路线：清空上一条的「未取到路径」提示
   activeRouteId = null;
   hideHome();
   setDayNum(1);
@@ -1890,6 +2087,7 @@ function enterRoute(id) {
     // v6.4：进入新路线前清理前一条路线的预览点 / 玻璃卡片，避免 popup 残留叠加
     try { clearPreview(); } catch (e) {}
     try { map.closePopup(); } catch (e) {}
+    osrmNoteReset(); // 换路线：清空上一条的「未取到路径」提示
     edCtx.work = {
       id: id, name: t.name,
       stops: t.stops.map(function (s) { return { name: s.name, lat: Number(s.lat), lng: Number(s.lng), day: s.day, tag: s.tag }; }),
@@ -1921,6 +2119,7 @@ function exitToHome() {
   // v6.4：离开当前路线前清理掉残留的预览点 / 地图旁「添加到第几天」卡片，避免切换到下一条路线时还在显示
   try { clearPreview(); } catch (e) {}
   try { map.closePopup(); } catch (e) {}
+  osrmNoteReset(); // 离开路线：清空「未取到路径」提示
   edCtx.work = null;
   edCtx.editMode = false;
   applyEditMode();
@@ -1951,6 +2150,7 @@ function inlineCopyRoute() {
   presetFromRoute(r);
   activeRouteId = null;
   edCtx.editMode = true; // 副本未入库：直接进入编辑模式
+  osrmNoteReset(); // 副本沿用同一份 segs 缓存，失败提示重新统计
   applyEditMode();
   setDayNum(routeDays(edCtx.work));
   markDirty(); // 副本未入库即视为有改动（save-row 亮起 dirty 提示）
@@ -2328,7 +2528,7 @@ function refreshFromRepo() {
     });
   });
 }
-// 手动刷新按钮（侧栏 🔄 / 设置 🔄 刷新目录）
+// 手动刷新按钮（侧栏 / 设置 刷新目录）
 function doRefresh() {
   if (!ghEnabled()) { toast("请先在 ⚙ 设置 配置 GitHub 仓库"); openSettings(); return; }
   ghStatusMsg("正在从 GitHub 刷新目录…");
@@ -2453,6 +2653,9 @@ rebuildMeta(); // 依 catalog 生成画廊展示列表（applyCache 无缓存时
 applyCache();
 rebuildRouteList();
 applyEditMode(); // v6.4：初始按 edCtx.editMode=false（视图模式）设置 .info-panel .editing 类与「编辑中」徽标隐藏
+applyMobileReadOnly(); // v6.18：手机/平板 → body.is-mobile，编辑入口隐藏且恒为只读
+// 输入方式变化时重新判定（旋转屏幕、外接 / 拔掉鼠标改变主指针）
+if (_mqCoarse && _mqCoarse.addEventListener) _mqCoarse.addEventListener("change", applyMobileReadOnly);
 // 不预载/默认渲染任何内置路线：首屏为主页画廊，点卡片时才按需加载 routes/*.js（见 switchRoute 懒加载分支）
 
 /* ========== 主页（路线库画廊） ========== */
@@ -2469,12 +2672,13 @@ function routeCardMeta(id) {
   }
   return { name: cat.name, days: days, season: cat.season || "" };
 }
-/* v6.6 四季画廊：春夏秋冬四个板块从上到下；路线归属读 catalog 条目的 season 字段（未登记 → 春，待后续规划） */
+/* v6.6 四季画廊：春夏秋冬四个板块从上到下；路线归属读 catalog 条目的 season 字段（未登记 → 春，待后续规划）
+   v6.18.2：原 ico 字段（春夏秋冬花朵/太阳/落叶/雪花 emoji）从未被 renderHome 使用（渲染只用 name/en），属死数据且是彩色 emoji → 直接删除 */
 var SEASON_ORDER = [
-  { key: "spring", name: "春", en: "Spring", ico: "🌸" },
-  { key: "summer", name: "夏", en: "Summer", ico: "☀️" },
-  { key: "autumn", name: "秋", en: "Autumn", ico: "🍂" },
-  { key: "winter", name: "冬", en: "Winter", ico: "❄️" }
+  { key: "spring", name: "春", en: "Spring" },
+  { key: "summer", name: "夏", en: "Summer" },
+  { key: "autumn", name: "秋", en: "Autumn" },
+  { key: "winter", name: "冬", en: "Winter" }
 ];
 function renderHome() {
   var grid = $("homeGrid");
@@ -2651,7 +2855,16 @@ window.wpState = function () { // 测试/调试：当前壁纸状态
  * ============================================================ */
 var _lgSeq = 0;
 var LG = { bendPx: 8, bendAmpMax: 8 };
-var _lgMap = new WeakMap();
+/* v6.18.1：WeakMap 没有 forEach —— 原 _lgMap.forEach 在 resize 时必抛 TypeError，
+   玻璃卡重建整条路径静默失效（改窗口大小后卡片折射不跟尺寸）。
+   改普通 Map，并在遍历时剔除已脱离文档的条目，避免长期驻留。 */
+var _lgMap = new Map();
+function _lgEach(fn) {
+  _lgMap.forEach(function (meta, el) {
+    if (!el.isConnected) { _lgMap.delete(el); return; }
+    fn(meta, el);
+  });
+}
 var LG_SELECTORS = ['.home-card']; // v6.10.3 折射仅主页卡片；路线页元素 = 白.10 + blur(20px)
 function _lgSmooth(a, b, t) { t = Math.max(0, Math.min(1, (t - a) / (b - a))); return t * t * (3 - 2 * t); }
 function _lgBuild(el) {
@@ -2751,7 +2964,7 @@ var _lgResizeTimer = 0;
 var _lgRO = new ResizeObserver(function () {
   clearTimeout(_lgResizeTimer);
   _lgResizeTimer = setTimeout(function () {
-    _lgMap.forEach(function (meta, el) {
+    _lgEach(function (meta, el) {
       if (el.offsetWidth && el.offsetHeight && (el.offsetWidth !== meta.w || el.offsetHeight !== meta.h)) _lgBuild(el);
     });
   }, 120);
@@ -2765,17 +2978,20 @@ document.body && _lgMO.observe(document.body, { childList: true, subtree: true }
 window.addEventListener('resize', function () {
   clearTimeout(_lgResizeTimer);
   _lgResizeTimer = setTimeout(function () {
-    _lgMap.forEach(function (meta, el) { if (el.offsetWidth && el.offsetHeight) _lgBuild(el); });
+    _lgEach(function (meta, el) { if (el.offsetWidth && el.offsetHeight) _lgBuild(el); });
   }, 200);
 });
 function showHome() {
   renderHome();
   $("homeMask").style.display = "";
   $("homeFab").style.display = "none";
+  updateDocTitle(); // v6.18：回到主页 → 标题回落到平台名
 }
 function hideHome() {
   $("homeMask").style.display = "none";
-  $("homeFab").style.display = "";
+  // 必须给具体值：#homeFab 基础样式是 display:none，置 "" 只会退回样式表 → 按钮永远不出现
+  // （移动端 ⋯ 菜单被隐藏，⌂ 是唯一回主页入口，曾因此成为死路）
+  $("homeFab").style.display = "inline-block";
 }
 /* ============================================================
  * v6.5.2 浏览器历史 / 返回键支持（hash 路由）
@@ -2885,6 +3101,11 @@ $("homeMask").addEventListener("click", function (ev) {
 $("homeFab").addEventListener("click", function () { location.hash = "#/"; });
 $("homeNew").addEventListener("click", function () { location.hash = "#/n"; });
 $("homeRefresh").addEventListener("click", function () { doRefresh(); });
+// OSRM 未取到路径提示条内的「重试」（事件委托：提示条内容每次重建）
+$("osrmNote").addEventListener("click", function (ev) {
+  var b = ev.target.closest ? ev.target.closest(".osrm-retry") : null;
+  if (b) osrmRetry();
+});
 // v6.5.2：设置改为直接覆盖在主页之上（z-index 3000 > homeMask 2400），不再 hideHome
 $("homeSettings").addEventListener("click", function () { openSettings(); });
 // 初始进入：展示主页画廊 + 侧栏显示"未选择路线"
