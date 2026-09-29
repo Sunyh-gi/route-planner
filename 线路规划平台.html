@@ -62,23 +62,6 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 /* 隐藏滚动条但保留滚动（Chrome/Safari） */
 .info-panel::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .info-panel h3 { margin: 0 0 12px 0; font-size: 18px; font-weight: 600; color: #1a1a1a; letter-spacing: 0.5px; }
-/* ===== 路线切换器 ===== */
-.route-switch { display: flex; gap: 6px; margin-bottom: 12px; }
-.route-switch .rs-btn {
-  flex: 1 1 0; min-width: 0; padding: 7px 2px;
-  border-radius: 12px; font-size: 12.5px; font-weight: 600;
-  color: #444; background: rgba(255,255,255,0.55);
-  border: 1px solid rgba(0,0,0,0.06); cursor: pointer;
-  letter-spacing: 0.3px; transition: background 0.15s, color 0.15s;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.route-switch .rs-btn:hover { background: rgba(255,255,255,0.85); }
-.route-switch .rs-btn.active {
-  background: #2C3E6B; color: #fff;
-  box-shadow: 0 2px 8px rgba(44,62,107,0.3);
-}
-.info-panel.sat-active .route-switch .rs-btn { color: #fff; background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.22); }
-.info-panel.sat-active .route-switch .rs-btn.active { background: #fff; color: #2C3E6B; box-shadow: 0 2px 8px rgba(0,0,0,0.35); }
 .wp-list { display: flex; flex-direction: column; gap: 1px; }
 .day-label {
   display: flex; align-items: center; gap: 6px;
@@ -97,16 +80,12 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   box-sizing: border-box; display: flex; align-items: center; justify-content: center;
   font-size: 9px; color: white; font-weight: 600;
 }
-.wp-item .tag {
-  font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: auto; font-weight: 500;
-}
 
 /* 卫星图层下，面板文字改为白色以提高可读性 */
 .info-panel.sat-active { color: #fff; }
 .info-panel.sat-active h3,
 .info-panel.sat-active .wp-item { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
 .info-panel.sat-active .day-label { color: #fff !important; text-shadow: 0 1px 3px rgba(0,0,0,0.55); }
-.info-panel.sat-active .wp-item .tag { color: #fff !important; background: rgba(0,0,0,0.35); }
 .leaflet-top.leaflet-right { top: 16px; }
 .leaflet-right { right: 10px; }
 .leaflet-bottom.leaflet-right { bottom: 24px; }
@@ -121,26 +100,6 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 }
 .osm-credit a { pointer-events: auto; color: rgba(0,0,0,0.4); }
 /* ========== 平台管理界面（路线编辑 · 搜索 · 存储） ========== */
-.route-switch { flex-direction: column; gap: 4px; margin-bottom: 6px; }
-.route-switch .rs-btn {
-  flex: none; width: 100%; display: flex; align-items: center; gap: 6px;
-  padding: 6px 10px; border-radius: 10px; text-align: left;
-}
-.route-switch .rs-btn .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.route-switch .rs-btn .op { font-style: normal; flex: none; cursor: pointer; padding: 1px 3px; border-radius: 5px; font-size: 13px; line-height: 1; opacity: 0; }
-.route-switch .rs-btn:hover .op, .route-switch .rs-btn.active .op { opacity: 0.8; }
-.route-switch .rs-btn .op:hover { opacity: 1; background: rgba(0,0,0,0.12); }
-.route-switch .rs-btn .op.del { color: #c0392b; }
-.rs-tools { display: flex; gap: 5px; margin: 0 0 8px 0; }
-.rs-tools button {
-  flex: 1; padding: 6px 4px; border-radius: 10px;
-  border: 1px dashed rgba(80,85,95,0.45); background: rgba(255,255,255,0.4);
-  color: #555; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
-}
-.rs-tools button:hover { background: rgba(255,255,255,0.85); }
-.info-panel.sat-active .rs-tools button { color: #fff; border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.12); }
-.rs-credit { font-size: 10px; color: #999; margin: 6px 0 2px; letter-spacing: 0.2px; }
-.info-panel.sat-active .rs-credit { color: rgba(255,255,255,0.75); }
 /* 弹窗通用 */
 .modal-mask { position: fixed; inset: 0; z-index: 3000; background: rgba(8,12,26,0.22); backdrop-filter: blur(1px); display: none; align-items: center; justify-content: center; }
 .modal-mask.open { display: flex; }
@@ -220,9 +179,6 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   border-radius: 8px; font-size: 12px; outline: none; box-sizing: border-box;
 }
 .tag-input:focus { border-color: #555; }
-/* 侧栏 / 主页卡片中的路线预设标识 */
-.route-switch .rs-btn .pdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.home-card .nm .ptag { margin-right: 4px; }
 .ed-foot { display: flex; gap: 8px; margin-top: 14px; }
 .ed-foot .ed-btn { flex: 1; }
 .ed-help { font-size: 11.5px; color: #777; margin-bottom: 10px; line-height: 1.6; }
@@ -1028,17 +984,17 @@ var wpList = document.getElementById("wpList");
 var ROUTE_META = [];
 function rebuildMeta() {
   var arr = (ROUTE_CATALOG || []).map(function (c) {
-    return { id: c.id, name: c.name, render: ROUTE_PACKS[c.id] ? function () { return renderGeneric(ROUTE_PACKS[c.id]); } : null };
+    return { id: c.id, name: c.name };
   });
   ROUTE_META = arr;
   return ROUTE_META;
 }
 function pvEntries() { return []; } // v6：预览占位移除
 function metaOf(id) { for (var i = 0; i < ROUTE_META.length; i++) if (ROUTE_META[i].id === id) return ROUTE_META[i]; return null; }
-function addMeta(id, name, render) {
+function addMeta(id, name) {
   var m = metaOf(id);
-  if (m) { if (name !== undefined) m.name = name; if (render) m.render = render; return m; }
-  m = { id: id, name: name || id, render: render || null };
+  if (m) { if (name !== undefined) m.name = name; return m; }
+  m = { id: id, name: name || id };
   ROUTE_META.push(m);
   return m;
 }
@@ -1083,31 +1039,8 @@ function loadRouteData(id) {
 }
 // 确保某条路线数据可用（已加载直接用；否则按目录加载）
 function ensureRouteData(id) { return loadRouteData(id); }
-// 为已加载的路线包生成渲染器（统一通用模型；segs 内含 OSRM 缓存路径）
-function rendererFor(id) {
-  var pack = ROUTE_PACKS[id];
-  if (!pack) return null;
-  return function () { return renderGeneric(pack); };
-}
-
 // v6：顶部路线切换按钮（v5 routeSwitch DOM）已随弹窗编辑器一并移除，
 // 路线从主页卡片进入（enterRoute），此处不再生成任何按钮，避免对空 DOM 报错。
-
-// #1 兜底 switchRoute（#2 中覆盖的同名函数才支持 nofit；两版都处理数据未加载）
-function switchRoute(id, opts) {
-  var meta = null;
-  for (var i = 0; i < ROUTE_META.length; i++) {
-    if (ROUTE_META[i].id === id) { meta = ROUTE_META[i]; break; }
-  }
-  if (!meta) return;
-  if (!meta.render) { loadRouteData(id); return; }
-  applyRoute(meta.render());
-  var btns = document.querySelectorAll(".route-switch .rs-btn");
-  for (var j = 0; j < btns.length; j++) {
-    if (btns[j].getAttribute("data-route") === id) btns[j].classList.add("active");
-    else btns[j].classList.remove("active");
-  }
-}
 
 // 侧栏点击：飞到对应标记并打开弹窗（事件委托，切换路线无需重绑；跳过 ops 操作按钮）
 wpList.addEventListener("click", function(ev) {
@@ -1318,7 +1251,7 @@ function renderGeneric(route) {
   var group = L.featureGroup().addTo(map);
   var bounds = L.latLngBounds([]);
   var eff = effCoords(stops);
-  var lookup = {}, markers = [], segLayers = [], sidebar = "", lastDay = -1;
+  var lookup = {}, markers = [], segLayers = [];
   for (var i = 0; i < stops.length; i++) bounds.extend([stops[i].lat, stops[i].lng]);
   // 段
   for (i = 0; i < stops.length - 1; i++) {
@@ -1344,7 +1277,7 @@ function renderGeneric(route) {
     }).addTo(group);
     segLayers.push({ i: i, a: a, b: b, layer: layer, casing: casing, color: color });
   }
-  // 标记与侧栏
+  // 标记
   for (i = 0; i < stops.length; i++) {
     var st = stops[i];
     var color2 = dayColor(st.day, route.id);
@@ -1352,14 +1285,8 @@ function renderGeneric(route) {
     marker.bindPopup(popupHtmlFor(route, i), { closeButton: false });
     lookup[String(i)] = { lat: eff[i][0], lng: eff[i][1], marker: marker };
     markers.push(marker);
-    if (st.day !== lastDay) {
-      sidebar += '<div class="day-label" role="presentation" data-day="' + st.day + '" style="color:' + darkOnLight(color2) + ';"><span class="day-line" style="background:' + color2 + ';"></span>第' + st.day + "天</div>";
-      lastDay = st.day;
-    }
-    sidebar += '<div class="wp-item" role="listitem" data-key="' + i + '"><span class="dot" style="background:' + color2 + ';color:' + fgOn(color2) + ';">' + (i + 1) + "</span>" +
-      esc(st.name) + (st.tag ? ' <span class="tag" style="color:' + darkOnLight(color2) + ";background:" + color2 + '22;">' + esc(st.tag) + "</span>" : "") + "</div>";
   }
-  return { group: group, bounds: bounds, adjust: 0, sidebar: sidebar, lookup: lookup, route: route, markers: markers, segLayers: segLayers };
+  return { group: group, bounds: bounds, adjust: 0, lookup: lookup, route: route, markers: markers, segLayers: segLayers };
 }
 
 /* ---------- OSRM 段路径（浏览器跨域可用） ---------- */
@@ -1455,58 +1382,26 @@ function ensureRoutePolys(route, segLayers, markers) {
   pumpOsrm();
 }
 
-/* ---------- 覆盖 applyRoute / switchRoute（支持 nofit 与内置路线按需加载） ---------- */
-// skipSide=true：仅渲染地图，不覆盖侧栏 wpList（v6 侧栏由 renderWpList 内联编辑器独占）
-function applyRoute(obj, nofit, skipSide) {
+/* ---------- 覆盖 applyRoute（支持 nofit） ---------- */
+// v6 侧栏由 renderWpList 内联编辑器独占，此处只渲染地图
+function applyRoute(obj, nofit) {
   if (currentGroup) map.removeLayer(currentGroup);
   currentGroup = obj.group;
   currentLookup = obj.lookup;
   currentCustomRoute = obj.route || null;
-  if (!skipSide) wpList.innerHTML = obj.sidebar;
   if (!nofit) {
     map.fitBounds(obj.bounds, { padding: [30, 30], maxZoom: 8 });
     map.setZoom(map.getZoom() + (obj.adjust || 0));
   }
   if (obj.route) ensureRoutePolys(obj.route, obj.segLayers || [], obj.markers || []);
 }
-function setActiveBtn(id) {
-  // v6：路线列表 UI 从侧栏移除；当前路线名由 renderRouteHeader() 维护，此处 no-op 保留兼容调用
-  renderRouteHeader();
-}
-function switchRoute(id, opts) {
-  opts = opts || {};
-  var meta = null;
-  for (var i = 0; i < ROUTE_META.length; i++) {
-    if (ROUTE_META[i].id === id) { meta = ROUTE_META[i]; break; }
-  }
-  if (!meta) return;
-  if (!meta.render) {
-    // 路线数据未加载：按需加载对应数据文件后再渲染（主页点卡片 / 侧栏点路线 / 复制均走这里）
-    loadRouteData(id).then(function () {
-      var r = rendererFor(id);
-      if (!r) { throw new Error("数据异常: " + id); }
-      meta.render = r;
-      applyRoute(r(), opts.nofit);
-      activeRouteId = id;
-      setActiveBtn(id);
-      rebuildRouteList();
-    }).catch(function (e) {
-      if (typeof toast === "function") toast("路线数据加载失败：" + (e && e.message ? e.message : id));
-    });
-    return;
-  }
-  applyRoute(meta.render(), opts.nofit);
-  activeRouteId = id;
-  setActiveBtn(id);
-}
-
 /* ---------- 注册表小工具（v5 统一：入库即进目录+数据包，来源无关） ---------- */
 function metaIndexOf(id) { for (var i = 0; i < ROUTE_META.length; i++) if (ROUTE_META[i].id === id) return i; return -1; }
 // 兼容旧调用名：把一条路线加入运行时（目录 + 数据包 + 展示列表）
 function registerCustom(r) {
   if (!catGet(r.id)) catUpsert({ id: r.id, name: r.name, file: routeFileOf(r.id), days: routeDays(r), n: (r.stops || []).length, color: routeColorOf(r.id, r) });
   ROUTE_PACKS[r.id] = r;
-  addMeta(r.id, r.name, rendererFor(r.id));
+  addMeta(r.id, r.name);
 }
 function unregisterCustom(id) { removeMeta(id); }
 
@@ -1634,7 +1529,7 @@ function doDeleteRoute(id) {
     delete ROUTE_PACKS[id];
     catRemove(id);
     if (activeRouteId === id) {
-      // v6：删除的是当前正在编辑的路线 → 清空编辑态回主页（画廊展示剩余路线），不再走 v5 switchRoute 兜底
+      // v6：删除的是当前正在编辑的路线 → 清空编辑态回主页（画廊展示剩余路线）
       activeRouteId = null;
       edCtx.work = null;
       edCtx.dirty = false;
@@ -1941,10 +1836,10 @@ function applyEditToMap() {
   if (!edCtx.work) return;
   if (typeof renderGeneric !== "function") return;
   // v6：路线界面即编辑界面，每次数据变更均重建渲染。
-  // 地图用 renderGeneric；侧栏不写入 renderGeneric 的静态列表（无行内操作按钮/data-day），
+  // 地图用 renderGeneric；侧栏不由 renderGeneric 负责，
   // 而是始终由 renderWpList 重绘内联编辑器（✎改名 / ↑↓ / ◀▶换天 / ✕删除 / 拖拽换天都依赖它）。
   var obj = renderGeneric(edCtx.work);
-  applyRoute(obj, true, true);
+  applyRoute(obj, true);
   renderWpList();
 }
 // v6.5.3 打开路线自动取景：路线整体居中 + 四周留白。
@@ -2658,7 +2553,7 @@ applyEditMode(); // v6.4：初始按 edCtx.editMode=false（视图模式）设�
 applyMobileReadOnly(); // v6.18：手机/平板 → body.is-mobile，编辑入口隐藏且恒为只读
 // 输入方式变化时重新判定（旋转屏幕、外接 / 拔掉鼠标改变主指针）
 if (_mqCoarse && _mqCoarse.addEventListener) _mqCoarse.addEventListener("change", applyMobileReadOnly);
-// 不预载/默认渲染任何内置路线：首屏为主页画廊，点卡片时才按需加载 routes/*.js（见 switchRoute 懒加载分支）
+// 不预载/默认渲染任何内置路线：首屏为主页画廊，点卡片时才按需加载 routes/*.js（见 enterRoute → ensureRouteData）
 
 /* ========== 主页（路线库画廊） ========== */
 function routeCardMeta(id) {
