@@ -912,6 +912,8 @@ function convertPolyline(poly) {
 // v6.18.3 出行方式文字标签（替代原汽车 PNG 小图；与相邻「分钟」同色同字号）
 // 数据层 p 字段语义：foot=步行、cycling=骑马（该字段在本项目实际承载乌孙古道骑马段）、缺省=驾车
 function modeLabel(p) { return p === "foot" ? "步行" : (p === "cycling" ? "骑马" : "驾车"); }
+// v6.20 地点名后不再重复出行方式：该信息已在弹窗「上段/下段」用时行（km 与 分钟之间）给出
+function isModeTag(t) { return !!t && (t === modeLabel("") || t === modeLabel("foot") || t === modeLabel("cycling")); }
 
 // ========== 地图与底图 ==========
 var map = L.map("map", { attributionControl: false, zoomSnap: 0.5, zoomDelta: 0.5, center: [35, 103], zoom: 4 });
@@ -1304,7 +1306,7 @@ function segText(route, idx, isPrev) {
 function popupHtmlFor(route, i) {
   var st = route.stops[i];
   var h = '<b style="font-size:15px">' + esc(st.name) + "</b>" +
-    (st.tag ? ' <span style="color:#888;font-size:12px;">(' + esc(st.tag) + ")</span>" : "") +
+    (st.tag && !isModeTag(st.tag) ? ' <span style="color:#888;font-size:12px;">(' + esc(st.tag) + ")</span>" : "") +
     '<div style="margin-top:6px;">';
   if (i > 0) h += segText(route, i - 1, true);
   if (i < route.stops.length - 1) { if (i > 0) h += "<br/>"; h += segText(route, i, false); }
