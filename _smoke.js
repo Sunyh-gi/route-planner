@@ -1,7 +1,9 @@
 /* ============================================================
- * 冒烟测试：线路规划平台 v6.4（视图/编辑模式 + 新菜单 + 调色板种子洗牌）
+ * 冒烟测试：线路规划平台 v6.18（视图/编辑模式 + 新菜单 + 调色板种子洗牌 + 移动端只读 / OSRM 失败可见 / 重复同名点 / 语义）
  * 阶段 A：无 Token 只读回归（默认视图模式；点 ⋯ → 编辑路线进入编辑模式后验证搜索/卡片/加站）
  * 阶段 B：mock fetch 模拟 GitHub 仓库写入
+ * 阶段 C：hash 路由（浏览器前进/后退 + F5 恢复）
+ * 阶段 D：v6.18 新增行为（重复同名点可共存 / 同坐标段跳过 OSRM / 失败提示条与重试 / 标题语义 / 窄屏桌面保留编辑 / 触摸设备只读）
  * 用法：node _smoke.js
  *   依赖 puppeteer-core 与系统 Edge；若二者不在默认解析路径，用环境变量指定：
  *   PUPPETEER_PATH=<puppeteer-core 路径>  EDGE_PATH=<Edge 可执行文件路径>
@@ -500,6 +502,94 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   });
   ok(c10.all === true && c10.n === 11 && c10.zoom > 4, "自动取景：11 点全部在视口内 & zoom=" + c10.zoom + "（>4 说明已放大） -> " + JSON.stringify(c10));
   await page.screenshot({ path: path.join(__dirname, "_shot_hash.png") });
+
+  /* ================= 阶段 D：v6.18 新增行为（移动端只读 / OSRM 失败可见 / 重复同名点 / 语义） ================= */
+  console.log("\n== 阶段 D：v6.18 新增行为 ==");
+
+  // D1. 重复同名点（含同坐标）可共存：不拦截、不合并，各自成行成点
+  await ev(() => { location.hash = "#/n"; });
+  await page.waitForFunction(() => location.hash === "#/n" && !!window.edCtx && !!edCtx.work, { timeout: 8000 }).catch(() => {});
+  await wait(300);
+  const d1 = await ev(() => {
+    // C9/D4 的整页刷新会丢掉阶段 A 装的 fetch stub，这里重装一次，让 OSRM 失败可确定复现
+    if (!window.__osrmStubbedD) {
+      var orig = window.fetch.bind(window);
+      window.fetch = function (url, opt) {
+        if (/router\.project-osrm\.org|restapi\.amap\.com/.test(String(url))) return Promise.reject(new Error("osrm stub offline"));
+        return orig(url, opt);
+      };
+      window.__osrmStubbedD = true;
+    }
+    window.osrmNoteReset();
+    edCtx.work.stops = [
+      { name: "新都桥镇", lat: 30.035972, lng: 101.507144, day: 1, tag: "" },
+      { name: "新都桥镇", lat: 30.035972, lng: 101.507144, day: 1, tag: "" },
+      { name: "甲根坝镇", lat: 29.846995, lng: 101.559075, day: 2, tag: "" }
+    ];
+    normalizeRoute(edCtx.work);
+    applyEditToMap();
+    return {
+      n: edCtx.work.stops.length,
+      names: edCtx.work.stops.map(function (s) { return s.name; }).join("|"),
+      rows: document.querySelectorAll("#wpList .wp-item").length,
+      markers: document.querySelectorAll(".wp-marker").length
+    };
+  });
+  ok(d1.n === 3 && d1.names === "新都桥镇|新都桥镇|甲根坝镇" && d1.rows === 3 && d1.markers === 3,
+    "重复同名点（同坐标）可共存、各自成行成点 -> " + JSON.stringify(d1));
+
+  // D2. 同坐标相邻段被跳过（不发 OSRM，不产生假失败）；真失败的段聚合进可见提示条 + 重试按钮
+  await page.waitForFunction(() => window._osrmFail && Object.keys(_osrmFail).length > 0, { timeout: 8000 }).catch(() => {});
+  await wait(600);
+  const d2 = await ev(() => ({
+    fails: Object.keys(window._osrmFail || {}).length,
+    noteHidden: document.getElementById("osrmNote").hidden,
+    txt: document.getElementById("osrmNote").textContent,
+    hasRetry: !!document.querySelector("#osrmNote .osrm-retry")
+  }));
+  ok(d2.fails === 1 && !d2.noteHidden && d2.hasRetry && /未取到实际路线/.test(d2.txt),
+    "同坐标段被跳过（仅 1 段真失败）+ 失败不再静默：提示条含重试 -> " + JSON.stringify(d2));
+
+  // D3. 提示条内「重试」可点：清标记 → 重新发起（离线仍失败 → 提示条再现）
+  await ev(() => { var b = document.querySelector("#osrmNote .osrm-retry"); if (b) b.click(); });
+  await wait(1400);
+  const d3 = await ev(() => ({ hasRetry: !!document.querySelector("#osrmNote .osrm-retry"), fails: Object.keys(window._osrmFail || {}).length }));
+  ok(d3.hasRetry && d3.fails >= 1, "重试按钮点击后重新发起并再次汇总失败 -> " + JSON.stringify(d3));
+
+  // D4. 语义：文档标题随视图变化 + og:title 同步 + 唯一 h1
+  await page.goto(URL + "#/r/cx", { waitUntil: "load", timeout: 60000 });
+  await waitName("川西路线");
+  await wait(300);
+  const d4 = await ev(() => ({
+    title: document.title,
+    og: (document.querySelector('meta[property="og:title"]') || {}).content || "",
+    h1: (document.querySelector("h1.sr-only") || {}).textContent || ""
+  }));
+  ok(d4.title === "川西路线 · 线路规划平台" && d4.og === d4.title && d4.h1 === "线路规划平台",
+    "页面语义：标题随视图变化 + og:title 同步 + 唯一 h1 -> " + JSON.stringify(d4));
+
+  // D5. 窄屏桌面窗口（鼠标）仍保留编辑入口——只读只针对触摸设备
+  await page.setViewport({ width: 700, height: 900 });
+  await wait(500);
+  const d5 = await ev(() => ({
+    isMobile: document.body.classList.contains("is-mobile"),
+    menuVisible: getComputedStyle(document.getElementById("routeMenuBtn")).display !== "none",
+    coarse: window.matchMedia("(pointer: coarse)").matches
+  }));
+  ok(!d5.coarse && !d5.isMobile && d5.menuVisible,
+    "窄屏桌面窗口不夺编辑能力（is-mobile=false、⋯ 菜单可见）-> " + JSON.stringify(d5));
+
+  // D6. 触摸设备（手机）→ 只读：is-mobile 生效、⋯ 菜单隐藏、编辑模式恒关
+  await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+  await wait(700);
+  const d6 = await ev(() => ({
+    coarse: window.matchMedia("(pointer: coarse)").matches,
+    isMobile: document.body.classList.contains("is-mobile"),
+    menuHidden: getComputedStyle(document.getElementById("routeMenuBtn")).display === "none",
+    editing: !!(window.edCtx && edCtx.editMode)
+  }));
+  ok(d6.coarse && d6.isMobile && d6.menuHidden && !d6.editing,
+    "手机（触摸）→ 只读：is-mobile 生效、编辑入口隐藏、编辑模式恒关 -> " + JSON.stringify(d6));
 
   /* ================= 汇总 ================= */
   const real = realErr();
