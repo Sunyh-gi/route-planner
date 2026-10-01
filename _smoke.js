@@ -591,6 +591,108 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   ok(d6.coarse && d6.isMobile && d6.menuHidden && !d6.editing,
     "手机（触摸）→ 只读：is-mobile 生效、编辑入口隐藏、编辑模式恒关 -> " + JSON.stringify(d6));
 
+  // D7. v6.20.2 回归：步行/骑马段必须真画成虚线、且恒在实线之上
+  //     旧 bug 三条叠加：①按段序绘制，与相邻驾车段完全重叠时被同色实线整条盖掉；
+  //     ②OSRM 回填 onDone 无条件 setStyle({dashArray:null})，把脚力段抹成实线；
+  //     ③无浅色缝隙底色，空隙透出的是底下同色实线 → 视觉上依旧「实线」。
+  //     断言：伊犁环线含 1 段 foot + 1 段 cycling（数据层 p 字段），
+  //     渲染后应有 2×N 条带 stroke-dasharray 的矢量（casing+主线）与 N 条缝隙底色层，
+  //     线帽 butt，且全部排在无 dash 的实线层之后（DOM 顺序即绘制顺序）。
+  //     节奏值不写死：与页面 DASH_MODE 对齐（v6.20.3 起），调节奏无需改断言。
+  await page.setViewport({ width: 1440, height: 900, isMobile: false, hasTouch: false });
+  await page.goto(URL + "#/r/yl", { waitUntil: "load", timeout: 60000 });
+  await waitName("伊犁环线（夏）");
+  await wait(2500); // 留出 OSRM 回填窗口——关键验证：回填不得抹平虚线
+  const expectDash = await ev(() => String(window.DASH_MODE || "").replace(/\s/g, ""));
+  const d7 = await ev(() => {
+    const pack = window.ROUTE_PACKS && window.ROUTE_PACKS.yl;
+    const segs = (pack && pack.segs) || {};
+    const footSegs = Object.keys(segs).filter(function (k) {
+      return segs[k] && (segs[k].p === "foot" || segs[k].p === "cycling");
+    }).length;
+    const SW = window.SOLID_W || {}, DW = window.DASH_W || {};
+    const paths = Array.from(document.querySelectorAll("path.leaflet-interactive"));
+    const dashed = [], solidLineIdx = [];
+    let gapLayers = 0;
+    paths.forEach(function (el, i) {
+      const w = el.getAttribute("stroke-width");
+      if (w === String(DW.gap)) { gapLayers++; return; } // 缝隙底色层，不参与「虚实先后」比较
+      const da = el.getAttribute("stroke-dasharray");
+      if (da) dashed.push({ i: i, dash: da, cap: el.getAttribute("stroke-linecap"), w: w });
+      else solidLineIdx.push(i);
+    });
+    return {
+      footSegs: footSegs,
+      nDashed: dashed.length,
+      gapLayers: gapLayers,
+      dashVals: dashed.map(function (x) { return x.dash.replace(/\s/g, ""); }),
+      caps: dashed.map(function (x) { return x.cap; }),
+      widths: dashed.map(function (x) { return x.w; }),
+      solidW: { main: String(SW.main), case: String(SW.case) },
+      dashW: { main: String(DW.main), case: String(DW.case) },
+      lastSolid: solidLineIdx.length ? Math.max.apply(null, solidLineIdx) : -1,
+      firstDash: dashed.length ? Math.min.apply(null, dashed.map(function (x) { return x.i; })) : 1e9
+    };
+  });
+  ok(
+    d7.footSegs >= 2 &&
+    d7.nDashed === d7.footSegs * 2 &&
+    d7.gapLayers === d7.footSegs &&
+    !!expectDash && d7.dashVals.every(v => v === expectDash) &&
+    d7.caps.every(c => c === "butt") &&
+    d7.widths.filter(w => w === d7.dashW.main).length === d7.footSegs &&
+    d7.widths.filter(w => w === d7.dashW.case).length === d7.footSegs &&
+    parseFloat(d7.dashW.main) < parseFloat(d7.solidW.main) &&   // v6.20.4：虚线整体细一档
+    parseFloat(d7.dashW.case) < parseFloat(d7.solidW.case) &&
+    parseFloat(d7.dashW.gap || d7.gapLayers) > 0 &&
+    d7.firstDash > d7.lastSolid,
+    "步行/骑马虚线：dash=" + expectDash + "（对齐页面 DASH_MODE）+ butt 帽 + 浅色缝隙层 + 恒在实线之上 + 线宽比实线细一档（" + d7.dashW.main + "/" + d7.solidW.main + "，脚力段 " + d7.footSegs + " 段）-> " + JSON.stringify(d7));
+
+  // D8. v6.20.5 全量路线数据自检：页面 auditRouteData() 对每条已加载路线扫
+  //     p 取值合法性 / poly 是否存在 / 站点坐标与 day，结果挂 window.__routeAudit。
+  //     这条断言保证「以后手写的路线数据写错会被测出来」，而不只是靠人眼。
+  await page.setViewport({ width: 1440, height: 900, isMobile: false, hasTouch: false });
+  const audit = [];
+  for (const rid of ["cx", "yl"]) {
+    await page.goto(URL + "#/r/" + rid, { waitUntil: "load", timeout: 60000 });
+    await wait(1800);
+    // __routeAudit 以 rid 为键，直接按 rid 取（不再用 keys().pop() 兜底——多路线并发时不可靠）
+    const one = await ev(k => (window.__routeAudit || {})[k] || null, rid);
+    audit.push(one || { id: rid, stats: null, issues: ["未产生审计结果"] });
+  }
+  const badData = audit.filter(a => a && a.issues && a.issues.length);
+  const footTotal = audit.reduce((n, a) => n + ((a && a.stats && a.stats.foot) || 0), 0);
+  ok(
+    audit.length === 2 && badData.length === 0 && footTotal >= 2 &&
+    audit.every(a => a && a.stats && a.stats.stops >= 2 && a.stats.segs >= 1),
+    "全量路线数据自检通过（p 合法 / poly 齐全 / 坐标与 day 完整，脚力段 " + footTotal + " 个）-> " +
+      JSON.stringify(audit.map(a => ({ id: a && a.id, stops: a && a.stats && a.stats.stops, segs: a && a.stats && a.stats.segs, foot: a && a.stats && a.stats.foot, issues: a && a.issues }))));
+
+  // D9. v6.20.5 数据层护栏：段缺 poly / 非法 p 不得抛错（旧实现在 .slice 处直接 TypeError）
+  const guard = await ev(() => {
+    const A = { name: "A", lat: 30, lng: 100, day: 1 }, B = { name: "B", lat: 30.1, lng: 100.1, day: 1 };
+    const key = "30.00000,100.00000|30.10000,100.10000";
+    const out = {};
+    try { out.missingPoly = renderGeneric({ id: "__g1", name: "g1", stops: [A, B], segs: { [key]: { d: 1, m: 1 } } }).segWarns; }
+    catch (e) { out.missingPoly = "THREW:" + e.message; }
+    try { out.invalidP = renderGeneric({ id: "__g2", name: "g2", stops: [A, B], segs: { [key]: { d: 1, m: 1, p: "walking", poly: [[30, 100], [30.1, 100.1]] } } }).segWarns; }
+    catch (e) { out.invalidP = "THREW:" + e.message; }
+    // 占位节奏与 DASH_MODE 撞车时也不得被误判为脚力段
+    const old = window.DASH_MODE; window.DASH_MODE = window.DASH_PENDING;
+    const pend = renderGeneric({ id: "__g3", name: "g3", stops: [A, B], segs: {} }).segLayers[0];
+    window.DASH_MODE = old;
+    out.pendingFootFlag = pend.foot;
+    // 与 expectDash 同口径归一化（去空格）再比对，避免 "12, 6" vs "12,6" 的假失败
+    out.refill = { foot: String(refillDash(true) || "").replace(/\s/g, ""), pending: refillDash(false) };
+    return out;
+  });
+  ok(
+    Array.isArray(guard.missingPoly) && guard.missingPoly.length === 1 &&
+    Array.isArray(guard.invalidP) && guard.invalidP.length === 1 &&
+    guard.pendingFootFlag === false &&
+    guard.refill.foot === expectDash && guard.refill.pending === null,
+    "数据层护栏：缺 poly / 非法 p 不抛错且给出告警 + 占位节奏与 DASH_MODE 撞车不被误判 + 回填按用途保留 -> " + JSON.stringify(guard));
+
   /* ================= 汇总 ================= */
   const real = realErr();
   console.log("\n== 控制台错误(" + errors.length + " 条，非网络 " + real.length + " 条) ==");
