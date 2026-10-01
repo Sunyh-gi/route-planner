@@ -651,6 +651,10 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   // D8. v6.20.5 全量路线数据自检：页面 auditRouteData() 对每条已加载路线扫
   //     p 取值合法性 / poly 是否存在 / 站点坐标与 day，结果挂 window.__routeAudit。
   //     这条断言保证「以后手写的路线数据写错会被测出来」，而不只是靠人眼。
+  //     v6.20.6 起 auditRouteData 另出一路 endpointGaps（端点离图钉 >1km）：
+  //     那是「几何不自洽、渲染层已按留白处理」，与 issues（会静默失效的数据错误）
+  //     性质不同 → 本断言要求 issues 归零，同时 endpointGaps 必须**真的被检出**
+  //     （yl 两段各 >1km），即自检真的在跑，而不是恒空。
   await page.setViewport({ width: 1440, height: 900, isMobile: false, hasTouch: false });
   const audit = [];
   for (const rid of ["cx", "yl"]) {
@@ -658,15 +662,16 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
     await wait(1800);
     // __routeAudit 以 rid 为键，直接按 rid 取（不再用 keys().pop() 兜底——多路线并发时不可靠）
     const one = await ev(k => (window.__routeAudit || {})[k] || null, rid);
-    audit.push(one || { id: rid, stats: null, issues: ["未产生审计结果"] });
+    audit.push(one || { id: rid, stats: null, issues: ["未产生审计结果"], endpointGaps: null });
   }
   const badData = audit.filter(a => a && a.issues && a.issues.length);
   const footTotal = audit.reduce((n, a) => n + ((a && a.stats && a.stats.foot) || 0), 0);
+  const gapTotal = audit.reduce((n, a) => n + ((a && a.endpointGaps && a.endpointGaps.length) || 0), 0);
   ok(
-    audit.length === 2 && badData.length === 0 && footTotal >= 2 &&
-    audit.every(a => a && a.stats && a.stats.stops >= 2 && a.stats.segs >= 1),
-    "全量路线数据自检通过（p 合法 / poly 齐全 / 坐标与 day 完整，脚力段 " + footTotal + " 个）-> " +
-      JSON.stringify(audit.map(a => ({ id: a && a.id, stops: a && a.stats && a.stats.stops, segs: a && a.stats && a.stats.segs, foot: a && a.stats && a.stats.foot, issues: a && a.issues }))));
+    audit.length === 2 && badData.length === 0 && footTotal >= 2 && gapTotal >= 2 &&
+    audit.every(a => a && a.stats && a.stats.stops >= 2 && a.stats.segs >= 1 && Array.isArray(a.endpointGaps)),
+    "全量路线数据自检通过（p 合法 / poly 齐全 / 坐标与 day 完整，脚力段 " + footTotal + " 个，端点缺口 " + gapTotal + " 处已被检出）-> " +
+      JSON.stringify(audit.map(a => ({ id: a && a.id, stops: a && a.stats && a.stats.stops, segs: a && a.stats && a.stats.segs, foot: a && a.stats && a.stats.foot, issues: a && a.issues, gaps: a && a.endpointGaps && a.endpointGaps.length }))));
 
   // D9. v6.20.5 数据层护栏：段缺 poly / 非法 p 不得抛错（旧实现在 .slice 处直接 TypeError）
   const guard = await ev(() => {
