@@ -838,7 +838,14 @@ var DASH_MODE = "12, 6";
 // 三层相对关系固定：main 亮色主线 / case 同色系深色描边底线 / gap 浅色缝隙底色（仅虚线用）。
 // 层次 = 描边在主线外露 (case-main)/2、缝隙底色在描边外露 (gap-case)/2；调节奏/粗细只改这两处
 var SOLID_W = { main: 5.5, case: 8.6, gap: 0 };
-var DASH_W = { main: 4.0, case: 7.0, gap: 7.8 };
+// v6.20.6 缝隙底色层的「够宽」硬约束：DASH_W.gap 必须 > SOLID_W.case。
+// 起因（用户截图）：脚力段常与相邻驾车段共用同一条轨迹（本项目 yl 段6 与段7 完全重合），
+// 此时虚线画在实线之上，虚线「空隙」处虚线自身的 case/main 都是断的，露出的本该是浅色缝隙底色；
+// 但旧值 gap=7.8 < 下方实线 case=8.6，实线的深色描边会从浅色底两侧各露出 (8.6-7.8)/2 = 0.4px
+// ——虚线自身的描边是断续的，实线这条却是**连续**的，于是整条线看上去有一圈连续描边。
+// 取 8.8 = SOLID_W.case + 0.2，既恰好盖住下方实线描边，又只比虚线自身 case(7.0) 外露 0.9px 浅色。
+// 改动此值时请同步检查：gap > case(solid) 且 gap > case(dash)。
+var DASH_W = { main: 4.0, case: 7.0, gap: 8.8 };
 // v6.20.5 三种「虚线」的用途正交拆开，禁止再用节奏值反推用途（反推会在节奏撞车时失效）。
 //   FOOT_MODES —— 数据层 p 字段的合法取值（唯一的「是不是脚力段」判据）
 //   DASH_PENDING —— 待规划占位（尚无 OSRM 路径，取回后应转实线）
@@ -1089,7 +1096,7 @@ var ROUTE_AUDIT = {};
 function auditRouteData(id, pack) {
   var issues = [], stats = { id: id, name: pack && pack.name, stops: 0, segs: 0, foot: 0 };
   if (!pack || !pack.stops || !pack.stops.length) {
-    ROUTE_AUDIT[id] = { issues: ["路线无站点数据"], stats: stats };
+    ROUTE_AUDIT[id] = { issues: ["路线无站点数据"], endpointGaps: [], stats: stats };
     console.warn("[routeAudit] " + id + " 无站点数据");
     return ROUTE_AUDIT[id];
   }
@@ -1110,10 +1117,28 @@ function auditRouteData(id, pack) {
   }
   // 有站点但完全无 seg：多半是数据文件被截断
   if (stats.stops >= 2 && stats.segs === 0) issues.push("整条路线无任何段数据（文件可能被截断）");
-  ROUTE_AUDIT[id] = { issues: issues, stats: stats };
+  // v6.20.6 端点缺口检查：段端点离图钉 > BRIDGE_MAX(1km) 属**数据错误**
+  //（图钉坐标写错 / 该段路径数据缺失）。渲染层已不再补「两点直线」冒充路线（改为留白），
+  // 所以自检必须报出来，否则画面上一段莫名其妙的空白没人知道为什么。
+  // 200m~1km 仍由渲染层自动接驳（OSRM 吸附偏差），不报错。
+  // 与 issues 分开存（endpointGaps）：issues 是「会静默失效的数据错误」，缺口是「几何不自洽，
+  // 渲染层已按留白处理」——两者严重程度与处置方式都不同，D8 只断言前者为空。
+  var gaps = [];
+  for (var si = 0; si < pack.stops.length - 1; si++) {
+    var sa = pack.stops[si], sb = pack.stops[si + 1];
+    var sc = (pack.segs || {})[segKey(sa, sb)];
+    if (!sc || !segHasPoly(sc)) continue;
+    var gA = L.latLng(sc.poly[0]).distanceTo(L.latLng(sa.lat, sa.lng));
+    var gB = L.latLng(sc.poly[sc.poly.length - 1]).distanceTo(L.latLng(sb.lat, sb.lng));
+    if (gA > BRIDGE_MAX || gB > BRIDGE_MAX) {
+      gaps.push("段 " + (si + 1) + "「" + sa.name + "→" + sb.name + "」端点离图钉 " + Math.round(gA) + "m / " + Math.round(gB) + "m（>" + (BRIDGE_MAX / 1000) + "km，不再补接驳直线，画面留白）→ 核对图钉坐标或补该段路径");
+    }
+  }
+  ROUTE_AUDIT[id] = { issues: issues, endpointGaps: gaps, stats: stats };
   window.__routeAudit = ROUTE_AUDIT;
   if (issues.length) console.warn("[routeAudit] " + id + "(" + (pack.name || "") + ") 发现 " + issues.length + " 处：\n  - " + issues.join("\n  - "));
   else console.log("[routeAudit] " + id + "(" + (pack.name || "") + ") 数据自检通过：" + stats.stops + " 站 / " + stats.segs + " 段（脚力段 " + stats.foot + "）");
+  if (gaps.length) console.warn("[routeAudit] " + id + " 端点缺口 " + gaps.length + " 处（>1km，渲染层留白）：\n  - " + gaps.join("\n  - "));
   return ROUTE_AUDIT[id];
 }
 // 确保某条路线数据可用（已加载直接用；否则按目录加载）
@@ -1329,13 +1354,38 @@ function popupHtmlFor(route, i) {
 //（本项目 yl「夏塔→鲜花台」末端与「鲜花台→喀夏加尔」起点都差 2466m，线在图钉前留一段空白）。
 // 超过 200m 就把地点坐标补进端点，保证每条线都连到自己的图钉。只补显著缺口，
 // 不动 OSRM 正常吸附造成的几十米级偏差。返回新数组，不改原 poly。
+// v6.20.6 新增上限 BRIDGE_MAX：超过 1km 的缺口不再是「吸附偏差」，而是**数据错误**
+//（要么图钉坐标写错，要么该段路径数据缺失）。
+// 起因（用户截图）：段6 末端离「鲜花台」图钉 2466m，旧实现直接补一条两点直线，
+// 于是画面上出现一条横贯地图、不贴任何地形的长直线——它冒充成了「路线」。
+// 实测：段6 与段7 的端点都精确落在同一个点 [42.477857, 80.826336]（两段数据彼此自洽），
+// 图钉 [42.4581, 80.84] 是唯一的异类 → 属数据问题，不该由渲染层用直线去「圆」。
+// 现在：>BRIDGE_MAX 的缺口不画假线（宁可留白让人看见），并把该段计入 dataBridgeWarns 交给调用方提示。
 var BRIDGE_MIN = 200;
+var BRIDGE_MAX = 1000;
+var dataBridgeWarns = []; // 每次 renderGeneric 前清空，收集「缺口过大、未接驳」的段
+// v6.20.6 渲染期的基础警告（缺 poly / 非法 p），与 dataBridgeWarns 分开存：
+// 回填（ensureRoutePolys.onDone）时 poly 才真正拿到，桥接缺口可能**那时**才出现，
+// 所以要能在回填后重新合成一次警告列表，而不是只用渲染那一刻的快照。
+var _renderWarnsBase = [];
+function refreshSegWarns() {
+  if (!_renderWarnsBase.length && !dataBridgeWarns.length) return;
+  segWarnRender(_renderWarnsBase.concat(dataBridgeWarns));
+}
 function bridgeEnds(poly, a, b) {
   var out = poly.slice();
   if (!out.length) return out;
-  if (L.latLng(out[0]).distanceTo(L.latLng(a.lat, a.lng)) > BRIDGE_MIN) out.unshift([a.lat, a.lng]);
+  var gapA = L.latLng(out[0]).distanceTo(L.latLng(a.lat, a.lng));
+  if (gapA > BRIDGE_MIN) {
+    if (gapA <= BRIDGE_MAX) out.unshift([a.lat, a.lng]);
+    else dataBridgeWarns.push("段「" + (a.name || "?") + "→" + (b.name || "?") + "」起点离图钉 " + Math.round(gapA / 100) / 10 + "km（图钉坐标与路径数据不一致，已不画接驳直线）");
+  }
   var last = out[out.length - 1];
-  if (L.latLng(last).distanceTo(L.latLng(b.lat, b.lng)) > BRIDGE_MIN) out.push([b.lat, b.lng]);
+  var gapB = L.latLng(last).distanceTo(L.latLng(b.lat, b.lng));
+  if (gapB > BRIDGE_MIN) {
+    if (gapB <= BRIDGE_MAX) out.push([b.lat, b.lng]);
+    else dataBridgeWarns.push("段「" + (a.name || "?") + "→" + (b.name || "?") + "」终点离图钉 " + Math.round(gapB / 100) / 10 + "km（图钉坐标与路径数据不一致，已不画接驳直线）");
+  }
   return out;
 }
 function renderGeneric(route) {
@@ -1345,6 +1395,7 @@ function renderGeneric(route) {
   var eff = effCoords(stops);
   var lookup = {}, markers = [], segLayers = [];
   var segWarns = []; // v6.20.5 数据层异常（缺 poly / 非法 p）——不静默，交给调用方提示
+  dataBridgeWarns = []; // v6.20.6 缺口过大未接驳的段（见 bridgeEnds）
   for (var i = 0; i < stops.length; i++) bounds.extend([stops[i].lat, stops[i].lng]);
   // 段（两趟绘制：先实线、后虚线，见下方 v6.20.2 说明）
   var solidPair = [], dashPair = [];
@@ -1406,6 +1457,7 @@ function renderGeneric(route) {
     lookup[String(i)] = { lat: eff[i][0], lng: eff[i][1], marker: marker };
     markers.push(marker);
   }
+  _renderWarnsBase = segWarns; // v6.20.6 供 refreshSegWarns() 在 OSRM 回填后重新合成提示
   return { group: group, bounds: bounds, adjust: 0, lookup: lookup, route: route, markers: markers, segLayers: segLayers, segWarns: segWarns };
 }
 
@@ -1517,6 +1569,8 @@ function ensureRoutePolys(route, segLayers, markers) {
           if (markers && markers[mi]) markers[mi].setPopupContent(popupHtmlFor(job.route, mi));
           if (markers && markers[mi + 1]) markers[mi + 1].setPopupContent(popupHtmlFor(job.route, mi + 1));
         }
+        // v6.20.6 桥接缺口可能在这次回填才出现（poly 刚拿到），补刷一次数据层提示
+        refreshSegWarns();
         // v5：真实路线（非预览）的 OSRM 路径已写入 route.segs → 更新缓存并防抖推回仓库文件；预览内容在保存时一并写入
         if (job.route && job.route.id && String(job.route.id).indexOf("__pv") < 0) {
           persistCache();
@@ -1987,7 +2041,11 @@ function applyEditToMap() {
   // 而是始终由 renderWpList 重绘内联编辑器（✎改名 / ↑↓ / ◀▶换天 / ✕删除 / 拖拽换天都依赖它）。
   var obj = renderGeneric(edCtx.work);
   applyRoute(obj, true);
-  segWarnRender(obj.segWarns); // v6.20.5 数据层异常不静默（缺 path / 非法 p）；放在 applyRoute 之后，避免被内部状态重置覆盖
+  // v6.20.6 改为 refreshSegWarns()：obj.segWarns 只是渲染期基础警告（同一数组引用），
+  // 桥接缺口（dataBridgeWarns）是在 renderGeneric 循环里另外收集的，必须一起合成，
+  // 否则「图钉离路径 2.4km 不接驳」这类最要紧的数据错误反而不会提示。
+  // 放在 applyRoute 之后，避免被内部状态重置覆盖
+  refreshSegWarns();
   renderWpList();
 }
 // v6.5.3 打开路线自动取景：路线整体居中 + 四周留白。
