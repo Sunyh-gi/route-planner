@@ -6,14 +6,13 @@ DEV_NOTES.md
 .gh_token
 
 # ============ 本地测试 / 探针 / 截图产物 ============
-_probe_*.js
-_shot_*.js
-_verify_*.js
-_patch_*.js
-_tmp*
-_svg_test.html
-_lp_ref*.png
-_shot_*.png
+# 本地产物一律以下划线开头；两个例外是正式回归脚本，须入库：
+#   _smoke.js        端到端冒烟回归
+#   _route_audit.js  routes/*.js 静态数据审计（新增/改动路线后跑一遍）
+# 用「排除后统一忽略」取代逐次补模式，新增调试脚本/截图无需再改本文件。
+_*
+!_smoke.js
+!_route_audit.js
 .tmp/
 
 # ============ 系统 ============
