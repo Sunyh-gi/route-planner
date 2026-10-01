@@ -8,7 +8,7 @@
  *
  * 查三类：
  *   A. 数据完整性：p 取值合法性 / poly 是否存在 / 站点坐标与 day
- *   B. 几何隐患：段端点离图钉过远（线接不上）/ 疑似直线占位
+ *   B. 几何隐患：段端点离图钉过远（200m~1km 自动接驳仅提示；>1km 页面不再补直线，记「需修复」）
  *   C. 重叠遮挡：段与段折线高度重合（这是「被盖住」的结构性成因，需人工判断是否真被盖）
  *
  * 用法：node _route_audit.js            （全量）
@@ -42,6 +42,7 @@ function minDistToPoly(p, poly) {
 }
 const segKey = (a, b) => a.lat.toFixed(5) + "," + a.lng.toFixed(5) + "|" + b.lat.toFixed(5) + "," + b.lng.toFixed(5);
 const BRIDGE_MIN = 200;   // 与页面 bridgeEnds 阈值一致（判「线接不上图钉」，页面会自动补端点，故仅提示）
+const BRIDGE_MAX = 1000;  // v6.20.6 与页面 BRIDGE_MAX 一致：超此值页面**不再**补直线（留白），属数据错误 → 记 hard
 const SAME_ROAD = 30;     // 折线点距 ≤ 30m 视为同一条路
 const DUP_PTS = 8;        // 少于此点数的 poly 视为「过短」
 
@@ -76,7 +77,11 @@ for (const id of Object.keys(PACKS)) {
     ordered.push({ i, a, b, c });
     if (!c || !c.poly || !c.poly.length) continue;
     const gA = dist([a.lat, a.lng], c.poly[0]), gB = dist([b.lat, b.lng], c.poly[c.poly.length - 1]);
-    if (gA > BRIDGE_MIN || gB > BRIDGE_MIN)
+    // v6.20.6 分档：200m~1km 是 OSRM 吸附偏差（页面自动补端点，仅提示）；
+    // >1km 页面不再补直线（留白可见），属数据错误（图钉写错 / 路径缺失），计入 hard。
+    if (gA > BRIDGE_MAX || gB > BRIDGE_MAX)
+      hard.push(`几何｜段${i}「${a.name}→${b.name}」端点离图钉 ${Math.round(gA)}m / ${Math.round(gB)}m（>${BRIDGE_MAX / 1000}km，页面不再补接驳直线→画面留白）→ 核对图钉坐标或补该段路径`);
+    else if (gA > BRIDGE_MIN || gB > BRIDGE_MIN)
       soft.push(`段${i}「${a.name}→${b.name}」端点离图钉 ${Math.round(gA)}m / ${Math.round(gB)}m（页面已自动补端点接驳，仅记录）`);
   }
   for (let i = 0; i < ordered.length; i++) {
@@ -104,7 +109,7 @@ for (const id of Object.keys(PACKS)) {
   console.log("\n" + "=".repeat(74));
   console.log(`${r.name} (${id})  站点 ${stops.length}  段 ${Object.keys(segs).length}  脚力段 ${footFil}`);
   console.log("-".repeat(74));
-  console.log(hard.length ? "【需修复】" : "【需修复】无");
+  console.log(hard.length ? `【需修复】共 ${hard.length} 处（数据完整性 / 几何）` : "【需修复】无");
   hard.forEach(x => console.log("  ✗ " + x));
   if (soft.length) { console.log("【提示】"); soft.forEach(x => console.log("  · " + x)); }
 }
