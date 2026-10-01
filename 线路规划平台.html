@@ -829,6 +829,25 @@ function dayColor(d, routeId) {
 }
 
 // v6.19 路线描边（Apple 地图式「亮色主线 + 同色系深色细描边」）：保持色相不变，明度降一档
+// v6.20.2 步行/骑马虚线的实/空节奏：7,7 在 8.6px 底线 + 5.5px 主线叠加下过于细密，
+// 与相邻驾车实线并置时不易辨认 → 放到 10,8（方头线帽两端不外扩，空隙多少就露多少）
+// v6.20.3 用户「空隙可以紧凑一点」→ 12,6：空隙 8→6、实线 10→12，单元周期不变（18px），
+// 观感更密实舒展（zoom 16 实拍 6 组候选对比后选定）
+var DASH_MODE = "12, 6";
+// v6.20.4 线宽档位：实线段 vs 虚线段（步行/骑马）分档，虚线整体细一档以便与驾车实线区分。
+// 三层相对关系固定：main 亮色主线 / case 同色系深色描边底线 / gap 浅色缝隙底色（仅虚线用）。
+// 层次 = 描边在主线外露 (case-main)/2、缝隙底色在描边外露 (gap-case)/2；调节奏/粗细只改这两处
+var SOLID_W = { main: 5.5, case: 8.6, gap: 0 };
+var DASH_W = { main: 4.0, case: 7.0, gap: 7.8 };
+// v6.20.5 三种「虚线」的用途正交拆开，禁止再用节奏值反推用途（反推会在节奏撞车时失效）。
+//   FOOT_MODES —— 数据层 p 字段的合法取值（唯一的「是不是脚力段」判据）
+//   DASH_PENDING —— 待规划占位（尚无 OSRM 路径，取回后应转实线）
+//   refillDash() —— 回填时该保留什么节奏（只认 mode，不认节奏值）
+var FOOT_MODES = { foot: 1, cycling: 1 };
+var DASH_PENDING = "5, 6";
+function isFootSeg(c) { return !!(c && FOOT_MODES[c.p]); }
+function refillDash(foot) { return foot ? DASH_MODE : null; } // 脚力段保留虚线；占位段转实线
+function segHasPoly(c) { return !!(c && c.poly && c.poly.length); }
 var _shadeCache = {};
 function caseColor(hex) {
   if (_shadeCache[hex]) return _shadeCache[hex];
@@ -846,6 +865,30 @@ function caseColor(hex) {
   var out = "#" + [h2(p2, q2, h + 1 / 3), h2(p2, q2, h), h2(p2, q2, h - 1 / 3)]
     .map(function (v) { var n = Math.round(v * 255); return ("0" + n.toString(16)).slice(-2); }).join("");
   _shadeCache[hex] = out;
+  return out;
+}
+// v6.20.2 虚线段专用「浅色底」：步行/骑马段常与相邻驾车段共用同一条公路轨迹
+// （本项目 yl「夏塔→鲜花台」的 83 个路径点被「鲜花台→喀夏加尔」的 550 点完整包含），
+// 两线在屏幕上完全重叠。此时即使把虚线画在最上层，虚线的「空隙」透出的仍是同色实线，
+// 看上去与实线无异——这才是「步行/骑马虚线不显示」的真正成因。
+// 解法：虚线段先铺一条比主线更宽的浅色实线作为「缝隙底色」，让空隙透出浅色而非同色实线。
+// 取色 = 同色相、明度 +0.34、饱和度 ×0.55（偏灰的浅色，贴近底图浅调，不喧宾夺主）
+function gapColor(hex) {
+  var r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+  var mx = Math.max(r, g, b), mn = Math.min(r, g, b), h = 0, sat = 0, l = (mx + mn) / 2;
+  if (mx !== mn) {
+    var d = mx - mn;
+    sat = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : (mx === g ? (b - r) / d + 2 : (r - g) / d + 4);
+    h /= 6;
+  }
+  l = Math.min(1, l + 0.34);
+  sat = sat * 0.55;
+  function h2(p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; }
+  var q2 = l < 0.5 ? l * (1 + sat) : l + sat - l * sat, p2 = 2 * l - q2;
+  var out = "#" + [h2(p2, q2, h + 1 / 3), h2(p2, q2, h), h2(p2, q2, h - 1 / 3)]
+    .map(function (v) { var n = Math.round(v * 255); return ("0" + n.toString(16)).slice(-2); }).join("");
+  _shadeCache["gap:" + hex] = out;
   return out;
 }
 
@@ -1026,16 +1069,52 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
 function loadRouteData(id) {
-  if (ROUTE_PACKS[id]) return Promise.resolve(ROUTE_PACKS[id]);
+  if (ROUTE_PACKS[id]) { auditRouteData(id, ROUTE_PACKS[id]); return Promise.resolve(ROUTE_PACKS[id]); }
   var it = catGet(id);
   if (!it || !it.file) return Promise.reject(new Error("未知路线: " + id));
   return new Promise(function (resolve, reject) {
     var s = document.createElement("script");
     s.src = it.file;
-    s.onload = function () { resolve(ROUTE_PACKS[id]); };
+    s.onload = function () { auditRouteData(id, ROUTE_PACKS[id]); resolve(ROUTE_PACKS[id]); };
     s.onerror = function () { reject(new Error("路线数据加载失败: " + it.file)); };
     document.head.appendChild(s);
   });
+}
+// v6.20.5 数据自检：路线数据是手写 JSON（p 出行方式无法在界面里设置），最常见的错误是
+//   ①p 取值拼错（"Foot" / "walking" / "bike"）→ 被静默当成驾车实线，步行/骑马虚线整条消失
+//   ②段条目漏写 poly / poly 为空 → 渲染时抛错
+//   ③站点缺 lat/lng 或 day
+// 这里在每条路线加载后扫一遍，只报错不阻断；产出挂到 window.__routeAudit 供冒烟与人工核对。
+var ROUTE_AUDIT = {};
+function auditRouteData(id, pack) {
+  var issues = [], stats = { id: id, name: pack && pack.name, stops: 0, segs: 0, foot: 0 };
+  if (!pack || !pack.stops || !pack.stops.length) {
+    ROUTE_AUDIT[id] = { issues: ["路线无站点数据"], stats: stats };
+    console.warn("[routeAudit] " + id + " 无站点数据");
+    return ROUTE_AUDIT[id];
+  }
+  stats.stops = pack.stops.length;
+  pack.stops.forEach(function (s, i) {
+    if (typeof s.lat !== "number" || typeof s.lng !== "number" || isNaN(s.lat) || isNaN(s.lng)) issues.push("站点 " + (i + 1) + "「" + (s.name || "?") + "」坐标非法");
+    if (typeof s.day !== "number" || s.day < 1) issues.push("站点 " + (i + 1) + "「" + (s.name || "?") + "」缺少合法 day");
+  });
+  for (var k in (pack.segs || {})) {
+    if (!pack.segs.hasOwnProperty(k)) continue;
+    stats.segs++;
+    var c = pack.segs[k], tag = k.split("|").join(" → ");
+    if (c && c.p != null && !FOOT_MODES[c.p]) {
+      issues.push("段「" + tag + "」p=\"" + c.p + "\" 非法（只认 " + Object.keys(FOOT_MODES).join(" / ") + "，其余省略）→ 会按驾车实线渲染");
+    }
+    if (c && c.p && FOOT_MODES[c.p]) stats.foot++;
+    if (!segHasPoly(c)) issues.push("段「" + tag + "」缺 poly 或 poly 为空 → 会按直线占位");
+  }
+  // 有站点但完全无 seg：多半是数据文件被截断
+  if (stats.stops >= 2 && stats.segs === 0) issues.push("整条路线无任何段数据（文件可能被截断）");
+  ROUTE_AUDIT[id] = { issues: issues, stats: stats };
+  window.__routeAudit = ROUTE_AUDIT;
+  if (issues.length) console.warn("[routeAudit] " + id + "(" + (pack.name || "") + ") 发现 " + issues.length + " 处：\n  - " + issues.join("\n  - "));
+  else console.log("[routeAudit] " + id + "(" + (pack.name || "") + ") 数据自检通过：" + stats.stops + " 站 / " + stats.segs + " 段（脚力段 " + stats.foot + "）");
+  return ROUTE_AUDIT[id];
 }
 // 确保某条路线数据可用（已加载直接用；否则按目录加载）
 function ensureRouteData(id) { return loadRouteData(id); }
@@ -1246,37 +1325,78 @@ function popupHtmlFor(route, i) {
   h += '</div><span style="color:#aaa;font-size:11px;">第' + st.day + "天</span>";
   return h;
 }
+// v6.20.2 端点接驳：OSRM 有时把端点吸附到最近的公路，首/尾点离地点坐标较远
+//（本项目 yl「夏塔→鲜花台」末端与「鲜花台→喀夏加尔」起点都差 2466m，线在图钉前留一段空白）。
+// 超过 200m 就把地点坐标补进端点，保证每条线都连到自己的图钉。只补显著缺口，
+// 不动 OSRM 正常吸附造成的几十米级偏差。返回新数组，不改原 poly。
+var BRIDGE_MIN = 200;
+function bridgeEnds(poly, a, b) {
+  var out = poly.slice();
+  if (!out.length) return out;
+  if (L.latLng(out[0]).distanceTo(L.latLng(a.lat, a.lng)) > BRIDGE_MIN) out.unshift([a.lat, a.lng]);
+  var last = out[out.length - 1];
+  if (L.latLng(last).distanceTo(L.latLng(b.lat, b.lng)) > BRIDGE_MIN) out.push([b.lat, b.lng]);
+  return out;
+}
 function renderGeneric(route) {
   var stops = normalizeRoute(route);
   var group = L.featureGroup().addTo(map);
   var bounds = L.latLngBounds([]);
   var eff = effCoords(stops);
   var lookup = {}, markers = [], segLayers = [];
+  var segWarns = []; // v6.20.5 数据层异常（缺 poly / 非法 p）——不静默，交给调用方提示
   for (var i = 0; i < stops.length; i++) bounds.extend([stops[i].lat, stops[i].lng]);
-  // 段
+  // 段（两趟绘制：先实线、后虚线，见下方 v6.20.2 说明）
+  var solidPair = [], dashPair = [];
   for (i = 0; i < stops.length - 1; i++) {
     var a = stops[i], b = stops[i + 1];
     var color = dayColor(b.day, route.id);
     var key = segKey(a, b);
     var c = route.segs[key];
-    var poly = c ? c.poly : [[a.lat, a.lng], [b.lat, b.lng]];
-    if (c) c.poly.forEach(function (p) { bounds.extend(p); });
-    var cMode = c && (c.p === "foot" || c.p === "cycling"); // 步行/骑马段：固定虚线（数据层 p 字段）
-    var dash = cMode ? "7, 7" : (c ? null : "5, 6");
-    // 虚线段必须用方头线帽：圆头会向两端各外扩半个线宽（底线 4.3px×2 > 7px 空隙），
-    // 把 7px 空隙糊掉，虚线段会退化成「珠链」甚至实线
+    // v6.20.5 数据层护栏：段条目存在但缺 poly（手写数据漏字段 / poly 为空）时，
+    // 旧实现 `c.poly.slice()` 直接抛 TypeError 导致整条路线渲染中断。
+    // 现在退化为「站点直连占位」并计入 segWarns，由调用方决定是否提示，绝不崩。
+    var badPoly = c && !segHasPoly(c);
+    var poly = segHasPoly(c) ? c.poly.slice() : [[a.lat, a.lng], [b.lat, b.lng]];
+    if (badPoly) segWarns.push("段 " + (i + 1) + "「" + a.name + "→" + b.name + "」缺路径数据（已按直线占位）");
+    if (segHasPoly(c)) c.poly.forEach(function (p) { bounds.extend(p); });
+    // v6.20.2 端点接驳（见 bridgeEnds 注释）：让线恒连到两端图钉
+    poly = bridgeEnds(poly, a, b);
+    // v6.20.5 脚力段判定只认数据层 p 字段（isFootSeg）；非法取值（如 "walking"）不计入 segWarns 之外，
+    // 仍按驾车渲染，避免把未知值当成步行。占位虚线用 DASH_PENDING，与脚力段节奏彻底解耦。
+    var cMode = isFootSeg(c);
+    if (c && c.p != null && !cMode) segWarns.push("段 " + (i + 1) + "「" + a.name + "→" + b.name + "」出行方式取值非法 p=\"" + c.p + "\"（已按驾车渲染）");
+    var dash = cMode ? DASH_MODE : (c ? null : DASH_PENDING);
+    // 虚线段必须用方头线帽：圆头会向两端各外扩半个线宽（底线 4.3px×2 ≥ 8px 空隙），
+    // 把空隙糊掉，虚线段会退化成「珠链」甚至实线
     var cap = dash ? "butt" : "round";
     // v6.19 Apple 地图式描边：先铺同色系深色加粗底线，再叠亮色主线，主线四周露出一圈细描边
+    // v6.20.2 虚线段再多铺一层「浅色实线」作缝隙底色（见 gapColor 注释）：让空隙透出浅色，
+    // 而不是透出与之重叠的同色实线段 → 虚线在任何叠加情况下都能被识别
+    // v6.20.4 线宽改用 SOLID_W / DASH_W 档位（虚线整体细一档）
+    var W = dash ? DASH_W : SOLID_W;
+    var gap = dash ? L.polyline(poly, {
+      color: gapColor(color), weight: W.gap, opacity: 1, lineCap: "round", lineJoin: "round"
+    }) : null;
     var casing = L.polyline(poly, {
-      color: caseColor(color), weight: 8.6, opacity: 1,
+      color: caseColor(color), weight: W.case, opacity: 1,
       dashArray: dash, lineCap: cap, lineJoin: "round"
-    }).addTo(group);
+    });
     var layer = L.polyline(poly, {
-      color: color, weight: 5.5, opacity: 1,
+      color: color, weight: W.main, opacity: 1,
       dashArray: dash, lineCap: cap, lineJoin: "round"
-    }).addTo(group);
-    segLayers.push({ i: i, a: a, b: b, layer: layer, casing: casing, color: color });
+    });
+    // v6.20.2：步行/骑马虚线段常与相邻驾车实线共用同一段公路（本项目 yl「夏塔→鲜花台」
+    // 的 83 个路径点被「鲜花台→喀夏加尔」的 550 点完整包含，两线屏幕完全重叠），
+    // 若按段序绘制，后画的实线会把先画的虚线整条盖掉 → 虚线「消失」。
+    // 故分两趟：实线段先画，虚线（含待规划占位）统一后画，恒在实线之上。
+    if (dash) dashPair.push([gap, casing, layer]); else solidPair.push([casing, layer]);
+    // v6.20.5 记录用途（foot 标签 + 是否占位），供 OSRM 回填时判定
+    segLayers.push({ i: i, a: a, b: b, layer: layer, casing: casing, gap: gap, color: color, dash: dash, foot: cMode, pending: !c });
   }
+  solidPair.concat(dashPair).forEach(function (pr) {
+    pr.forEach(function (l) { if (l) group.addLayer(l); });
+  });
   // 标记
   for (i = 0; i < stops.length; i++) {
     var st = stops[i];
@@ -1286,7 +1406,7 @@ function renderGeneric(route) {
     lookup[String(i)] = { lat: eff[i][0], lng: eff[i][1], marker: marker };
     markers.push(marker);
   }
-  return { group: group, bounds: bounds, adjust: 0, lookup: lookup, route: route, markers: markers, segLayers: segLayers };
+  return { group: group, bounds: bounds, adjust: 0, lookup: lookup, route: route, markers: markers, segLayers: segLayers, segWarns: segWarns };
 }
 
 /* ---------- OSRM 段路径（浏览器跨域可用） ---------- */
@@ -1294,23 +1414,36 @@ var osrmQueue = [], osrmBusy = 0, osrmInFlight = {};
 /* v6.18 OSRM 失败可见提示：把「未取到路径的段」聚合到侧栏状态条（不再静默留虚线）。
    用独立 DOM 而非 toast：可长期驻留、不抢其它提示，弱网恢复后自动消失。 */
 var _osrmFail = {};
+// v6.20.5 数据层异常提示：与 OSRM 失败共用 #osrmNote（同一状态区，aria-live polite）。
+// 与失败的区别：这是「数据本身有问题」，不会因重试而消失，故显示为前缀且不带重试按钮。
+var _segWarnMsg = "";
+function segWarnRender(list) {
+  _segWarnMsg = (list && list.length) ? list.slice(0, 4).join("；") + (list.length > 4 ? " 等 " + list.length + " 处" : "") : "";
+  osrmNoteRender();
+}
 function osrmNoteRender() {
   var el = document.getElementById("osrmNote");
   if (!el) return;
   var n = 0;
   for (var k in _osrmFail) if (_osrmFail.hasOwnProperty(k)) n++;
-  if (!n) { el.hidden = true; el.textContent = ""; return; }
+  if (!n && !_segWarnMsg) { el.hidden = true; el.textContent = ""; return; }
   el.hidden = false;
+  if (!n) {
+    // 仅数据层异常：无重试按钮（重试无用，要改数据）
+    el.innerHTML = "⚠ 路线数据有 " + (_segWarnMsg.indexOf("；") >= 0 || _segWarnMsg.indexOf("等 ") >= 0 ? "多" : "1") + " 处问题：" + esc(_segWarnMsg);
+    return;
+  }
   // 重试入口就在本条内：路线页右上并没有「刷新」钮，旧文案把用户指向了不存在的东西
   el.innerHTML = "⚠ 有 " + n + " 段未取到实际路线（规划服务未响应），暂以直线示意" +
-    '<button type="button" class="osrm-retry">重试</button>';
+    '<button type="button" class="osrm-retry">重试</button>' +
+    (_segWarnMsg ? '<br><span style="opacity:.85;">数据问题：' + esc(_segWarnMsg) + "</span>" : "");
 }
 function osrmRetry() {
   if (!edCtx.work) return;
   osrmNoteReset();  // 清失败标记 → ensureRoutePolys 会为缺失的段重新排队
   applyEditToMap(); // 原地重建渲染（不重新取景），失败则提示条再次出现
 }
-function osrmNoteReset() { _osrmFail = {}; osrmNoteRender(); }
+function osrmNoteReset() { _osrmFail = {}; _segWarnMsg = ""; osrmNoteRender(); }
 // 同名/同坐标相邻点之间没有可规划路段：跳过请求，避免无效失败计入提示
 function samePoint(a, b) { return Math.abs(a.lat - b.lat) < 1e-7 && Math.abs(a.lng - b.lng) < 1e-7; }
 function pumpOsrm() {
@@ -1324,7 +1457,12 @@ function pumpOsrm() {
       if (j && j.code === "Ok" && j.routes && j.routes[0]) {
         var rt = j.routes[0];
         var coords = (rt.geometry && rt.geometry.coordinates) || [];
-        job.route.segs[job.key] = { d: Math.round(rt.distance), m: Math.round(rt.duration / 60), poly: coords.map(function (c) { return [c[1], c[0]]; }) };
+        // v6.20.5 回填时必须保留原段条目上的业务字段（尤其 p 出行方式）——
+        // 旧实现整体替换对象，把手写的 p:"foot" 丢掉 → 刷新后步行/骑马标记与虚线一起消失。
+        var prev = job.route.segs[job.key];
+        var next = { d: Math.round(rt.distance), m: Math.round(rt.duration / 60), poly: coords.map(function (c) { return [c[1], c[0]]; }) };
+        if (prev) for (var pk in prev) if (prev.hasOwnProperty(pk) && !(pk in next)) next[pk] = prev[pk];
+        job.route.segs[job.key] = next;
         delete osrmInFlight[job.key];
         delete _osrmFail[job.key];
         if (job.onDone) job.onDone(job);
@@ -1363,9 +1501,18 @@ function ensureRoutePolys(route, segLayers, markers) {
         for (var k = 0; k < segLayers.length; k++) {
           if (segKey(segLayers[k].a, segLayers[k].b) !== job.key) continue;
           var mi = segLayers[k].i;
-          segLayers[k].layer.setLatLngs(seg.poly); // 修复：原实现误传 seg 对象（{d,m,poly}），导致线段被置空
-          segLayers[k].layer.setStyle({ dashArray: null });
-          if (segLayers[k].casing) { segLayers[k].casing.setLatLngs(seg.poly); segLayers[k].casing.setStyle({ dashArray: null }); }
+          // v6.20.2 步行/骑马段是「固定虚线」，回填真实路径后必须保留自己的虚线节奏；
+          // 只有原本的「待规划占位虚线」才该在拿到路径后转成实线。
+          // v6.20.5 改按 segLayers[k].foot 标记判定，不再用节奏值与 DASH_MODE 反推
+          // （反推会在「占位节奏 == DASH_MODE」时把占位段误判为脚力段）。
+          var keep = refillDash(segLayers[k].foot);
+          // v6.20.2 端点接驳：回填的真实路径同样要连到两端图钉（见 bridgeEnds）
+          var g = bridgeEnds(seg.poly, segLayers[k].a, segLayers[k].b);
+          segLayers[k].layer.setLatLngs(g); // 修复：原实现误传 seg 对象（{d,m,poly}），导致线段被置空
+          segLayers[k].layer.setStyle({ dashArray: keep });
+          if (segLayers[k].casing) { segLayers[k].casing.setLatLngs(g); segLayers[k].casing.setStyle({ dashArray: keep }); }
+          // 缝隙底色是实线，恒不设 dashArray，只需同步几何
+          if (segLayers[k].gap) segLayers[k].gap.setLatLngs(g);
           // 段 i 连接第 i 与第 i+1 个地点，同步更新两端弹窗中的里程信息
           if (markers && markers[mi]) markers[mi].setPopupContent(popupHtmlFor(job.route, mi));
           if (markers && markers[mi + 1]) markers[mi + 1].setPopupContent(popupHtmlFor(job.route, mi + 1));
@@ -1840,6 +1987,7 @@ function applyEditToMap() {
   // 而是始终由 renderWpList 重绘内联编辑器（✎改名 / ↑↓ / ◀▶换天 / ✕删除 / 拖拽换天都依赖它）。
   var obj = renderGeneric(edCtx.work);
   applyRoute(obj, true);
+  segWarnRender(obj.segWarns); // v6.20.5 数据层异常不静默（缺 path / 非法 p）；放在 applyRoute 之后，避免被内部状态重置覆盖
   renderWpList();
 }
 // v6.5.3 打开路线自动取景：路线整体居中 + 四周留白。
