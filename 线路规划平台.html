@@ -337,6 +337,14 @@ input[type="file"] { display: none; }
 }
 #tripFab:hover { background: rgba(255,255,255,.16); }
 
+/* v6.22 深色底图（卫星 / NatGeo）下两个悬浮钮文字转白。
+   背景仍是白 .10 玻璃片，在卫星图上偏亮，深字（#3a4658）读不清 —— 与侧栏同一套判据
+   （body.map-dark，由 baselayerchange 切换），加一层投影把白字从浅色地表 / 雪山上拎出来。 */
+body.map-dark #homeFab,
+body.map-dark #tripFab { color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.60); }
+body.map-dark #homeFab:hover,
+body.map-dark #tripFab:hover { background: rgba(255,255,255,.20); }
+
 /* v6.21 侧栏收起态。不用 transform/opacity：侧栏是滚动容器 + backdrop-filter，
    display 切换最不易留下残影 */
 .info-panel.panel-hidden { display: none; }
@@ -677,6 +685,22 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
   /* toast 改到顶部居中，避免被底部抽屉遮住；v6.21 再下移到 92px —— 顶部左侧已有两个悬浮钮
      （占 12~82px 高），toast 居中时左右会伸到 x≈23，与按钮横向相交 */
   .toast { bottom: auto; top: 92px; max-width: 88vw; }
+  /* v6.22 顶右图层钮与左列对齐。Leaflet 1.9 触摸端底图钮默认 44px、图标 26px，
+     比同屏的行程 / 主页钮（33px 高）和缩放钮（30px 宽）都大一圈；项目玻璃样式又给它加了
+     8px 10px 内边距（那本是给展开面板用的），收起态一并被撑大 —— 于是图标中心比「行程」钮
+     低了 14px。这里逐层改：钮 38px、图标 22px、收起态内边距归零（展开态单独补回）。
+     纵向还有两层占位：控件自带 margin-top 10px + 1px 边框（实测宿主在 12px、控件 22px、
+     图标 23px）→ 外边距写 -1px 把边框也抵消，图标块顶缘才与「行程」钮同在 12px。
+     ⚠ 选择器必须写到 `.leaflet-top.leaflet-right .leaflet-control-layers`：Leaflet 自带的
+     让位边距是 `.leaflet-top .leaflet-control`（特异性 0,2,0），只写 `.leaflet-control-layers`
+     （0,1,0）压不住，外边距会原样留着 —— 第一次改就是栽在这，实测仍是 23px。 */
+  .leaflet-top.leaflet-right .leaflet-control-layers { padding: 0; margin: -1px 10px 0 0; }
+  /* 展开态的内边距必须带上同样的祖先选择器：上面那条的权重是 0,3,0，
+     只写 .leaflet-control-layers-expanded（0,2,0）会被它压住、展开菜单变成零内边距
+     （实测展开宽 165→145，标签贴着边框） */
+  .leaflet-top.leaflet-right .leaflet-control-layers.leaflet-control-layers-expanded { padding: 8px 10px; }
+  .leaflet-control-layers-toggle { width: 38px !important; height: 38px !important; background-size: 22px 22px !important; }
+  .leaflet-top.leaflet-right { top: 12px; }
 }
 /* 移动端隐藏全部编辑入口（!important 压过菜单项的内联 display） */
 body.is-mobile #homeNew,
@@ -708,7 +732,7 @@ body.is-mobile #routeMenuBtn { display: none !important; }
     <div id="homeGrid" data-page-node-id="NXrRE1NzYLSPDbVBi20YAT"></div>
   </div>
 </div>
-<button id="homeFab" aria-label="返回主页" data-page-node-id="lu3OEIz7GeXlyTkCs8O2cb">⌂ 主页</button>
+<button id="homeFab" aria-label="返回主页" data-page-node-id="lu3OEIz7GeXlyTkCs8O2cb">主页</button>
 <!-- v6.21 移动端行程开关：文案 行程 ↔ 隐藏，控制 .info-panel 显隐（仅触摸设备可见，见 #tripFab 样式注释） -->
 <button id="tripFab" aria-label="显示行程" aria-expanded="false" data-page-node-id="fVb2qPrXl7nMwAcjYeG4Ta">行程</button>
 
@@ -1110,7 +1134,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261003-033527";
+var DATA_VER = "20261003-040209";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
@@ -3197,7 +3221,7 @@ function showHome() {
 function hideHome() {
   $("homeMask").style.display = "none";
   // 必须给具体值：#homeFab 基础样式是 display:none，置 "" 只会退回样式表 → 按钮永远不出现
-  // （移动端 ⋯ 菜单被隐藏，⌂ 是唯一回主页入口，曾因此成为死路）
+  // （移动端 ⋯ 菜单被隐藏，本钮是唯一回主页入口，曾因此成为死路）
   $("homeFab").style.display = "inline-block";
   syncTripFab();
 }
