@@ -1082,7 +1082,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261003-021553";
+var DATA_VER = "20261003-025017";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
@@ -2244,43 +2244,11 @@ function enterNewRoute() {
   $("edResults").classList.remove("show");
   syncHash("#/n"); // v6.5.2：浏览器历史可返回
 }
-// v6.20.9 转场「新快照」等待底图绘出：让新快照抓到的是「底图已就位 + 路线已绘」的完整画面，
-// 而不是灰底中间态。两条快速返回路径，避免无谓地拖慢转场：
-//   ① 当前层没有待加载瓦片（瓦片已命中缓存，典型为切路线/来回切换）→ 立即 resolve，零额外等待；
-//   ② 超过 cap 仍未画完（首次访问该缩放级别、弱网、瓦片被拦）→ 超时兜底，不卡住转场。
-// 只在「确实有 pending 瓦片」时才挂 tileload/tileerror 监听。实测冷启动画完约 470ms，
-// 故 cap 取 250ms：宁可少等、接受个别瓦片稍后补上，也不让首页僵住太久。
-function waitMapPainted(timeoutMs) {
-  var cap = timeoutMs || 250;
-  return new Promise(function (resolve) {
-    var done = false, timer = null, layer = null;
-    function fin() {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      if (layer) { layer.off("tileload", fin); layer.off("tileerror", fin); }
-      resolve();
-    }
-    timer = setTimeout(fin, cap);
-    function check() {
-      if (done) return;
-      map.eachLayer(function (l) { if (!layer && l && l._tiles && map.hasLayer(l)) layer = l; });
-      if (!layer) { fin(); return; }
-      var pending = 0;
-      for (var k in layer._tiles) {
-        var t = layer._tiles[k];
-        if (t && !t.loaded) pending++; // 加载成功与失败都会置 loaded（_tileReady），故一个判断即覆盖
-      }
-      if (!pending) { fin(); return; }
-      layer.on("tileload", fin);
-      layer.on("tileerror", fin);
-    }
-    // Leaflet 的瓦片对象在 fitBounds/_update 内同步创建（实测调用瞬间已就绪），
-    // 但仍给一个宏任务让位：等本轮同步代码跑完再盘点，且不依赖 rAF
-    // （后台标签页 / headless 下 rAF 会被节流，曾导致「已全部加载」也白等到超时）。
-    setTimeout(check, 0);
-  });
-}
+// v6.20.9-b 曾在此加过 waitMapPainted(250)，等「底图绘出」再拍转场新快照 —— 已删除，实测无效：
+//   底图 45 块瓦片，第 1 块到达要 455ms、一半要 919ms、全部要 1086ms，而 cap 只有 250ms，
+//   于是每次都走超时分支、一块瓦片都没等到，纯粹给冷启动白加 250ms 延迟（用户质疑「259.9ms 是不是有点久」）。
+//   结论：底图加载（~1s）与转场动画（750ms）是同一量级，让首页静止等待得不偿失；
+//   「地图滑入时底图逐块补齐」是在线地图的正常观感。故不等待，瓦片请求由 fitRouteView 在转场开始前发出、动画期间并行加载。
 function enterRoute(id) {
   // v6.20.9：整条链必须 return 出去，转场才会等它 resolve 后再拍新快照（见 navWithViewTransition 注释）
   return ensureRouteData(id).then(function (t) {
@@ -2311,7 +2279,6 @@ function enterRoute(id) {
     $("edSearch").value = "";
     $("edResults").classList.remove("show");
     syncHash("#/r/" + id); // v6.5.2：浏览器历史可返回（进入的是已存在路线）
-    return waitMapPainted(250); // v6.20.9：让新快照等底图绘出（无待加载瓦片则零等待，最长多等 0.25s）
   }).catch(function (e) { toast("无法进入路线：" + (e && e.message ? e.message : id)); });
 }
 function exitToHome() {
