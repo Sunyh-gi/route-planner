@@ -674,8 +674,9 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
      必须显式 bottom:auto —— 基样式带 bottom，top/bottom 同时给且高度 auto 会把按钮纵向拉开 */
   #homeFab { left: 8px; top: 49px; bottom: auto; padding: 7px 14px; }
   #tripFab { left: 8px; top: 12px; bottom: auto; padding: 7px 14px; }
-  /* toast 改到顶部居中，避免被底部抽屉遮住 */
-  .toast { bottom: auto; top: 14px; max-width: 88vw; }
+  /* toast 改到顶部居中，避免被底部抽屉遮住；v6.21 再下移到 92px —— 顶部左侧已有两个悬浮钮
+     （占 12~82px 高），toast 居中时左右会伸到 x≈23，与按钮横向相交 */
+  .toast { bottom: auto; top: 92px; max-width: 88vw; }
 }
 /* 移动端隐藏全部编辑入口（!important 压过菜单项的内联 display） */
 body.is-mobile #homeNew,
@@ -1109,7 +1110,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261003-032150";
+var DATA_VER = "20261003-033527";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
