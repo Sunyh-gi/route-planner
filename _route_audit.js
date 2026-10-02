@@ -8,7 +8,8 @@
  *
  * 查三类：
  *   A. 数据完整性：p 取值合法性 / poly 是否存在 / 站点坐标与 day
- *   B. 几何隐患：段端点离图钉过远（200m~1km 自动接驳仅提示；>1km 页面不再补直线，记「需修复」）
+ *   B. 几何隐患：段端点离图钉过远（200m~1km 自动接驳仅提示；>1km 且该图钉四周无任何段到达才记「需修复」，
+ *      已被其他段覆盖则属「景点没公路」的正确留白）
  *   C. 重叠遮挡：段与段折线高度重合（这是「被盖住」的结构性成因，需人工判断是否真被盖）
  *
  * 用法：node _route_audit.js            （全量）
@@ -42,9 +43,23 @@ function minDistToPoly(p, poly) {
 }
 const segKey = (a, b) => a.lat.toFixed(5) + "," + a.lng.toFixed(5) + "|" + b.lat.toFixed(5) + "," + b.lng.toFixed(5);
 const BRIDGE_MIN = 200;   // 与页面 bridgeEnds 阈值一致（判「线接不上图钉」，页面会自动补端点，故仅提示）
-const BRIDGE_MAX = 1000;  // v6.20.6 与页面 BRIDGE_MAX 一致：超此值页面**不再**补直线（留白），属数据错误 → 记 hard
+const BRIDGE_MAX = 1000;  // v6.20.6 与页面 BRIDGE_MAX 一致：超此值页面**不再**补直线（留白）
+// v6.20.7 与页面 GAP_COVER_M 一致：留白 ≠ 数据错误。若该图钉距**任一段**折线 ≤ 此值，
+// 说明它已被别的段接上（典型：景点没公路，驾车段从远处路网起步，但步行段直达景点），属正确留白。
+const GAP_COVER_M = 200;
 const SAME_ROAD = 30;     // 折线点距 ≤ 30m 视为同一条路
 const DUP_PTS = 8;        // 少于此点数的 poly 视为「过短」
+
+// v6.20.7 图钉兜底覆盖判定（与页面 pinCoveredBySegs 同口径）
+function pinCoveredBySegs(pin, segs, skipKey) {
+  for (const k in segs) {
+    if (!segs.hasOwnProperty(k) || k === skipKey) continue;
+    const c = segs[k];
+    if (!c || !c.poly || !c.poly.length) continue;
+    for (const q of c.poly) if (dist(pin, q) <= GAP_COVER_M) return true;
+  }
+  return false;
+}
 
 let totalIssues = 0;
 const summary = [];
@@ -78,11 +93,16 @@ for (const id of Object.keys(PACKS)) {
     if (!c || !c.poly || !c.poly.length) continue;
     const gA = dist([a.lat, a.lng], c.poly[0]), gB = dist([b.lat, b.lng], c.poly[c.poly.length - 1]);
     // v6.20.6 分档：200m~1km 是 OSRM 吸附偏差（页面自动补端点，仅提示）；
-    // >1km 页面不再补直线（留白可见），属数据错误（图钉写错 / 路径缺失），计入 hard。
-    if (gA > BRIDGE_MAX || gB > BRIDGE_MAX)
-      hard.push(`几何｜段${i}「${a.name}→${b.name}」端点离图钉 ${Math.round(gA)}m / ${Math.round(gB)}m（>${BRIDGE_MAX / 1000}km，页面不再补接驳直线→画面留白）→ 核对图钉坐标或补该段路径`);
-    else if (gA > BRIDGE_MIN || gB > BRIDGE_MIN)
-      soft.push(`段${i}「${a.name}→${b.name}」端点离图钉 ${Math.round(gA)}m / ${Math.round(gB)}m（页面已自动补端点接驳，仅记录）`);
+    // v6.20.7 >1km 且「该图钉四周无任何段到达」才算 hard；若已被别的段覆盖（景点没公路，
+    //   驾车段从远处路网起步，步行段直达景点）则属正确留白，降为 soft 仅记录。
+    const sk = segKey(a, b);
+    for (const [g, who] of [[gA, "起点"], [gB, "终点"]]) {
+      if (g <= BRIDGE_MAX) { if (g > BRIDGE_MIN) soft.push(`段${i}「${a.name}→${b.name}」${who}离图钉 ${Math.round(g)}m（页面已自动补端点接驳，仅记录）`); continue; }
+      if (pinCoveredBySegs(g === gA ? [a.lat, a.lng] : [b.lat, b.lng], segs, sk))
+        soft.push(`段${i}「${a.name}→${b.name}」${who}离图钉 ${Math.round(g)}m（无公路，但该图钉已被其他段覆盖 → 正确留白）`);
+      else
+        hard.push(`几何｜段${i}「${a.name}→${b.name}」${who}离图钉 ${Math.round(g)}m（>${BRIDGE_MAX / 1000}km 且无任何其他段到达，页面留白）→ 核对图钉坐标或补该段路径`);
+    }
   }
   for (let i = 0; i < ordered.length; i++) {
     const A = ordered[i];
