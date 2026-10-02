@@ -1082,7 +1082,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261003-012825";
+var DATA_VER = "20261003-021553";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
@@ -2244,8 +2244,46 @@ function enterNewRoute() {
   $("edResults").classList.remove("show");
   syncHash("#/n"); // v6.5.2：浏览器历史可返回
 }
+// v6.20.9 转场「新快照」等待底图绘出：让新快照抓到的是「底图已就位 + 路线已绘」的完整画面，
+// 而不是灰底中间态。两条快速返回路径，避免无谓地拖慢转场：
+//   ① 当前层没有待加载瓦片（瓦片已命中缓存，典型为切路线/来回切换）→ 立即 resolve，零额外等待；
+//   ② 超过 cap 仍未画完（首次访问该缩放级别、弱网、瓦片被拦）→ 超时兜底，不卡住转场。
+// 只在「确实有 pending 瓦片」时才挂 tileload/tileerror 监听。实测冷启动画完约 470ms，
+// 故 cap 取 250ms：宁可少等、接受个别瓦片稍后补上，也不让首页僵住太久。
+function waitMapPainted(timeoutMs) {
+  var cap = timeoutMs || 250;
+  return new Promise(function (resolve) {
+    var done = false, timer = null, layer = null;
+    function fin() {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      if (layer) { layer.off("tileload", fin); layer.off("tileerror", fin); }
+      resolve();
+    }
+    timer = setTimeout(fin, cap);
+    function check() {
+      if (done) return;
+      map.eachLayer(function (l) { if (!layer && l && l._tiles && map.hasLayer(l)) layer = l; });
+      if (!layer) { fin(); return; }
+      var pending = 0;
+      for (var k in layer._tiles) {
+        var t = layer._tiles[k];
+        if (t && !t.loaded) pending++; // 加载成功与失败都会置 loaded（_tileReady），故一个判断即覆盖
+      }
+      if (!pending) { fin(); return; }
+      layer.on("tileload", fin);
+      layer.on("tileerror", fin);
+    }
+    // Leaflet 的瓦片对象在 fitBounds/_update 内同步创建（实测调用瞬间已就绪），
+    // 但仍给一个宏任务让位：等本轮同步代码跑完再盘点，且不依赖 rAF
+    // （后台标签页 / headless 下 rAF 会被节流，曾导致「已全部加载」也白等到超时）。
+    setTimeout(check, 0);
+  });
+}
 function enterRoute(id) {
-  ensureRouteData(id).then(function (t) {
+  // v6.20.9：整条链必须 return 出去，转场才会等它 resolve 后再拍新快照（见 navWithViewTransition 注释）
+  return ensureRouteData(id).then(function (t) {
     if (!t || !t.stops || !t.stops.length) { toast("路线数据不可用，无法编辑"); return; }
     // v6.4：进入新路线前清理前一条路线的预览点 / 玻璃卡片，避免 popup 残留叠加
     try { clearPreview(); } catch (e) {}
@@ -2273,6 +2311,7 @@ function enterRoute(id) {
     $("edSearch").value = "";
     $("edResults").classList.remove("show");
     syncHash("#/r/" + id); // v6.5.2：浏览器历史可返回（进入的是已存在路线）
+    return waitMapPainted(250); // v6.20.9：让新快照等底图绘出（无待加载瓦片则零等待，最长多等 0.25s）
   }).catch(function (e) { toast("无法进入路线：" + (e && e.message ? e.message : id)); });
 }
 function exitToHome() {
@@ -3213,12 +3252,20 @@ function navWithViewTransition(mutate) {
   var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var hm = document.getElementById("homeMask");
   var homeVisible = !!(hm && hm.style.display !== "none");
-  if (!document.startViewTransition || reduce) { mutate(); return; }
+  if (!document.startViewTransition || reduce) { return mutate(); }
   document.documentElement.classList.toggle("vt-back", !homeVisible);
-  var vt = document.startViewTransition(function () { mutate(); });
+  // v6.20.9：必须把 mutate 的返回值透传给 startViewTransition。
+  // View Transitions 规范：updateCallback 返回 Promise 时，浏览器会等它 resolve 之后才捕获「新快照」。
+  // 不透传（原写法 `function(){ mutate(); }` 同步返回 undefined）的问题：
+  //   已入库路线的 enterRoute() 要先 await ensureRouteData() 才 hideHome()，
+  //   而新快照在同步回调返回时就被拍下 —— 此时首页还在 → 新旧两张快照都是首页，
+  //   表现为「首页向上滑走、又一张首页从下滑上来，动画结束才啪一下变地图」。
+  //   （数据已在内存时 then 走微任务，恰好在拍快照前完成，所以第二次点同一条路线反而正常）
+  var vt = document.startViewTransition(function () { return mutate(); });
   // 连续快速导航会 abort 上一个转场（AbortError），此处吞掉，保持控制台干净
   if (vt.ready && vt.ready.catch) vt.ready.catch(function () {});
   vt.finished.then(function () { document.documentElement.classList.remove("vt-back"); }).catch(function () {});
+  return vt.finished;
 }
 function applyHashLocation() {
   var st = parseHashState();
@@ -3228,19 +3275,19 @@ function applyHashLocation() {
     if (cur.page !== "route" || cur.id !== st.id) {
       navWithViewTransition(function () {
         if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，切换后将丢失，确定吗？")) { revertHash(cur); return; }
-        enterRoute(st.id); // enterRoute 内部 async 完成后 syncHash('#/r/<id>')
+        return enterRoute(st.id); // v6.20.9：return 出去 → 转场等数据就位再拍新快照
       });
     }
   } else if (st.page === "new") {
     if (cur.page !== "new") {
       navWithViewTransition(function () {
         if (edCtx.work && edCtx.dirty && !confirm("当前路线有未保存的修改，新建将丢弃，确定吗？")) { revertHash(cur); return; }
-        enterNewRoute();
+        return enterNewRoute();
       });
     }
   } else { // home
     if (cur.page !== "home") {
-      navWithViewTransition(function () { if (!exitToHome()) { revertHash(cur); return; } }); // exitToHome 内部已 confirm
+      navWithViewTransition(function () { if (!exitToHome()) { revertHash(cur); return; } return null; }); // exitToHome 内部已 confirm
     }
   }
   // 2) 设置弹层开关
