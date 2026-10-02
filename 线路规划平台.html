@@ -1074,16 +1074,43 @@ function routeFileOf(id) { var c0 = catGet(id); return (c0 && c0.file) ? c0.file
 
 var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.ROUTE_PACKS 由 routes/*.js / GitHub 刷新写入）
 
+// v6.20.8 数据版本串（每次发布随构建更新，取发布时间戳）：
+//   ① 拼进 routes/*.js 的 URL（?v=）→ 绕开浏览器对数据文件的旧缓存；
+//   ② 作为 localStorage 离线缓存的版本戳 → 缓存与页面不同版本即整体作废。
+// 事故背景（2026-10-02）：服务端已发布 v6.20.7（段5 换 routed-foot 真吸附「夏塔游步道」，
+//   末端距鲜花台图钉 2466m→10m），但用户浏览器里遗留的旧 localStorage 快照被 applyCache()
+//   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
+//   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
+//   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
+var DATA_VER = "20261003-012825";
+function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
+
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
 function loadRouteData(id) {
-  if (ROUTE_PACKS[id]) { auditRouteData(id, ROUTE_PACKS[id]); return Promise.resolve(ROUTE_PACKS[id]); }
+  var cached = ROUTE_PACKS[id];
+  // 在线：不把「本地离线快照」当真源（否则旧快照会永久压住新数据）；离线：缓存可用即用
+  if (cached && !(isOnline() && cached.__fromCache)) { auditRouteData(id, cached); return Promise.resolve(cached); }
   var it = catGet(id);
-  if (!it || !it.file) return Promise.reject(new Error("未知路线: " + id));
+  if (!it || !it.file) {
+    if (cached) { auditRouteData(id, cached); return Promise.resolve(cached); }
+    return Promise.reject(new Error("未知路线: " + id));
+  }
   return new Promise(function (resolve, reject) {
     var s = document.createElement("script");
-    s.src = it.file;
-    s.onload = function () { auditRouteData(id, ROUTE_PACKS[id]); resolve(ROUTE_PACKS[id]); };
-    s.onerror = function () { reject(new Error("路线数据加载失败: " + it.file)); };
+    // v6.20.8：带版本串，浏览器缓存键含 query → 数据文件更新后必重新下载
+    s.src = it.file + (isOnline() ? ("?v=" + encodeURIComponent(DATA_VER)) : "");
+    s.onload = function () {
+      var p = ROUTE_PACKS[id];
+      if (p) { try { delete p.__fromCache; } catch (e1) {} }
+      if (p && p.stops) { auditRouteData(id, p); resolve(p); }
+      else if (cached) { auditRouteData(id, cached); resolve(cached); } // 文件异常 → 回落缓存
+      else reject(new Error("路线数据为空: " + it.file));
+    };
+    s.onerror = function () {
+      // 站点文件取不到（离线 / 弱网 / CDN 抖动）→ 回落本地离线缓存，保证仍可浏览
+      if (cached) { auditRouteData(id, cached); resolve(cached); }
+      else reject(new Error("路线数据加载失败: " + it.file));
+    };
     document.head.appendChild(s);
   });
 }
@@ -1230,6 +1257,7 @@ function saveStore() {
   catch (e) { toast("本地保存失败：" + e.message); }
 }
 // 路线数据只读缓存：每次成功入库/刷新后快照，供 file:// 离线兜底（不参与分类、不是真源）
+// v6.20.8：写入时登记 DATA_VER；读取时若版本不一致则整体作废（避免旧快照压住新数据，见 DATA_VER 注释）
 function persistCache() {
   try {
     var cats = [], packs = {};
@@ -1240,20 +1268,24 @@ function persistCache() {
       var p = ROUTE_PACKS[k];
       if (p && p.stops && p.stops.length) packs[k] = { id: p.id, name: p.name, stops: p.stops, segs: p.segs || {}, preset: presetValid(p.preset) ? { c: p.preset.c, tag: String(p.preset.tag || "").slice(0, 8) } : undefined };
     });
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ cat: cats, packs: packs }));
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ ver: DATA_VER, cat: cats, packs: packs }));
   } catch (e) {}
 }
-// 启动时把缓存并入运行时（仅当对应条目/数据尚未从站点或仓库加载时）
+// 启动时把缓存并入运行时（**仅离线时**；在线一律以站点文件为准，见 loadRouteData）
+// v6.20.8：版本不一致的缓存直接丢弃；版本一致也仅在 file:// 下兜底使用
 function applyCache() {
   try {
     var raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return;
     var o = JSON.parse(raw);
+    if (!o) return;
+    if (o.ver !== DATA_VER) { localStorage.removeItem(CACHE_KEY); return; } // 旧版本快照：作废
+    if (isOnline()) return; // 在线：站点是唯一真源，不并入本地快照
     if (o && Array.isArray(o.cat)) o.cat.forEach(function (c) {
       if (c && c.id && catIndexOf(c.id) < 0 && c.file) catUpsert({ id: c.id, name: c.name, file: c.file, days: c.days || 1, n: c.n || 0, color: c.color || "" });
     });
     if (o && o.packs) Object.keys(o.packs).forEach(function (k) {
-      if (!ROUTE_PACKS[k]) { var p = o.packs[k]; if (p && p.stops && p.stops.length) { try { normalizeRoute(p); } catch (e2) {} ROUTE_PACKS[k] = p; } }
+      if (!ROUTE_PACKS[k]) { var p = o.packs[k]; if (p && p.stops && p.stops.length) { try { normalizeRoute(p); } catch (e2) {} p.__fromCache = true; ROUTE_PACKS[k] = p; } }
     });
     rebuildMeta();
   } catch (e) {}
