@@ -1117,21 +1117,28 @@ function auditRouteData(id, pack) {
   }
   // 有站点但完全无 seg：多半是数据文件被截断
   if (stats.stops >= 2 && stats.segs === 0) issues.push("整条路线无任何段数据（文件可能被截断）");
-  // v6.20.6 端点缺口检查：段端点离图钉 > BRIDGE_MAX(1km) 属**数据错误**
-  //（图钉坐标写错 / 该段路径数据缺失）。渲染层已不再补「两点直线」冒充路线（改为留白），
-  // 所以自检必须报出来，否则画面上一段莫名其妙的空白没人知道为什么。
-  // 200m~1km 仍由渲染层自动接驳（OSRM 吸附偏差），不报错。
-  // 与 issues 分开存（endpointGaps）：issues 是「会静默失效的数据错误」，缺口是「几何不自洽，
-  // 渲染层已按留白处理」——两者严重程度与处置方式都不同，D8 只断言前者为空。
+  // v6.20.6 端点缺口检查：段端点离图钉 > BRIDGE_MAX(1km) 时，渲染层不再补「两点直线」冒充路线。
+  // v6.20.7 关键修正：留白 ≠ 数据错误。实测鲜花台图钉周边 9.9m 就能吸附到「夏塔游步道」，
+  //   而驾车 profile 最近的路在 2466m 外 —— 即观景台本身没公路，驾车段只能从 2.5km 外的
+  //   游步道口起步。该图钉已被相邻的步行段（段5）覆盖 → 这处留白是**正确的地图事实**。
+  //   故：缺口 >BRIDGE_MAX 时，若该图钉距**任一段**折线 ≤GAP_COVER_M，视为已被覆盖，不报。
+  //   只有真正四周无任何段到达的图钉（图钉坐标写错 / 该段路径缺失）才记入 endpointGaps。
+  //   与 issues 分开存（endpointGaps）：issues 是「会静默失效的数据错误」，缺口是「几何不自洽，
+  //   渲染层已按留白处理」——两者严重程度与处置方式都不同，D8 只断言前者为空。
   var gaps = [];
   for (var si = 0; si < pack.stops.length - 1; si++) {
     var sa = pack.stops[si], sb = pack.stops[si + 1];
-    var sc = (pack.segs || {})[segKey(sa, sb)];
+    var sk = segKey(sa, sb);
+    var sc = (pack.segs || {})[sk];
     if (!sc || !segHasPoly(sc)) continue;
     var gA = L.latLng(sc.poly[0]).distanceTo(L.latLng(sa.lat, sa.lng));
     var gB = L.latLng(sc.poly[sc.poly.length - 1]).distanceTo(L.latLng(sb.lat, sb.lng));
-    if (gA > BRIDGE_MAX || gB > BRIDGE_MAX) {
-      gaps.push("段 " + (si + 1) + "「" + sa.name + "→" + sb.name + "」端点离图钉 " + Math.round(gA) + "m / " + Math.round(gB) + "m（>" + (BRIDGE_MAX / 1000) + "km，不再补接驳直线，画面留白）→ 核对图钉坐标或补该段路径");
+    // v6.20.7 排除本段自身后再判「是否已被别的段覆盖」
+    if (gA > BRIDGE_MAX && !pinCoveredBySegs([sa.lat, sa.lng], pack.segs, sk)) {
+      gaps.push("段 " + (si + 1) + "「" + sa.name + "→" + sb.name + "」起点离图钉 " + Math.round(gA) + "m（>" + (BRIDGE_MAX / 1000) + "km，且无任何其他段到达该图钉，画面留白）→ 核对图钉坐标或补该段路径");
+    }
+    if (gB > BRIDGE_MAX && !pinCoveredBySegs([sb.lat, sb.lng], pack.segs, sk)) {
+      gaps.push("段 " + (si + 1) + "「" + sa.name + "→" + sb.name + "」终点离图钉 " + Math.round(gB) + "m（>" + (BRIDGE_MAX / 1000) + "km，且无任何其他段到达该图钉，画面留白）→ 核对图钉坐标或补该段路径");
     }
   }
   ROUTE_AUDIT[id] = { issues: issues, endpointGaps: gaps, stats: stats };
@@ -1350,41 +1357,62 @@ function popupHtmlFor(route, i) {
   h += '</div><span style="color:#aaa;font-size:11px;">第' + st.day + "天</span>";
   return h;
 }
-// v6.20.2 端点接驳：OSRM 有时把端点吸附到最近的公路，首/尾点离地点坐标较远
-//（本项目 yl「夏塔→鲜花台」末端与「鲜花台→喀夏加尔」起点都差 2466m，线在图钉前留一段空白）。
+// v6.20.2 端点接驳：OSRM 有时把端点吸附到最近的公路，首/尾点离地点坐标较远。
 // 超过 200m 就把地点坐标补进端点，保证每条线都连到自己的图钉。只补显著缺口，
 // 不动 OSRM 正常吸附造成的几十米级偏差。返回新数组，不改原 poly。
 // v6.20.6 新增上限 BRIDGE_MAX：超过 1km 的缺口不再是「吸附偏差」，而是**数据错误**
 //（要么图钉坐标写错，要么该段路径数据缺失）。
 // 起因（用户截图）：段6 末端离「鲜花台」图钉 2466m，旧实现直接补一条两点直线，
 // 于是画面上出现一条横贯地图、不贴任何地形的长直线——它冒充成了「路线」。
-// 实测：段6 与段7 的端点都精确落在同一个点 [42.477857, 80.826336]（两段数据彼此自洽），
-// 图钉 [42.4581, 80.84] 是唯一的异类 → 属数据问题，不该由渲染层用直线去「圆」。
-// 现在：>BRIDGE_MAX 的缺口不画假线（宁可留白让人看见），并把该段计入 dataBridgeWarns 交给调用方提示。
+// 现在：>BRIDGE_MAX 的缺口不画假线（宁可留白让人看见）。
+// v6.20.7 关键修正：留白**不等于**数据错误。实测（routed-foot 后端 /nearest）鲜花台图钉
+// 周边 9.9m 就能吸附到「夏塔游步道」，而驾车 profile 最近的路在 2466m 外——即
+// 【观景台本身没有公路】，驾车段只能从 2.5km 外的游步道口起步。既然该图钉已被
+// 【相邻的步行段】覆盖（段5 修好后末端距图钉 9.9m），这一处留白就是**正确的地图事实**
+// （景点在谱，车到不了），不该报「数据错误」让人去改图钉坐标。
+// 故新增覆盖判定：端点缺口 >BRIDGE_MAX 时，若该图钉距**任一段**折线 ≤GAP_COVER_M，
+// 视为「已被别的段接上」，不提示；只有真正四周无任何段到达的图钉才报警。
 var BRIDGE_MIN = 200;
 var BRIDGE_MAX = 1000;
-var dataBridgeWarns = []; // 每次 renderGeneric 前清空，收集「缺口过大、未接驳」的段
+var GAP_COVER_M = 200; // v6.20.7 图钉距任一段折线 ≤ 此值即视为「已被覆盖」，留白不算数据错误
+var dataBridgeWarns = []; // 每次 renderGeneric 前清空，收集「缺口过大且无人接驳」的段
 // v6.20.6 渲染期的基础警告（缺 poly / 非法 p），与 dataBridgeWarns 分开存：
 // 回填（ensureRoutePolys.onDone）时 poly 才真正拿到，桥接缺口可能**那时**才出现，
 // 所以要能在回填后重新合成一次警告列表，而不是只用渲染那一刻的快照。
 var _renderWarnsBase = [];
 function refreshSegWarns() {
-  if (!_renderWarnsBase.length && !dataBridgeWarns.length) return;
+  if (!_renderWarnsBase.length && !dataBridgeWarns.length) { segWarnRender([]); return; }
   segWarnRender(_renderWarnsBase.concat(dataBridgeWarns));
 }
-function bridgeEnds(poly, a, b) {
+// v6.20.7 图钉兜底覆盖判定：任一段（可选排除 skipKey 自身）的折线点距 pin ≤GAP_COVER_M 即算覆盖。
+// 用于区分「景点在谱但车到不了」（正确留白）与「图钉坐标写错」（真数据错误）。
+function pinCoveredBySegs(pin, segs, skipKey) {
+  var P = L.latLng(pin[0], pin[1]);
+  for (var k in (segs || {})) {
+    if (!segs.hasOwnProperty(k) || k === skipKey) continue;
+    var c = segs[k];
+    if (!segHasPoly(c)) continue;
+    for (var i = 0; i < c.poly.length; i++) {
+      if (P.distanceTo(L.latLng(c.poly[i][0], c.poly[i][1])) <= GAP_COVER_M) return true;
+    }
+  }
+  return false;
+}
+function bridgeEnds(poly, a, b, segs) {
   var out = poly.slice();
   if (!out.length) return out;
   var gapA = L.latLng(out[0]).distanceTo(L.latLng(a.lat, a.lng));
   if (gapA > BRIDGE_MIN) {
     if (gapA <= BRIDGE_MAX) out.unshift([a.lat, a.lng]);
-    else dataBridgeWarns.push("段「" + (a.name || "?") + "→" + (b.name || "?") + "」起点离图钉 " + Math.round(gapA / 100) / 10 + "km（图钉坐标与路径数据不一致，已不画接驳直线）");
+    else if (!pinCoveredBySegs([a.lat, a.lng], segs))
+      dataBridgeWarns.push("段「" + (a.name || "?") + "→" + (b.name || "?") + "」起点离图钉 " + Math.round(gapA / 100) / 10 + "km（图钉坐标与路径数据不一致，已不画接驳直线）");
   }
   var last = out[out.length - 1];
   var gapB = L.latLng(last).distanceTo(L.latLng(b.lat, b.lng));
   if (gapB > BRIDGE_MIN) {
     if (gapB <= BRIDGE_MAX) out.push([b.lat, b.lng]);
-    else dataBridgeWarns.push("段「" + (a.name || "?") + "→" + (b.name || "?") + "」终点离图钉 " + Math.round(gapB / 100) / 10 + "km（图钉坐标与路径数据不一致，已不画接驳直线）");
+    else if (!pinCoveredBySegs([b.lat, b.lng], segs))
+      dataBridgeWarns.push("段「" + (a.name || "?") + "→" + (b.name || "?") + "」终点离图钉 " + Math.round(gapB / 100) / 10 + "km（图钉坐标与路径数据不一致，已不画接驳直线）");
   }
   return out;
 }
@@ -1412,7 +1440,7 @@ function renderGeneric(route) {
     if (badPoly) segWarns.push("段 " + (i + 1) + "「" + a.name + "→" + b.name + "」缺路径数据（已按直线占位）");
     if (segHasPoly(c)) c.poly.forEach(function (p) { bounds.extend(p); });
     // v6.20.2 端点接驳（见 bridgeEnds 注释）：让线恒连到两端图钉
-    poly = bridgeEnds(poly, a, b);
+    poly = bridgeEnds(poly, a, b, route.segs);
     // v6.20.5 脚力段判定只认数据层 p 字段（isFootSeg）；非法取值（如 "walking"）不计入 segWarns 之外，
     // 仍按驾车渲染，避免把未知值当成步行。占位虚线用 DASH_PENDING，与脚力段节奏彻底解耦。
     var cMode = isFootSeg(c);
@@ -1559,7 +1587,7 @@ function ensureRoutePolys(route, segLayers, markers) {
           // （反推会在「占位节奏 == DASH_MODE」时把占位段误判为脚力段）。
           var keep = refillDash(segLayers[k].foot);
           // v6.20.2 端点接驳：回填的真实路径同样要连到两端图钉（见 bridgeEnds）
-          var g = bridgeEnds(seg.poly, segLayers[k].a, segLayers[k].b);
+          var g = bridgeEnds(seg.poly, segLayers[k].a, segLayers[k].b, job.route.segs);
           segLayers[k].layer.setLatLngs(g); // 修复：原实现误传 seg 对象（{d,m,poly}），导致线段被置空
           segLayers[k].layer.setStyle({ dashArray: keep });
           if (segLayers[k].casing) { segLayers[k].casing.setLatLngs(g); segLayers[k].casing.setStyle({ dashArray: keep }); }
