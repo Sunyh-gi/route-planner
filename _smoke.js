@@ -651,10 +651,10 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   // D8. v6.20.5 全量路线数据自检：页面 auditRouteData() 对每条已加载路线扫
   //     p 取值合法性 / poly 是否存在 / 站点坐标与 day，结果挂 window.__routeAudit。
   //     这条断言保证「以后手写的路线数据写错会被测出来」，而不只是靠人眼。
-  //     v6.20.6 起 auditRouteData 另出一路 endpointGaps（端点离图钉 >1km）：
-  //     那是「几何不自洽、渲染层已按留白处理」，与 issues（会静默失效的数据错误）
-  //     性质不同 → 本断言要求 issues 归零，同时 endpointGaps 必须**真的被检出**
-  //     （yl 两段各 >1km），即自检真的在跑，而不是恒空。
+  //     v6.20.7 起 endpointGaps 的口径改为「端点离图钉 >1km **且**该图钉四周无任何段到达」：
+  //     鲜花台（景点没公路、驾车段从 2.5km 外起步，但步行段直达）属**正确留白**，不再计入。
+  //     故本例 yl 应为 0 处 —— 断言「归零」才算正确修复；同时要求 audit 里确实带了
+  //     endpointGaps 这个字段（证明检查真的在跑，而非字段缺失导致的恒空）。
   await page.setViewport({ width: 1440, height: 900, isMobile: false, hasTouch: false });
   const audit = [];
   for (const rid of ["cx", "yl"]) {
@@ -667,11 +667,30 @@ const URL = "file:///" + path.resolve(__dirname, "线路规划平台.html").repl
   const badData = audit.filter(a => a && a.issues && a.issues.length);
   const footTotal = audit.reduce((n, a) => n + ((a && a.stats && a.stats.foot) || 0), 0);
   const gapTotal = audit.reduce((n, a) => n + ((a && a.endpointGaps && a.endpointGaps.length) || 0), 0);
+  const fieldOk = audit.every(a => a && Array.isArray(a.endpointGaps));
   ok(
-    audit.length === 2 && badData.length === 0 && footTotal >= 2 && gapTotal >= 2 &&
-    audit.every(a => a && a.stats && a.stats.stops >= 2 && a.stats.segs >= 1 && Array.isArray(a.endpointGaps)),
-    "全量路线数据自检通过（p 合法 / poly 齐全 / 坐标与 day 完整，脚力段 " + footTotal + " 个，端点缺口 " + gapTotal + " 处已被检出）-> " +
+    audit.length === 2 && badData.length === 0 && footTotal >= 2 && gapTotal === 0 && fieldOk &&
+    audit.every(a => a && a.stats && a.stats.stops >= 2 && a.stats.segs >= 1),
+    "全量路线数据自检通过（p 合法 / poly 齐全 / 坐标与 day 完整，脚力段 " + footTotal + " 个，真端点缺口 " + gapTotal + " 处）-> " +
       JSON.stringify(audit.map(a => ({ id: a && a.id, stops: a && a.stats && a.stats.stops, segs: a && a.stats && a.stats.segs, foot: a && a.stats && a.stats.foot, issues: a && a.issues, gaps: a && a.endpointGaps && a.endpointGaps.length }))));
+
+  // D8b. v6.20.7 鲜花台留白判定：段6（驾车）起点离图钉 2466m 属正确留白（景点没公路），
+  //      必须① 不被报成缺口；② 段5（步行）末端确实连到了图钉附近。
+  const footCover = await ev(() => {
+    const R = window.ROUTE_PACKS && window.ROUTE_PACKS.yl;
+    if (!R) return { err: "yl 未加载" };
+    const A = R.stops[5], B = R.stops[6]; // 夏塔 → 鲜花台（步行）
+    const key = A.lat.toFixed(5) + "," + A.lng.toFixed(5) + "|" + B.lat.toFixed(5) + "," + B.lng.toFixed(5);
+    const c = (R.segs || {})[key];
+    if (!c || !c.poly || !c.poly.length) return { err: "段5 无数据" };
+    const last = c.poly[c.poly.length - 1];
+    const d = L.latLng(last).distanceTo(L.latLng(B.lat, B.lng));
+    return { n: c.poly.length, p: c.p || "drive", endGap: Math.round(d) };
+  });
+  ok(
+    footCover && !footCover.err && footCover.p === "foot" && footCover.n >= 150 && footCover.endGap <= 200,
+    "鲜花台图钉由步行段覆盖：段5（" + (footCover && footCover.p) + "，" + (footCover && footCover.n) + " 点）末端距图钉 " +
+      (footCover && footCover.endGap) + "m（≤200m）→ 驾车段的 2.5km 留白属正确地图事实，不报错 -> " + JSON.stringify(footCover));
 
   // D9. v6.20.5 数据层护栏：段缺 poly / 非法 p 不得抛错（旧实现在 .slice 处直接 TypeError）
   const guard = await ev(() => {
