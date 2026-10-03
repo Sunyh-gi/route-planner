@@ -467,6 +467,49 @@ body.map-dark #tripFab:hover { background: rgba(255,255,255,.20); }
 }
 .leaflet-popup-content { margin: 12px 16px; color: rgba(35,45,66,0.92); font-size: 12.5px; line-height: 1.6; }
 .leaflet-popup-tip { background: rgba(255,255,255,0.10); }
+/* v6.27 路线地点标记（用户要求：标记上不再放序号；序号+名称挂在标记上方；无光晕）
+   结构：.wp-marker > .pin > (.pin-lab, .pin-dot)
+   几何常量必须与 JS 的 PIN_W/PIN_H/PIN_DOT_Y/PIN_DOT_R/PIN_LAB_GAP 一致：
+     PIN_W=200 PIN_H=64 PIN_DOT_Y=48 PIN_DOT_R=10 PIN_LAB_GAP=4
+     · 圆点：20px 方盒 → 半径 10，bottom:6px → 盒占 y38..58，圆心 y=48
+     · 标签默认在上：bottom:30px → 下缘 y=34 = 48-10-4
+     · 右侧变体 left:114px = 100+10+4；左侧变体 right:114px；下方变体 top:62px = 48+10+4
+   仅圆点可点（标签与容器 pointer-events:none），避免 200px 宽的命中盒挡住地图点击。 */
+.wp-marker:not(.wp-marker-pre) { pointer-events: none; }
+.wp-marker .pin { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.wp-marker .pin-dot {
+  position: absolute; left: 50%; bottom: 6px; width: 20px; height: 20px; margin-left: -10px;
+  box-sizing: border-box; border-radius: 50%;
+  background: #fff; border: 3.5px solid var(--pc, #2C3E6B);
+  box-shadow: 0 1px 3px rgba(0,0,0,.30);
+  pointer-events: auto; cursor: pointer; transition: transform .12s;
+}
+.wp-marker .pin-dot:hover { transform: scale(1.14); }
+.wp-marker .pin-lab {
+  position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%);
+  display: flex; align-items: baseline; gap: 4px; white-space: nowrap;
+  padding: 3px 9px 3px 8px; border-radius: 9px;
+  background: rgba(255,255,255,.94); color: #2b3648;
+  border: 1px solid rgba(255,255,255,.9);
+  box-shadow: 0 1px 4px rgba(0,0,0,.18);
+  font: 600 12px/1.25 "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+  pointer-events: none;
+}
+.wp-marker .pin-lab .pn { color: var(--pc, #2C3E6B); font-weight: 800; font-size: 13px; letter-spacing: .3px; }
+.wp-marker .pin-lab .pm { font-weight: 600; }
+.wp-marker .pin-lab::after {
+  content: ""; position: absolute; left: 50%; bottom: -4px; width: 8px; height: 8px; margin-left: -4px;
+  background: inherit; border-right: 1px solid rgba(255,255,255,.9);
+  border-bottom: 1px solid rgba(255,255,255,.9); transform: rotate(45deg);
+}
+.wp-marker .pin-lab.below { bottom: auto; top: 62px; }
+.wp-marker .pin-lab.right { left: 114px; right: auto; bottom: auto; top: 48px; transform: translateY(-50%); }
+.wp-marker .pin-lab.left { right: 114px; left: auto; bottom: auto; top: 48px; transform: translateY(-50%); }
+.wp-marker .pin-lab.below::after, .wp-marker .pin-lab.right::after, .wp-marker .pin-lab.left::after { display: none; }
+.wp-marker .pin-lab.hid { opacity: 0; visibility: hidden; }
+body.map-dark .wp-marker .pin-lab { background: rgba(20,28,46,.90); color: #fff; border-color: rgba(255,255,255,.22); }
+body.map-dark .wp-marker .pin-lab::after { border-right-color: rgba(255,255,255,.22); border-bottom-color: rgba(255,255,255,.22); }
+body.map-dark .wp-marker .pin-dot { box-shadow: 0 1px 4px rgba(0,0,0,.55); }
 /* v6.10.3 底图选择控件玻璃化（白.10 + blur(20px) + 受光） */
 .leaflet-control-layers {
   background: rgba(255,255,255,.10);
@@ -1115,10 +1158,82 @@ function pinSvg(txt, color, fontSize, uid) {
     + '<text x="' + r + '" y="' + ty + '" text-anchor="middle" fill="' + fg + '" font-size="' + fontSize + '" font-weight="bold" font-family="Arial,sans-serif">' + txt + '</text>'
     + '</g></svg>';
 }
+/* v6.27 路线地点标记的几何常量（必须与 .wp-marker 那组 CSS 一致，见 CSS 注释） */
+var PIN_W = 200, PIN_H = 64, PIN_DOT_Y = 48, PIN_DOT_R = 10, PIN_LAB_GAP = 4;
+/* 标签最低可见缩放：低于此级别所有标签收起，只留圆点（缩略视角下名称本就读不出来） */
+var PIN_LABEL_MIN_ZOOM = 7;
 function pinIcon(html) {
-  var rh = Math.round(28 * 1.45);
-  return L.divIcon({ className: "wp-marker", html: html, iconSize: [28, rh], iconAnchor: [14, rh - 2], popupAnchor: [0, -(rh - 2)] });
+  return L.divIcon({ className: "wp-marker", html: html, iconSize: [PIN_W, PIN_H], iconAnchor: [PIN_W / 2, PIN_DOT_Y], popupAnchor: [0, -50] });
 }
+/* 序号补零：位数取站点总数（11 站 → 01..11），与参考图「02」的两位写法一致 */
+function padNo(n, w) { var s = String(n); while (s.length < w) s = "0" + s; return s; }
+/* 标记本体：白心 + 当天色圆环；序号与名称挂在圆点上方，颜色用当天色 */
+function pinDotHtml(no, name, color) {
+  return '<div class="pin" style="--pc:' + color + '">'
+    + '<div class="pin-lab"><span class="pn">' + no + '</span><span class="pm">' + esc(name) + '</span></div>'
+    + '<div class="pin-dot"></div>'
+    + '</div>';
+}
+// ===== v6.27 标签重叠避让 =====
+// 标签常显，但密集处必须让位：按站点顺序贪心放置，每个标签依次尝试
+// 「上 / 下 / 右 / 左」四个位置，四个都撞就隐藏该标签（圆点恒在）。
+// 只在屏幕空间判交（latLngToContainerPoint），不依赖 DOM 反复回流——标签自然尺寸量一次即可。
+var pinLabelRefs = [];   // 当前路线的 marker 引用（renderGeneric 每轮重建）
+var _pinLabT = 0;
+function schedulePinLabels() {
+  // 用 setTimeout 而非 rAF：headless / 后台标签页下 rAF 会被节流甚至不触发（项目既有结论）
+  if (_pinLabT) clearTimeout(_pinLabT);
+  _pinLabT = setTimeout(function () { _pinLabT = 0; layoutPinLabels(); }, 30);
+}
+function _pinLabRect(p, w, h, v) {
+  var m = 2, R = PIN_DOT_R, G = PIN_LAB_GAP;   // m = 标签之间的最小间距
+  var W = w + 2 * m, H = h + 2 * m;
+  if (v === "below") return { x: p.x - w / 2 - m, y: p.y + R + G - m, w: W, h: H };
+  if (v === "right") return { x: p.x + R + G - m, y: p.y - h / 2 - m, w: W, h: H };
+  if (v === "left") return { x: p.x - R - G - w - m, y: p.y - h / 2 - m, w: W, h: H };
+  return { x: p.x - w / 2 - m, y: p.y - R - G - h - m, w: W, h: H };
+}
+function _pinLabHit(r, list) {
+  for (var i = 0; i < list.length; i++) {
+    var q = list[i];
+    if (r.x < q.x + q.w && q.x < r.x + r.w && r.y < q.y + q.h && q.y < r.y + r.h) return true;
+  }
+  return false;
+}
+function layoutPinLabels() {
+  var refs = pinLabelRefs;
+  if (!refs || !refs.length) return;
+  var items = [];
+  for (var i = 0; i < refs.length; i++) {
+    var el = refs[i].getElement ? refs[i].getElement() : null;
+    if (!el) continue;
+    var lab = el.querySelector(".pin-lab");
+    if (!lab) continue;
+    lab.className = "pin-lab";   // 复位到默认位置（同时去掉 hid）
+    items.push({ lab: lab, ll: refs[i].getLatLng() });
+  }
+  if (!items.length) return;
+  if (map.getZoom() < PIN_LABEL_MIN_ZOOM) {
+    for (i = 0; i < items.length; i++) items[i].lab.className = "pin-lab hid";
+    return;
+  }
+  // 量自然尺寸（此刻全部可见）
+  for (i = 0; i < items.length; i++) { items[i].w = items[i].lab.offsetWidth; items[i].h = items[i].lab.offsetHeight; }
+  var placed = [], VARS = ["", "below", "right", "left"];
+  for (i = 0; i < items.length; i++) {
+    var it = items[i], p = map.latLngToContainerPoint(it.ll), put = false;
+    for (var v = 0; v < VARS.length; v++) {
+      var r = _pinLabRect(p, it.w, it.h, VARS[v]);
+      if (!_pinLabHit(r, placed)) {
+        it.lab.className = "pin-lab" + (VARS[v] ? " " + VARS[v] : "");
+        placed.push(r); put = true; break;
+      }
+    }
+    if (!put) it.lab.className = "pin-lab hid";
+  }
+}
+map.on("zoomend", schedulePinLabels);
+map.on("moveend", schedulePinLabels);
 
 // ========== 路线渲染 ==========
 var currentGroup = null;
@@ -1179,7 +1294,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261003-162659";
+var DATA_VER = "20261004-033623";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
@@ -1551,6 +1666,8 @@ function renderGeneric(route) {
   var bounds = L.latLngBounds([]);
   var eff = effCoords(stops);
   var lookup = {}, markers = [], segLayers = [];
+  pinLabelRefs = [];                        // v6.27 每轮重建标签引用（旧引用会随 group 一起移除）
+  var npad = String(stops.length).length;   // 序号补零位数：11 站 → 01..11
   var segWarns = []; // v6.20.5 数据层异常（缺 poly / 非法 p）——不静默，交给调用方提示
   dataBridgeWarns = []; // v6.20.6 缺口过大未接驳的段（见 bridgeEnds）
   for (var i = 0; i < stops.length; i++) bounds.extend([stops[i].lat, stops[i].lng]);
@@ -1609,7 +1726,9 @@ function renderGeneric(route) {
   for (i = 0; i < stops.length; i++) {
     var st = stops[i];
     var color2 = dayColor(st.day, route.id);
-    var marker = L.marker([eff[i][0], eff[i][1]], { icon: pinIcon(pinSvg(String(i + 1), color2, 13, "u" + route.id + "_" + i)) }).addTo(group);
+    // v6.27 标记只画圆点，序号+名称挂在上方标签里（见 pinDotHtml / layoutPinLabels）
+    var marker = L.marker([eff[i][0], eff[i][1]], { icon: pinIcon(pinDotHtml(padNo(i + 1, npad), st.name, color2)) }).addTo(group);
+    pinLabelRefs.push(marker);
     marker.bindPopup(popupHtmlFor(route, i), { closeButton: false });
     lookup[String(i)] = { lat: eff[i][0], lng: eff[i][1], marker: marker };
     markers.push(marker);
@@ -1752,6 +1871,7 @@ function applyRoute(obj, nofit) {
     map.setZoom(map.getZoom() + (obj.adjust || 0));
   }
   if (obj.route) ensureRoutePolys(obj.route, obj.segLayers || [], obj.markers || []);
+  schedulePinLabels(); // v6.27 标记入图后再算标签避让（此时 getElement() 才有效）
 }
 /* ---------- 注册表小工具（v5 统一：入库即进目录+数据包，来源无关） ---------- */
 function metaIndexOf(id) { for (var i = 0; i < ROUTE_META.length; i++) if (ROUTE_META[i].id === id) return i; return -1; }
