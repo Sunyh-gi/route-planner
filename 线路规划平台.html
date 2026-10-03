@@ -472,9 +472,9 @@ body.map-dark #tripFab:hover { background: rgba(255,255,255,.20); }
    几何常量必须与 JS 的 PIN_W/PIN_H/PIN_DOT_Y/PIN_DOT_R/PIN_LAB_GAP 一致：
      PIN_W=200 PIN_H=64 PIN_DOT_Y=48 PIN_DOT_R=10 PIN_LAB_GAP=4
      · 圆点：20px 方盒 → 外半径 10，bottom:6px → 盒占 y38..58，圆心 y=48
-       v6.27.1 只调「环厚 vs 白心」比例，**外径恒为 20px 不动**（用户：「圆点大小不要变」）：
-       环厚 6px → 白心直径 = 20-2*6 = 8px（改前 3.5px；Chrome 的 border-width 会取整，
-       实测 DPR=4 下 3.5px 渲染 3px、6.5px 渲染 6px，故一律写整数以免不确定）
+       v6.27.1/6.27.2 只调「环厚 vs 白心」比例，**外径恒为 20px 不动**（用户：「圆点大小不要变」）：
+       3.5px(白心13) → 6px(白心 8) 过头 → **回调 5px，白心直径 = 20-2*5 = 10px（定稿）**
+       （Chrome 的 border-width 会取整：实测 DPR=4 下 3.5px 渲染 3px、6.5px 渲染 6px，故一律写整数）
      · 标签默认在上：bottom:30px → 下缘 y=34 = 48-10-4
      · 右侧变体 left:114px = 100+10+4；左侧变体 right:114px；下方变体 top:62px = 48+10+4
    仅圆点可点（标签与容器 pointer-events:none），避免 200px 宽的命中盒挡住地图点击。 */
@@ -483,7 +483,7 @@ body.map-dark #tripFab:hover { background: rgba(255,255,255,.20); }
 .wp-marker .pin-dot {
   position: absolute; left: 50%; bottom: 6px; width: 20px; height: 20px; margin-left: -10px;
   box-sizing: border-box; border-radius: 50%;
-  background: #fff; border: 6px solid var(--pc, #2C3E6B);
+  background: #fff; border: 5px solid var(--pc, #2C3E6B);
   box-shadow: 0 1px 3px rgba(0,0,0,.30);
   pointer-events: auto; cursor: pointer; transition: transform .12s;
 }
@@ -1162,7 +1162,7 @@ function pinSvg(txt, color, fontSize, uid) {
     + '</g></svg>';
 }
 /* v6.27 路线地点标记的几何常量（必须与 .wp-marker 那组 CSS 一致，见 CSS 注释） */
-var PIN_W = 200, PIN_H = 64, PIN_DOT_Y = 48, PIN_DOT_R = 10, PIN_LAB_GAP = 4; /* v6.27.1 外径不变（仍 20px），只把环加粗、白心收小 */
+var PIN_W = 200, PIN_H = 64, PIN_DOT_Y = 48, PIN_DOT_R = 10, PIN_LAB_GAP = 4; /* v6.27.2 外径不变（仍 20px）；环厚定稿 5px→白心 10px（v6.27.1 的 6px/8px 过头） */
 /* 标签最低可见缩放：低于此级别所有标签收起，只留圆点（缩略视角下名称本就读不出来） */
 var PIN_LABEL_MIN_ZOOM = 7;
 function pinIcon(html) {
@@ -1297,7 +1297,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261004-035707";
+var DATA_VER = "20261004-041705";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
