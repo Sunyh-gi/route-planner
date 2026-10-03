@@ -670,24 +670,31 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
      v6.21 曾把底距 58→100px 来「让开」底部的缩放钮，代价是抽屉悬在半空、且 left/right 双贴边
      使它几乎铺满整屏（实测 374/390 = 96%），把地图盖住大半。
      v6.23 改为「窄 + 贴左下 + 与缩放钮同基线」：
-       · 宽度写死 min(232px, 68vw) —— 必须用 width 而非 max-width：绝对定位 + 左右都不给时
+       · 宽度写死 min(198px, 62vw) —— 必须用 width 而非 max-width：绝对定位 + 左右都不给时
          宽度是 shrink-to-fit，会跟着路线名长度变（实测只 148.8px），换条路线就换宽度；
          靠左必须显式 right:auto，left/right 同时给会拉伸铺满。
-       · box-sizing:border-box 不能省：.info-panel 是 content-box，232 + 左右内边距 28 + 边框 2
-         会得到 262px 的外宽，达不到设定的收窄量（第一次就是这么差出来的 30px）。
+       · box-sizing:border-box 不能省：.info-panel 是 content-box，写多少只约束内容区，
+         加左右内边距 28 + 边框 2 会外溢 30px（第一次就是这么差出来的 262px）。
        · 底缘与缩放钮底缘齐平 = 34px，来源：.leaflet-bottom.leaflet-right 的 bottom 24px
          + 缩放钮自带的 .leaflet-bar 下边距 10px（实测缩放钮底缘 810 / 屏高 844）。
          改底部控件位置时这两处要同步，否则基线会散。
-       · 缩放钮在 x 340~370、抽屉右缘 240，横向留 100px 余量，互不遮挡；版权条在 y≥822，也不碰。 */
+       · v6.24 再收窄变矮（用户「偏宽偏高，再缩窄一些变矮一些」）：
+         宽 232→198（59%→51%，内容区 172px），高 46vh→38vh（388→321px），
+         并把行内距 6→5px、日标题上方 7→5px、route-head 下方 8→6px。
+         **198 是量出来的下限往上留的余量**：把面板临时设成 width:max-content 测「内容固有宽」，
+         川西线最长行「4四姑娘山镇」+ 序号圆点需 **159.5px**（伊犁线 148.8px）；
+         198 - 内边距24 - 边框2 = 172px 内容区，留 12.5px 余量不会换行。
+         再窄就得缩字号或省序号圆点，那会动到信息本身，不做。 */
   .info-panel {
     top: auto; left: 8px; right: auto; bottom: 34px;
     box-sizing: border-box;
-    width: min(232px, 68vw); max-width: min(232px, 68vw);
-    max-height: 46vh;
-    border-radius: 18px; padding: 12px 14px;
+    width: min(198px, 62vw); max-width: min(198px, 62vw);
+    max-height: 38vh;
+    border-radius: 18px; padding: 10px 12px;
   }
-  .info-panel .route-head { margin-bottom: 8px; }
-  .info-panel .wp-item { padding: 6px 8px; }
+  .info-panel .route-head { margin-bottom: 6px; }
+  .info-panel .wp-item { padding: 5px 6px; }
+  .info-panel .wp-list .day-label { margin-top: 5px; }
   /* v6.21 两个悬浮钮移到顶部左侧成组（行程在上、主页在下），底部不再放任何悬浮钮。
      必须显式 bottom:auto —— 基样式带 bottom，top/bottom 同时给且高度 auto 会把按钮纵向拉开 */
   #homeFab { left: 8px; top: 49px; bottom: auto; padding: 7px 14px; }
@@ -1144,7 +1151,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261003-143352";
+var DATA_VER = "20261003-145218";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
