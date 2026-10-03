@@ -666,14 +666,24 @@ body.map-dark .set-label .hint { color: rgba(255,255,255,.65); }
   .season-cards { gap: 12px; }
   .home-card, .season-empty { width: 100%; }
   .home-card { padding: 18px 16px 16px; border-radius: 18px; }
-  /* 路线页侧栏 → 底部玻璃抽屉。
-     v6.21 底距 58→100px：底部改由「地图控件（缩放钮 61px + 自带 10px 边距 + 24px 底距 = 距底 95px）」
-     独占。原 58px 时控件与抽屉必然重叠（且抽屉 z 1000 > 控件 800，控件被压在玻璃下面，
-     一并把抽屉左下角让给了悬浮钮）。抽屉底缘抬到 100px 后，控件与抽屉互不遮挡，
-     底部也就不需要再为抽屉「抬升控件」了。 */
+  /* 路线页侧栏 → 左下角玻璃抽屉。
+     v6.21 曾把底距 58→100px 来「让开」底部的缩放钮，代价是抽屉悬在半空、且 left/right 双贴边
+     使它几乎铺满整屏（实测 374/390 = 96%），把地图盖住大半。
+     v6.23 改为「窄 + 贴左下 + 与缩放钮同基线」：
+       · 宽度写死 min(232px, 68vw) —— 必须用 width 而非 max-width：绝对定位 + 左右都不给时
+         宽度是 shrink-to-fit，会跟着路线名长度变（实测只 148.8px），换条路线就换宽度；
+         靠左必须显式 right:auto，left/right 同时给会拉伸铺满。
+       · box-sizing:border-box 不能省：.info-panel 是 content-box，232 + 左右内边距 28 + 边框 2
+         会得到 262px 的外宽，达不到设定的收窄量（第一次就是这么差出来的 30px）。
+       · 底缘与缩放钮底缘齐平 = 34px，来源：.leaflet-bottom.leaflet-right 的 bottom 24px
+         + 缩放钮自带的 .leaflet-bar 下边距 10px（实测缩放钮底缘 810 / 屏高 844）。
+         改底部控件位置时这两处要同步，否则基线会散。
+       · 缩放钮在 x 340~370、抽屉右缘 240，横向留 100px 余量，互不遮挡；版权条在 y≥822，也不碰。 */
   .info-panel {
-    top: auto; left: 8px; right: 8px; bottom: 100px;
-    max-width: none; max-height: 46vh;
+    top: auto; left: 8px; right: auto; bottom: 34px;
+    box-sizing: border-box;
+    width: min(232px, 68vw); max-width: min(232px, 68vw);
+    max-height: 46vh;
     border-radius: 18px; padding: 12px 14px;
   }
   .info-panel .route-head { margin-bottom: 8px; }
@@ -1134,7 +1144,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261003-040209";
+var DATA_VER = "20261003-143352";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
