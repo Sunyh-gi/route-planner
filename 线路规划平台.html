@@ -81,17 +81,16 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
   cursor: pointer;
 }
 .wp-item:hover { background: rgba(255,255,255,0.25); }
-/* v6.27.3 序号改「彩色数字」（用户：「侧边栏的地点序号也需要修改成颜色数字的样式」）：
-   改前 = 当天色实心圆 + 白字（白字对中低明度底仅 ~3.1~3.5 对比度）；
-   改后 = 白心 + 当天色彩环 + 当天色数字，与地图标记标签的 .pn 同做法。
-   border 用 currentColor：行内只写一个 color，环与数字同色；
-   行内 color 同时挡掉卫星底图下 .info-panel.sat-active 继承来的 #fff。
-   外径 18px 不动（面板 198px 宽是按 18px 圆点量出来的预算）。 */
+/* v6.27.4 序号「去圆」（用户：「侧边栏的地点序号不再需要圆，就是简单的数字」）：
+   改前（v6.27.3）= 白心 + 3px 彩环 + 当天色数字；改后 = 纯当天色数字，底圆与环全部去掉。
+   保留 min-width/height 18px（= 原圆外径）并居中：数字的 x 位置与改前逐像素一致，
+   地点名一行都不移位，抽屉宽度预算（198px / 内容区 172px）无需重算。
+   字号 9.5 → 13px，与地图标记标签的 .pn 同号（同为 800 字重），两处观感统一。 */
 .wp-item .dot {
-  width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
-  box-sizing: border-box; display: flex; align-items: center; justify-content: center;
-  background: #fff; border: 3px solid currentColor;
-  font-size: 9.5px; font-weight: 800; white-space: nowrap;
+  min-width: 18px; height: 18px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 0; border-radius: 0;
+  font-size: 13px; font-weight: 800; white-space: nowrap;
 }
 
 /* 卫星图层下，面板文字改为白色以提高可读性 */
@@ -157,7 +156,6 @@ html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, Bl
 .ed-day .ln { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
 .ed-stop { display: flex; align-items: center; gap: 6px; padding: 4px 5px; border-radius: 8px; font-size: 12.5px; color: #222; }
 .ed-stop:hover { background: rgba(0,0,0,0.05); }
-.ed-stop .dot { width: 15px; height: 15px; border-radius: 50%; flex: none; color: #fff; font-size: 8.5px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
 .ed-stop .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ed-stop .ops { display: flex; gap: 1px; flex: none; }
 .ed-stop .ops button { border: none; background: transparent; cursor: pointer; color: #888; font-size: 14px; padding: 1px 3px; line-height: 1; border-radius: 5px; }
@@ -1304,7 +1302,7 @@ var ROUTE_PACKS = window.ROUTE_PACKS || {}; // 已加载路线数据（window.RO
 //   抢先并入 ROUTE_PACKS，loadRouteData() 见「已有数据」即短路 → routes/yl.js 的网络请求数为 0，
 //   新数据永不下载。现象为「我这边已修好，用户反复刷新永远看到旧路线（2.5km 警告条仍在）」。
 //   故：在线以站点文件为准（缓存只做取不到时的兜底），且缓存必须与页面同版本才可用。
-var DATA_VER = "20261004-141236";
+var DATA_VER = "20261004-145033";
 function isOnline() { return location.protocol === "http:" || location.protocol === "https:"; }
 
 // 按需加载某条路线的数据文件（动态 <script>：file:// 与 http(s) 均可用）
